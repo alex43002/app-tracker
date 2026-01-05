@@ -10,7 +10,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  accessToken: string;
+  jwt: string;
   tokenType: "bearer";
   expiresIn: number;
 }
@@ -34,7 +34,7 @@ export interface SignupResponse {
 ============================================================ */
 
 export function login(request: LoginRequest) {
-  return apiClient.post<LoginResponse>("/api/auth/login", request);
+    return apiClient.post<LoginResponse>("/api/auth/login", request);;
 }
 
 export function signup(request: SignupRequest) {

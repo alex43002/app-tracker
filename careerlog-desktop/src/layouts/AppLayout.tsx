@@ -1,17 +1,17 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { UserMenu } from "../components/common/UserMenu";
+import type { User } from "../types/user";
 
 export function AppLayout({
   children,
   user,
 }: {
   children: ReactNode;
-  user?: {
-    fullName: string;
-    pfp?: string | null;
-  };
+  user?: User;
 }) {
+
+    console.log(user)
   return (
     <div className="flex h-full overflow-hidden">
       {/* Sidebar */}
@@ -75,10 +75,7 @@ export function AppLayout({
             </div>
 
             {user && (
-                <UserMenu
-                fullName={user.fullName}
-                pfp={user.pfp}
-                />
+                <UserMenu {...user} />
             )}
         </header>
 

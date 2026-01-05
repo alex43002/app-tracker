@@ -9,6 +9,7 @@ import { UpcomingAlertsList } from "../components/dashboard/UpcomingAlertsList";
 import type { Job } from "../types/job";
 import type { Alert } from "../types/alert";
 import { fetchCurrentUser } from "../api/users";
+import type { User } from "../types/user";
 
 /* TEMP: mocked API-shaped data */
 const jobs: Job[] = Array.from({ length: 12 }).map((_, i) => ({
@@ -36,29 +37,25 @@ const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
 }));
 
 export function Dashboard() {
-  const [user, setUser] = useState<{
-    fullName: string;
-    pfp?: string | null;
-  } | null>(null);
+  
+    const [user, setUser] = useState<User>();
 
-  useEffect(() => {
-    // fetchCurrentUser().then((u) => {
-    //   setUser({
-    //     fullName: u.fullName,
-    //     pfp: u.pfp,
-    //   });
-    // });
-  }, []);
+    useEffect(() => {
+        fetchCurrentUser().then((u: User) => {
+            console.log(u)
+            setUser(u);
+        });
+    }, []);
 
-  if (!user) {
-    return (
-      <AppLayout>
-        <div className="p-6 text-sm text-gray-500">
-          Loading dashboard…
-        </div>
-      </AppLayout>
-    );
-  }
+    if (!user) {
+        return (
+        <AppLayout>
+            <div className="p-6 text-sm text-gray-500">
+            Loading dashboard…
+            </div>
+        </AppLayout>
+        );
+    }
 
   return (
     <AppLayout user={user}>

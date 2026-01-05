@@ -112,8 +112,7 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
     const token = authToken ?? localStorage.getItem("careerlog_token");
-    console.log(token)
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

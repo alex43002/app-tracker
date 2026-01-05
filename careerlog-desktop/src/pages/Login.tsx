@@ -43,7 +43,8 @@ export default function Login() {
 
       // Login (always)
       const res = await login({ email, password });
-      saveAuthToken(res.accessToken, res.expiresIn);
+      console.log(res.jwt)
+      saveAuthToken(res.jwt, res.expiresIn);
       navigate("/", { replace: true });
 
     } catch (err) {

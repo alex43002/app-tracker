@@ -1,12 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { clearAuthToken } from "../../store/auth";
+import type { User } from "../../types/user";
 
-interface UserMenuProps {
-  fullName: string;
-  pfp?: string | null;
-}
-
-export function UserMenu({ fullName, pfp }: UserMenuProps) {
+export function UserMenu(user: User) {
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -14,7 +10,7 @@ export function UserMenu({ fullName, pfp }: UserMenuProps) {
     navigate("/login", { replace: true });
   }
 
-  const initials = fullName
+  const initials = (user.firstName + " " + user.lastName)
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -24,9 +20,9 @@ export function UserMenu({ fullName, pfp }: UserMenuProps) {
   return (
     <div className="flex items-center gap-3">
       {/* Avatar */}
-      {pfp ? (
+      {user.pfp ? (
         <img
-          src={pfp}
+          src={user.pfp}
           alt="Profile"
           className="h-8 w-8 rounded-full object-cover"
         />
@@ -38,7 +34,7 @@ export function UserMenu({ fullName, pfp }: UserMenuProps) {
 
       {/* Name */}
       <span className="text-sm text-gray-700">
-        {fullName}
+        {(user.firstName + " " + user.lastName)}
       </span>
 
       {/* Logout */}
