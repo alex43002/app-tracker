@@ -34,6 +34,10 @@ export function Jobs() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   /* ============================================================
      Bootstrap user
   ============================================================ */
@@ -51,12 +55,19 @@ export function Jobs() {
   useEffect(() => {
     setLoading(true);
 
-    fetchJobs(page, PAGE_SIZE).then((res: PaginatedResponse<Job>) => {
+    fetchJobs(
+      page,
+      PAGE_SIZE,
+      sortBy,
+      sortOrder,
+      Object.keys(filters).length ? filters : undefined
+    ).then((res) => {
       setJobs(res.items);
       setTotalItems(res.meta.totalItems);
       setLoading(false);
     });
-  }, [page]);
+  }, [page, filters, sortBy, sortOrder]);
+
 
   /* ============================================================
      Loading guard
@@ -87,7 +98,18 @@ export function Jobs() {
             }}
           />
 
-          <JobsToolbar />
+          <JobsToolbar
+            filters={filters}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onChange={({ filters, sortBy, sortOrder }) => {
+              setPage(1); // reset pagination
+              setFilters(filters);
+              setSortBy(sortBy);
+              setSortOrder(sortOrder);
+            }}
+          />
+
 
           <JobsTable
             jobs={jobs}
