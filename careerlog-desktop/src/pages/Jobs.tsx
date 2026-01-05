@@ -1,48 +1,179 @@
+import { useEffect, useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { PageScroll } from "../components/common/PageScroll";
+
+import { JobsHeader } from "../components/jobs/JobsHeader";
+import { JobsToolbar } from "../components/jobs/JobsToolbar";
 import { JobsTable } from "../components/jobs/JobsTable";
+import { JobsPagination } from "../components/jobs/JobsPagination";
+import { JobFormModal } from "../components/jobs/JobFormModal";
+
+import { fetchCurrentUser } from "../api/users";
+import {
+  fetchJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  type CreateJobPayload,
+  type UpdateJobPayload,
+} from "../api/jobs";
+
 import type { Job } from "../types/job";
+import type { User } from "../types/user";
+import type { PaginatedResponse } from "../api/client";
 
-/* TEMP: mocked API-shaped jobs */
-const jobs: Job[] = Array.from({ length: 12 }).map((_, i) => ({
-  id: `${i}`,
-  userId: "mock-user",
-  jobId: `JOB-${1000 + i}`,
-  url: "https://example.com/job",
-  jobTitle: "Software Engineer",
-  company: `Company ${i + 1}`,
-  salaryTarget: 120000,
-  salaryRange: "100000-140000",
-  status: ["applied", "interviewing", "offer", "rejected"][i % 4],
-  resume: "resume_v1.pdf",
-  location: "Remote",
-  employmentType: "full-time",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
-
+const PAGE_SIZE = 25;
 
 export function Jobs() {
+  const [user, setUser] = useState<User | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  /* ============================================================
+     Bootstrap user
+  ============================================================ */
+
+  useEffect(() => {
+    fetchCurrentUser().then((u: User) => {
+      setUser(u);
+    });
+  }, []);
+
+  /* ============================================================
+     Fetch jobs
+  ============================================================ */
+
+  useEffect(() => {
+    setLoading(true);
+
+    fetchJobs(page, PAGE_SIZE).then((res: PaginatedResponse<Job>) => {
+      setJobs(res.items);
+      setTotalItems(res.meta.totalItems);
+      setLoading(false);
+    });
+  }, [page]);
+
+  /* ============================================================
+     Loading guard
+  ============================================================ */
+
+  if (!user) {
+    return (
+      <AppLayout>
+        <div className="p-6 text-sm text-gray-500">
+          Loading jobs…
+        </div>
+      </AppLayout>
+    );
+  }
+
+  /* ============================================================
+     Render
+  ============================================================ */
+
   return (
-    <AppLayout>
+    <AppLayout user={user}>
       <PageScroll>
-        <div className="flex flex-col gap-8">
-          {/* Page header */}
-          <div>
-            <h1 className="text-2xl font-semibold">Jobs</h1>
-            <p className="text-sm text-gray-600">
-              All of your tracked job applications
-            </p>
-          </div>
+        <div className="flex flex-col gap-6">
+          <JobsHeader
+            onCreate={() => {
+              setEditingJob(null);
+              setModalOpen(true);
+            }}
+          />
 
-          {/* Jobs table */}
-          <div className="rounded-lg border bg-white overflow-hidden">
-            <div className="border-b px-4 py-3 text-sm font-medium">
-              Jobs
-            </div>
+          <JobsToolbar />
 
-            <JobsTable jobs={jobs} />
-          </div>
+          <JobsTable
+            jobs={jobs}
+            loading={loading}
+            onEdit={(job: Job) => {
+              setEditingJob(job);
+              setModalOpen(true);
+            }}
+            onDelete={async (id: string) => {
+              await deleteJob(id);
+              setJobs((prev) => prev.filter((j) => j.id !== id));
+              setTotalItems((prev) => prev - 1);
+            }}
+          />
+
+          <JobsPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={totalItems}
+            onChange={setPage}
+          />
+
+          <JobFormModal
+            open={modalOpen}
+            job={editingJob}
+            onClose={() => setModalOpen(false)}
+            onSave={async (payload) => {
+              if (editingJob) {
+                /* =====================================
+                  UPDATE (payload is Partial<Job>)
+                ===================================== */
+
+                const updatePayload = payload as UpdateJobPayload;
+
+                const { updatedAt } = await updateJob(
+                  editingJob.id,
+                  updatePayload
+                );
+
+                setJobs((prev) =>
+                  prev.map((job) =>
+                    job.id === editingJob.id
+                      ? {
+                          ...job,
+                          ...updatePayload,
+                          updatedAt,
+                        }
+                      : job
+                  )
+                );
+              } else {
+                /* =====================================
+                  CREATE (payload MUST be CreateJobPayload)
+                ===================================== */
+
+                const createPayload = payload as CreateJobPayload;
+
+                const created = await createJob(createPayload);
+
+                const newJob: Job = {
+                  id: created.id,
+                  userId: user.id,
+
+                  jobId: createPayload.jobId ?? null,
+                  url: createPayload.url,
+                  jobTitle: createPayload.jobTitle,
+                  company: createPayload.company,
+                  salaryTarget: createPayload.salaryTarget,
+                  salaryRange: createPayload.salaryRange ?? null,
+                  status: createPayload.status,
+                  resume: createPayload.resume,
+                  location: createPayload.location,
+                  employmentType: createPayload.employmentType,
+
+                  createdAt: created.createdAt,
+                  updatedAt: created.updatedAt,
+                };
+
+                setJobs((prev) => [newJob, ...prev]);
+                setTotalItems((prev) => prev + 1);
+              }
+
+              setModalOpen(false);
+            }}
+          />
+
         </div>
       </PageScroll>
     </AppLayout>
