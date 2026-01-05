@@ -6,29 +6,15 @@ import { JobStatsGrid } from "../components/dashboard/JobStatsGrid";
 import { PipelineVisualization } from "../components/dashboard/PipelineVisualization";
 import { RecentJobsTable } from "../components/dashboard/RecentJobsTable";
 import { UpcomingAlertsList } from "../components/dashboard/UpcomingAlertsList";
+
 import type { Job } from "../types/job";
 import type { Alert } from "../types/alert";
-import { fetchCurrentUser } from "../api/users";
 import type { User } from "../types/user";
 
-/* TEMP: mocked API-shaped data */
-const jobs: Job[] = Array.from({ length: 12 }).map((_, i) => ({
-  id: `${i}`,
-  userId: "mock-user",
-  jobId: `JOB-${1000 + i}`,
-  url: "https://example.com/job",
-  jobTitle: "Software Engineer",
-  company: `Company ${i + 1}`,
-  salaryTarget: 120000,
-  salaryRange: "100000-140000",
-  status: ["applied", "interviewing", "offer", "rejected"][i % 4],
-  resume: "resume_v1.pdf",
-  location: "Remote",
-  employmentType: "full-time",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
+import { fetchCurrentUser } from "../api/users";
+import { fetchJobs } from "../api/jobs";
 
+/* TEMP: alerts still mocked */
 const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
   id: `${i}`,
   scheduledAlert: new Date(Date.now() + i * 86400000).toISOString(),
@@ -37,25 +23,36 @@ const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
 }));
 
 export function Dashboard() {
-  
-    const [user, setUser] = useState<User>();
+  const [user, setUser] = useState<User>();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
 
-    useEffect(() => {
-        fetchCurrentUser().then((u: User) => {
-            console.log(u)
-            setUser(u);
-        });
-    }, []);
+  useEffect(() => {
+    fetchCurrentUser().then((u) => {
+      setUser(u);
+    });
+  }, []);
 
-    if (!user) {
-        return (
-        <AppLayout>
-            <div className="p-6 text-sm text-gray-500">
-            Loading dashboard…
-            </div>
-        </AppLayout>
-        );
-    }
+  useEffect(() => {
+    fetchJobs(1, 10)
+      .then((res) => {
+        console.log(res)
+        setJobs(res.items);
+      })
+      .finally(() => {
+        setLoadingJobs(false);
+      });
+  }, []);
+
+  if (!user || loadingJobs) {
+    return (
+      <AppLayout>
+        <div className="p-6 text-sm text-gray-500">
+          Loading dashboard…
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout user={user}>
