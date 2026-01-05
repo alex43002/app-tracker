@@ -103,7 +103,7 @@ export function Jobs() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onChange={({ filters, sortBy, sortOrder }) => {
-              setPage(1); // reset pagination
+              setPage(1);
               setFilters(filters);
               setSortBy(sortBy);
               setSortOrder(sortOrder);

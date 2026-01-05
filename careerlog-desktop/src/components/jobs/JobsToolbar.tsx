@@ -11,7 +11,7 @@ interface JobsToolbarProps {
   sortBy: string;
   sortOrder: "asc" | "desc";
   onChange: (args: {
-    filters: JobFilters;
+    filters: Record<string, unknown>;
     sortBy: string;
     sortOrder: "asc" | "desc";
   }) => void;
@@ -23,49 +23,59 @@ export function JobsToolbar({
   sortOrder,
   onChange,
 }: JobsToolbarProps) {
-  const [localFilters, setLocalFilters] =
-    useState<JobFilters>(filters);
+  const [searchInput, setSearchInput] = useState(filters.search ?? "");
+  const [status, setStatus] = useState(filters.status);
+  const [employmentType, setEmploymentType] =
+    useState(filters.employmentType);
+
+  /* ============================================================
+     Debounce search
+  ============================================================ */
 
   useEffect(() => {
-    setLocalFilters(filters);
-  }, [filters]);
+    const timeout = setTimeout(() => {
+      const mongoFilters: Record<string, unknown> = {};
 
-  function updateFilters(partial: Partial<JobFilters>) {
-    const next = { ...localFilters, ...partial };
-    setLocalFilters(next);
-    onChange({ filters: next, sortBy, sortOrder });
-  }
+      if (searchInput) {
+        mongoFilters.$or = [
+          { company: { $regex: searchInput, $options: "i" } },
+          { jobTitle: { $regex: searchInput, $options: "i" } },
+        ];
+      }
 
-  function updateSort(
-    field: string,
-    order: "asc" | "desc"
-  ) {
-    onChange({ filters: localFilters, sortBy: field, sortOrder: order });
-  }
+      if (status) mongoFilters.status = status;
+      if (employmentType)
+        mongoFilters.employmentType = employmentType;
+
+      onChange({
+        filters: mongoFilters,
+        sortBy,
+        sortOrder,
+      });
+    }, 400); // debounce delay
+
+    return () => clearTimeout(timeout);
+  }, [searchInput, status, employmentType, sortBy, sortOrder]);
+
+  /* ============================================================
+     UI
+  ============================================================ */
 
   return (
     <div className="flex flex-col gap-4 rounded-md border bg-white p-4 md:flex-row md:items-end md:justify-between">
-      {/* =======================
-         Filters
-      ======================= */}
+      {/* Filters */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* Search */}
         <input
           placeholder="Search company or title"
-          value={localFilters.search ?? ""}
-          onChange={(e) =>
-            updateFilters({ search: e.target.value || undefined })
-          }
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="rounded-md border px-3 py-2 text-sm"
         />
 
-        {/* Status */}
         <select
-          value={localFilters.status ?? ""}
+          value={status ?? ""}
           onChange={(e) =>
-            updateFilters({
-              status: e.target.value || undefined,
-            })
+            setStatus(e.target.value || undefined)
           }
           className="rounded-md border px-3 py-2 text-sm"
         >
@@ -76,13 +86,10 @@ export function JobsToolbar({
           <option value="rejected">Rejected</option>
         </select>
 
-        {/* Employment Type */}
         <select
-          value={localFilters.employmentType ?? ""}
+          value={employmentType ?? ""}
           onChange={(e) =>
-            updateFilters({
-              employmentType: e.target.value || undefined,
-            })
+            setEmploymentType(e.target.value || undefined)
           }
           className="rounded-md border px-3 py-2 text-sm"
         >
@@ -94,34 +101,37 @@ export function JobsToolbar({
         </select>
       </div>
 
-      {/* =======================
-         Sorting
-      ======================= */}
+      {/* Sorting */}
       <div className="flex items-center gap-2">
         <select
           value={sortBy}
           onChange={(e) =>
-            updateSort(e.target.value, sortOrder)
+            onChange({
+              filters: {},
+              sortBy: e.target.value,
+              sortOrder,
+            })
           }
           className="rounded-md border px-3 py-2 text-sm"
         >
-          <option value="createdAt">Created date</option>
-          <option value="updatedAt">Last updated</option>
+          <option value="createdAt">Created</option>
+          <option value="updatedAt">Updated</option>
           <option value="company">Company</option>
-          <option value="jobTitle">Job title</option>
-          <option value="salaryTarget">Salary target</option>
+          <option value="jobTitle">Title</option>
+          <option value="salaryTarget">Salary</option>
         </select>
 
         <button
           onClick={() =>
-            updateSort(
+            onChange({
+              filters: {},
               sortBy,
-              sortOrder === "asc" ? "desc" : "asc"
-            )
+              sortOrder: sortOrder === "asc" ? "desc" : "asc",
+            })
           }
           className="rounded-md border px-3 py-2 text-sm"
         >
-          {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+          {sortOrder === "asc" ? "↑" : "↓"}
         </button>
       </div>
     </div>
