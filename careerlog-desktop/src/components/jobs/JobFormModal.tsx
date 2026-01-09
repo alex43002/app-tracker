@@ -129,21 +129,21 @@ export function JobFormModal({
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-8">
           <FormSection title="Job Information">
             <TextInput
-              label="Company"
+              label="Company*"
               value={form.company}
               error={errors.company}
               onChange={(v) => setForm({ ...form, company: v })}
             />
 
             <TextInput
-              label="Job Title"
+              label="Job Title*"
               value={form.jobTitle}
               error={errors.jobTitle}
               onChange={(v) => setForm({ ...form, jobTitle: v })}
             />
 
             <TextInput
-              label="Job URL"
+              label="Job URL*"
               value={form.url}
               error={errors.url}
               onChange={(v) => setForm({ ...form, url: v })}
@@ -158,7 +158,7 @@ export function JobFormModal({
             />
 
             <TextInput
-              label="Location"
+              label="Location*"
               value={form.location}
               error={errors.location}
               onChange={(v) => setForm({ ...form, location: v })}
@@ -181,7 +181,7 @@ export function JobFormModal({
 
           <FormSection title="Compensation">
             <TextInput
-              label="Salary Target"
+              label="Salary Target*"
               type="number"
               value={String(form.salaryTarget)}
               error={errors.salaryTarget}
@@ -204,7 +204,7 @@ export function JobFormModal({
 
           <FormSection title="Application Details">
             <TextInput
-              label="Resume Used"
+              label="Resume Used*"
               value={form.resume}
               error={errors.resume}
               onChange={(v) => setForm({ ...form, resume: v })}
