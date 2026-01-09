@@ -17,7 +17,9 @@ import { fetchJobs } from "../api/jobs";
 /* TEMP: alerts still mocked */
 const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
   id: `${i}`,
-  scheduledAlert: new Date(Date.now() + i * 86400000).toISOString(),
+  scheduledAlert: new Date(
+    Date.now() + i * 86400000
+  ).toISOString(),
   smsOrEmail: i % 2 === 0 ? "email" : "sms",
   message: "Follow up with recruiter",
 }));
@@ -25,7 +27,8 @@ const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
 export function Dashboard() {
   const [user, setUser] = useState<User>();
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [loadingJobs, setLoadingJobs] =
+    useState(true);
 
   useEffect(() => {
     fetchCurrentUser().then((u) => {
@@ -36,7 +39,6 @@ export function Dashboard() {
   useEffect(() => {
     fetchJobs(1, 10)
       .then((res) => {
-        console.log(res)
         setJobs(res.items);
       })
       .finally(() => {
@@ -57,15 +59,19 @@ export function Dashboard() {
   return (
     <AppLayout user={user}>
       <PageScroll>
-        <div className="flex flex-col gap-8">
-          <DashboardHeader />
+        {/* Page container: fixes edge crowding and ultra-wide layouts */}
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-8">
+            <DashboardHeader />
 
-          <JobStatsGrid jobs={jobs} />
-          <PipelineVisualization jobs={jobs} />
+            <JobStatsGrid jobs={jobs} />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <RecentJobsTable jobs={jobs} />
-            <UpcomingAlertsList alerts={alerts} />
+            <PipelineVisualization jobs={jobs} />
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <RecentJobsTable jobs={jobs} />
+              <UpcomingAlertsList alerts={alerts} />
+            </div>
           </div>
         </div>
       </PageScroll>

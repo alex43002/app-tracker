@@ -20,7 +20,6 @@ import {
 
 import type { Job } from "../types/job";
 import type { User } from "../types/user";
-import type { PaginatedResponse } from "../api/client";
 
 const PAGE_SIZE = 25;
 
@@ -36,7 +35,8 @@ export function Jobs() {
 
   const [filters, setFilters] = useState<Record<string, unknown>>({});
   const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] =
+    useState<"asc" | "desc">("desc");
 
   /* ============================================================
      Bootstrap user
@@ -68,7 +68,6 @@ export function Jobs() {
     });
   }, [page, filters, sortBy, sortOrder]);
 
-
   /* ============================================================
      Loading guard
   ============================================================ */
@@ -90,112 +89,128 @@ export function Jobs() {
   return (
     <AppLayout user={user}>
       <PageScroll>
-        <div className="flex flex-col gap-6">
-          <JobsHeader
-            onCreate={() => {
-              setEditingJob(null);
-              setModalOpen(true);
-            }}
-          />
+        {/* Page container: fixes edge crowding + ultra-wide layouts */}
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-6">
+            <JobsHeader
+              onCreate={() => {
+                setEditingJob(null);
+                setModalOpen(true);
+              }}
+            />
 
-          <JobsToolbar
-            filters={filters}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onChange={({ filters, sortBy, sortOrder }) => {
-              setPage(1);
-              setFilters(filters);
-              setSortBy(sortBy);
-              setSortOrder(sortOrder);
-            }}
-          />
+            <JobsToolbar
+              filters={filters}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onChange={({ filters, sortBy, sortOrder }) => {
+                setPage(1);
+                setFilters(filters);
+                setSortBy(sortBy);
+                setSortOrder(sortOrder);
+              }}
+            />
 
-
-          <JobsTable
-            jobs={jobs}
-            loading={loading}
-            onEdit={(job: Job) => {
-              setEditingJob(job);
-              setModalOpen(true);
-            }}
-            onDelete={async (id: string) => {
-              await deleteJob(id);
-              setJobs((prev) => prev.filter((j) => j.id !== id));
-              setTotalItems((prev) => prev - 1);
-            }}
-          />
-
-          <JobsPagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={totalItems}
-            onChange={setPage}
-          />
-
-          <JobFormModal
-            open={modalOpen}
-            job={editingJob}
-            onClose={() => setModalOpen(false)}
-            onSave={async (payload) => {
-              if (editingJob) {
-                /* =====================================
-                  UPDATE (payload is Partial<Job>)
-                ===================================== */
-
-                const updatePayload = payload as UpdateJobPayload;
-
-                const { updatedAt } = await updateJob(
-                  editingJob.id,
-                  updatePayload
-                );
-
+            <JobsTable
+              jobs={jobs}
+              loading={loading}
+              onEdit={(job: Job) => {
+                setEditingJob(job);
+                setModalOpen(true);
+              }}
+              onDelete={async (id: string) => {
+                await deleteJob(id);
                 setJobs((prev) =>
-                  prev.map((job) =>
-                    job.id === editingJob.id
-                      ? {
-                          ...job,
-                          ...updatePayload,
-                          updatedAt,
-                        }
-                      : job
-                  )
+                  prev.filter((j) => j.id !== id)
                 );
-              } else {
-                /* =====================================
-                  CREATE (payload MUST be CreateJobPayload)
-                ===================================== */
+                setTotalItems((prev) => prev - 1);
+              }}
+            />
 
-                const createPayload = payload as CreateJobPayload;
+            <JobsPagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={totalItems}
+              onChange={setPage}
+            />
 
-                const created = await createJob(createPayload);
+            <JobFormModal
+              open={modalOpen}
+              job={editingJob}
+              onClose={() => setModalOpen(false)}
+              onSave={async (payload) => {
+                if (editingJob) {
+                  const updatePayload =
+                    payload as UpdateJobPayload;
 
-                const newJob: Job = {
-                  id: created.id,
-                  userId: user.id,
+                  const { updatedAt } =
+                    await updateJob(
+                      editingJob.id,
+                      updatePayload
+                    );
 
-                  jobId: createPayload.jobId ?? null,
-                  url: createPayload.url,
-                  jobTitle: createPayload.jobTitle,
-                  company: createPayload.company,
-                  salaryTarget: createPayload.salaryTarget,
-                  salaryRange: createPayload.salaryRange ?? null,
-                  status: createPayload.status,
-                  resume: createPayload.resume,
-                  location: createPayload.location,
-                  employmentType: createPayload.employmentType,
+                  setJobs((prev) =>
+                    prev.map((job) =>
+                      job.id === editingJob.id
+                        ? {
+                            ...job,
+                            ...updatePayload,
+                            updatedAt,
+                          }
+                        : job
+                    )
+                  );
+                } else {
+                  const createPayload =
+                    payload as CreateJobPayload;
 
-                  createdAt: created.createdAt,
-                  updatedAt: created.updatedAt,
-                };
+                  const created =
+                    await createJob(createPayload);
 
-                setJobs((prev) => [newJob, ...prev]);
-                setTotalItems((prev) => prev + 1);
-              }
+                  const newJob: Job = {
+                    id: created.id,
+                    userId: user.id,
 
-              setModalOpen(false);
-            }}
-          />
+                    jobId:
+                      createPayload.jobId ?? null,
+                    url: createPayload.url,
+                    jobTitle:
+                      createPayload.jobTitle,
+                    company:
+                      createPayload.company,
+                    salaryTarget:
+                      createPayload.salaryTarget,
+                    salaryRange:
+                      createPayload.salaryRange ??
+                      null,
+                    status:
+                      createPayload.status,
+                    resume:
+                      createPayload.resume,
+                    location:
+                      createPayload.location,
+                    employmentType:
+                      createPayload.employmentType,
 
+                    createdAt:
+                      created.createdAt,
+                    updatedAt:
+                      created.updatedAt,
+                  };
+
+                  setJobs((prev) => [
+                    newJob,
+                    ...prev,
+                  ]);
+                  setTotalItems(
+                    (prev) => prev + 1
+                  );
+                }
+
+                setModalOpen(false);
+              }}
+            />
+          </div>
         </div>
       </PageScroll>
     </AppLayout>
