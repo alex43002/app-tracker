@@ -4,22 +4,25 @@ import { login, signup } from "../api/auth";
 import { saveAuthToken } from "../store/auth";
 import { ApiError } from "../api/client";
 
+import {
+  AuthLayout,
+  AuthCard,
+  AuthError,
+  SignupFields,
+} from "../components/auth";
+
 export default function Login() {
   const navigate = useNavigate();
 
-  // Mode toggle
   const [isSignup, setIsSignup] = useState(false);
 
-  // Signup-only fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Shared auth fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +32,6 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Signup first if in signup mode
       if (isSignup) {
         await signup({
           email,
@@ -37,16 +39,13 @@ export default function Login() {
           firstName,
           lastName,
           phoneNumber,
-          pfp: "", // placeholder base64 string for v1 testing
+          pfp: "",
         });
       }
 
-      // Login (always)
       const res = await login({ email, password });
-      console.log(res.jwt)
       saveAuthToken(res.jwt, res.expiresIn);
       navigate("/", { replace: true });
-
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -59,97 +58,75 @@ export default function Login() {
   }
 
   return (
-    <div className="h-full flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4"
-      >
-        <h1 className="text-xl font-semibold">
-          {isSignup ? "Create account" : "Sign in"}
+    <AuthLayout>
+      <AuthCard>
+        <h1 className="text-2xl font-semibold mb-1">
+          {isSignup ? "Create your account" : "Welcome back"}
         </h1>
 
-        {error && (
-          <div className="text-sm text-red-500">{error}</div>
-        )}
+        <p className="text-sm text-gray-600 mb-6">
+          {isSignup
+            ? "Start organizing your job search today."
+            : "Sign in to continue tracking your progress."}
+        </p>
 
-        {/* Signup-only fields */}
-        {isSignup && (
-          <>
-            <input
-              type="text"
-              placeholder="First name"
-              className="w-full border px-3 py-2 rounded"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
+        {error && <AuthError message={error} />}
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {isSignup && (
+            <SignupFields
+              firstName={firstName}
+              lastName={lastName}
+              phoneNumber={phoneNumber}
+              setFirstName={setFirstName}
+              setLastName={setLastName}
+              setPhoneNumber={setPhoneNumber}
             />
+          )}
 
-            <input
-              type="text"
-              placeholder="Last name"
-              className="w-full border px-3 py-2 rounded"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-            />
+          <input
+            type="email"
+            placeholder="Email"
+            className="auth-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-            <input
-              type="tel"
-              placeholder="Phone number"
-              className="w-full border px-3 py-2 rounded"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              required
-            />
-          </>
-        )}
+          <input
+            type="password"
+            placeholder="Password"
+            className="auth-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-        {/* Email */}
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border px-3 py-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-black py-2 text-white disabled:opacity-50"
+          >
+            {loading
+              ? isSignup
+                ? "Creating account…"
+                : "Signing in…"
+              : isSignup
+                ? "Sign up"
+                : "Sign in"}
+          </button>
+        </form>
 
-        {/* Password */}
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border px-3 py-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-black text-white py-2 rounded disabled:opacity-50"
-        >
-          {loading
-            ? isSignup
-              ? "Creating account…"
-              : "Signing in…"
-            : isSignup
-              ? "Sign up"
-              : "Sign in"}
-        </button>
-
-        {/* Mode toggle */}
         <button
           type="button"
           onClick={() => setIsSignup(!isSignup)}
-          className="w-full text-sm text-gray-600 underline text-center"
+          className="mt-6 w-full text-sm text-gray-600 underline"
         >
           {isSignup
             ? "Already have an account? Sign in"
             : "Need an account? Sign up"}
         </button>
-      </form>
-    </div>
+      </AuthCard>
+    </AuthLayout>
   );
 }
