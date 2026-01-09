@@ -1,17 +1,45 @@
 {
   "name": "careerlog-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron -r ts-node/register electron/main.ts",
     "dev": "concurrently -k --kill-others-on-fail \"npm run dev:vite\" \"npm run dev:electron\"",
-    "build": "vite build",
-    "dist": "electron-builder"
+    "build:renderer": "vite build",
+    "build:electron": "electron-builder",
+    "build": "npm run build:renderer && npm run build:electron",
+    "dist": "npm run build"
+  },
+  "build": {
+    "appId": "com.careerlog.desktop",
+    "productName": "CareerLog",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "YOUR_GITHUB_USERNAME",
+        "repo": "careerlog-desktop"
+      }
+    ]
   },
   "dependencies": {
+    "electron-updater": "^6.7.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0"
@@ -25,6 +53,7 @@
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "electron": "^39.2.7",
+    "electron-builder": "^26.4.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
