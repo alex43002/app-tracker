@@ -1,8 +1,8 @@
 import { app, BrowserWindow, session, shell } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
-import { autoUpdater } from "electron-updater";
-
+import pkg from "electron-updater";
+const { autoUpdater } = pkg
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -37,6 +37,10 @@ function createWindow() {
     );
   }
 
+  if (isDev) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
+
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
   });
@@ -57,7 +61,7 @@ function createWindow() {
           "Content-Security-Policy": [
             isDev
               ? "default-src 'self' http://localhost:5173 'unsafe-eval' 'unsafe-inline'; connect-src *;"
-              : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https:;",
+              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https:;"
           ],
         },
       });

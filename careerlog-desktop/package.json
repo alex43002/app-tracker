@@ -3,14 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "electron-dist/main.js",
   "scripts": {
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron -r ts-node/register electron/main.ts",
     "dev": "concurrently -k --kill-others-on-fail \"npm run dev:vite\" \"npm run dev:electron\"",
     "build:renderer": "vite build",
     "build:electron": "electron-builder",
-    "build": "npm run build:renderer && npm run build:electron",
+    "build:electron:main": "tsc -p electron/tsconfig.main.json",
+    "build:electron:preload": "tsc -p electron/tsconfig.preload.json",
+    "build:electron:ts": "npm run build:electron:main && npm run build:electron:preload",
+    "build": "npm run build:electron:ts && npm run build:renderer && npm run build:electron",
     "dist": "npm run build"
   },
   "build": {
@@ -18,7 +21,7 @@
     "productName": "CareerLog",
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron-dist/**/*"
     ],
     "directories": {
       "buildResources": "assets"
