@@ -4,9 +4,9 @@
 //
 // Responsibilities:
 // - Inject JWT bearer token when present
-// - Normalize FastAPI response shapes (unwrap `detail`)
-// - Enforce the API response envelope
-// - Surface readable backend error messages
+// - Support both JSON and multipart (FormData) requests
+// - Normalize FastAPI response envelopes
+// - Surface backend error messages verbatim
 // - Provide reusable, typed helpers for all endpoints
 //
 // Design rule:
@@ -102,7 +102,10 @@ export class ApiError extends Error {
  * Performs a request against the backend API.
  *
  * Behavior:
- * - Always attempts to parse JSON
+ * - Supports both JSON and FormData payloads
+ * - Automatically sets Content-Type for JSON requests
+ * - Allows the browser to manage multipart boundaries
+ * - Always attempts to parse JSON responses
  * - Unwraps FastAPI `detail` responses when present
  * - Treats `success === false` as an API-level failure
  * - Surfaces backend-provided error messages verbatim
@@ -112,14 +115,18 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
     const token = authToken ?? localStorage.getItem("careerlog_token");
+
+    const isFormData = options.body instanceof FormData;
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${authToken}` } : {}),
-      ...options.headers,
-    },
-  });
+      ...options,
+      headers: {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+
 
   let raw: unknown;
 
@@ -180,7 +187,11 @@ async function request<T>(
 
 /**
  * Thin, typed wrapper around the core request function.
- * No business logic belongs here.
+ *
+ * Notes:
+ * - JSON is the default request format
+ * - FormData is passed through unchanged when provided
+ * - No business logic belongs here
  */
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
@@ -188,13 +199,23 @@ export const apiClient = {
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        body instanceof FormData
+          ? body
+          : body
+          ? JSON.stringify(body)
+          : undefined,
     }),
 
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        body instanceof FormData
+          ? body
+          : body
+          ? JSON.stringify(body)
+          : undefined,
     }),
 
   delete: <T>(path: string) =>

@@ -12,7 +12,7 @@ export interface Job {
   salaryRange?: string | null;
 
   status: string;
-  resume: string;
+  resume: File | null;
   location: string;
   employmentType: string;
 

@@ -22,10 +22,10 @@ export function ResumeField({
 }: {
   fieldKey: JobFormFieldKey;
   label: string;
-  value: string;
+  value: File | null;
   required?: boolean;
   error?: string;
-  onChange: (value: string) => void;
+  onChange: (file: File | null) => void;
   onBlur?: () => void;
 }) {
   return (
@@ -36,17 +36,26 @@ export function ResumeField({
       error={error}
     >
       <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        type="file"
+        accept=".pdf,.doc,.docx"
+        onChange={(e) => {
+          const file = e.target.files?.[0] ?? null;
+          console.log(file);
+          onChange(file);
+        }}
         onBlur={onBlur}
-        placeholder="e.g. Resume v3, SWE Resume, Backend Resume"
         className={`rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
           error
             ? "border-red-500 focus:ring-red-200"
             : "focus:ring-black/20"
         }`}
       />
+
+      {value && (
+        <p className="mt-1 text-xs text-gray-600">
+          Selected: {value.name}
+        </p>
+      )}
     </JobFormField>
   );
 }

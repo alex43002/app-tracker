@@ -21,7 +21,7 @@ const EMPTY_VALUES: JobFormValues = {
   salaryTarget: 0,
   salaryRange: null,
   status: "applied",
-  resume: "",
+  resume: null,
   location: "",
   employmentType: "full-time",
 };
@@ -66,7 +66,7 @@ export function useJobForm(
         salaryTarget: job.salaryTarget,
         salaryRange: job.salaryRange ?? null,
         status: job.status,
-        resume: job.resume,
+        resume: null,
         location: job.location,
         employmentType: job.employmentType,
       });

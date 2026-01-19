@@ -5,10 +5,6 @@ import type { JobFormFieldKey } from "./config/formFields";
 /**
  * Internal form value type.
  *
- * NOTE:
- * - Resume is intentionally typed as `string` for now.
- * - This will safely evolve to `File | UploadedResumeRef` later
- *   without changing the rest of the form architecture.
  */
 export interface JobFormValues {
   jobId: string | null;
@@ -18,7 +14,7 @@ export interface JobFormValues {
   salaryTarget: number;
   salaryRange: string | null;
   status: string;
-  resume: string;
+  resume: File | null;
   location: string;
   employmentType: string;
 }

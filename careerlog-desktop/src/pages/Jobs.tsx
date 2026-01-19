@@ -140,9 +140,11 @@ export function Jobs() {
               onClose={() => setModalOpen(false)}
               onSave={async (payload) => {
                 if (editingJob) {
+                  console.log(payload);
                   const updatePayload =
                     payload as UpdateJobPayload;
 
+                    console.log(updatePayload);
                   const { updatedAt } =
                     await updateJob(
                       editingJob.id,

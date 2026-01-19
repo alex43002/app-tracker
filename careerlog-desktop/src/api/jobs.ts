@@ -17,7 +17,7 @@ export type CreateJobPayload = {
   salaryTarget: number;
   salaryRange?: string | null;
   status: string;
-  resume: string;
+  resume: File | null;
   location: string;
   employmentType: string;
 };
@@ -27,8 +27,11 @@ export type CreateJobPayload = {
  * Backend ignores undefined fields and rejects empty payloads.
  */
 export type UpdateJobPayload = Partial<
-  Omit<Job, "id" | "userId" | "createdAt" | "updatedAt">
->;
+  Omit<Job, "id" | "userId" | "createdAt" | "updatedAt" | "resume">
+> & {
+  resume?: File | null;
+};
+
 
 /* ============================================================
    Read (List)
@@ -97,11 +100,35 @@ export function createJob(payload: CreateJobPayload) {
  * Frontend must merge locally.
  */
 export function updateJob(id: string, payload: UpdateJobPayload) {
+  const body = buildUpdatePayload(payload);
+
   return apiClient.put<{ updatedAt: string }>(
     `/api/jobs/${id}`,
-    payload
+    body
   );
 }
+
+function buildUpdatePayload(payload: UpdateJobPayload) {
+  if (payload.resume instanceof File) {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+
+      if (value instanceof File) {
+        formData.append(key, value);
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+
+    return formData;
+  }
+
+  // No file → safe JSON
+  return payload;
+}
+
 
 /* ============================================================
    Delete

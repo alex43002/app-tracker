@@ -30,7 +30,7 @@ function createWindow() {
     else {
         mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
     }
-    if (!isDev) {
+    if (isDev) {
         mainWindow.webContents.openDevTools({ mode: "detach" });
     }
     mainWindow.once("ready-to-show", () => {
@@ -78,14 +78,11 @@ function createWindow() {
     /* ============================================================
        DevTools Lockdown (Production)
     ============================================================ */
-    // if (!isDev) {
-    //   mainWindow.webContents.on(
-    //     "devtools-opened",
-    //     () => {
-    //       mainWindow?.webContents.closeDevTools();
-    //     }
-    //   );
-    // }
+    if (!isDev) {
+        mainWindow.webContents.on("devtools-opened", () => {
+            mainWindow?.webContents.closeDevTools();
+        });
+    }
 }
 /* ============================================================
    App Lifecycle

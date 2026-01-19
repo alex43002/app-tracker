@@ -35,6 +35,6 @@ export const VALIDATION_RULES: Partial<
       ? "Salary target must be greater than 0"
       : null,
 
-  resume: (value: string) =>
-    !value || !value.trim() ? "Resume is required" : null,
+  resume: (value: File | null) =>
+    value ? null : "Resume is required",
 };

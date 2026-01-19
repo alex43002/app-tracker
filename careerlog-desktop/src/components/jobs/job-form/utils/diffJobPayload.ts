@@ -24,10 +24,7 @@ export function diffJobPayload(
 
     // ---- Resume (explicit handling) ----
     if (key === "resume") {
-      if (
-        typeof nextValue === "string" &&
-        nextValue !== originalValue
-      ) {
+      if (nextValue instanceof File) {
         payload.resume = nextValue;
       }
       return;
