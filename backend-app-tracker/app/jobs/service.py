@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import json
 from bson import ObjectId
 from pymongo.collection import Collection
+from gridfs import GridFS
 
 from app.common.errors import raise_error
 from fastapi import status
@@ -36,7 +37,7 @@ def create_job(jobs: Collection, payload, user_id: str):
         "jobId": payload.jobId,
         "url": str(payload.url),
         "jobTitle": payload.jobTitle,
-        "company": payload.company,   # NEW
+        "company": payload.company,
         "salaryTarget": payload.salaryTarget,
         "salaryRange": payload.salaryRange,
         "status": payload.status,
@@ -46,7 +47,6 @@ def create_job(jobs: Collection, payload, user_id: str):
         "createdAt": now,
         "updatedAt": now,
     }
-
 
     result = jobs.insert_one(job_doc)
 
@@ -131,13 +131,22 @@ def update_job(jobs: Collection, job_id: str, user_id: str, payload):
 
 
 def delete_job(jobs: Collection, job_id: str, user_id: str):
-    result = jobs.delete_one(
+    job = jobs.find_one(
         {"_id": ObjectId(job_id), "userId": user_id}
     )
 
-    if result.deleted_count == 0:
+    if not job:
         raise_error(
             code="RESOURCE_NOT_FOUND",
             message="Job not found",
             http_status=status.HTTP_404_NOT_FOUND,
         )
+
+    resume_id = job.get("resume")
+    if resume_id:
+        fs = GridFS(jobs.database)
+        fs.delete(ObjectId(resume_id))
+
+    jobs.delete_one(
+        {"_id": ObjectId(job_id), "userId": user_id}
+    )

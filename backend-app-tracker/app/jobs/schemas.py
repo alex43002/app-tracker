@@ -15,19 +15,18 @@ class Job(BaseModel):
     url: HttpUrl
 
     jobTitle: str
-    company: str   # NEW
+    company: str
 
     salaryTarget: float
     salaryRange: Optional[str] = None
 
     status: str
-    resume: str
+    resume: Optional[str] = None  # GridFS file id
     location: str
     employmentType: str
 
     createdAt: datetime
     updatedAt: datetime
-
 
 
 # =====================
@@ -38,28 +37,26 @@ class CreateJobRequest(BaseModel):
     jobId: Optional[str] = None
     url: HttpUrl
     jobTitle: str
-    company: str   # NEW
+    company: str
     salaryTarget: float
     salaryRange: Optional[str] = None
     status: str
-    resume: str
+    resume: Optional[str] = None
     location: str
     employmentType: str
-
 
 
 class UpdateJobRequest(BaseModel):
     jobId: Optional[str] = None
     url: Optional[HttpUrl] = None
     jobTitle: Optional[str] = None
-    company: Optional[str] = None   # NEW
+    company: Optional[str] = None
     salaryTarget: Optional[float] = None
     salaryRange: Optional[str] = None
     status: Optional[str] = None
     resume: Optional[str] = None
     location: Optional[str] = None
     employmentType: Optional[str] = None
-
 
 
 # =====================
