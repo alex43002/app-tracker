@@ -118,13 +118,20 @@ async function request<T>(
 
     const isFormData = options.body instanceof FormData;
 
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      headers: {
-        ...(isFormData ? {} : { "Content-Type": "application/json" }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
+      headers,
     });
 
 

@@ -80,11 +80,13 @@ export function fetchJobs(
  * - updatedAt
  */
 export function createJob(payload: CreateJobPayload) {
+  const body = buildUpdatePayload(payload);
+
   return apiClient.post<{
     id: string;
     createdAt: string;
     updatedAt: string;
-  }>("/api/jobs", payload);
+  }>("/api/jobs", body);
 }
 
 /* ============================================================

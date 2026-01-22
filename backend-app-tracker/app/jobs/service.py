@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 import json
 from bson import ObjectId
+from bson.errors import InvalidId
+
 from pymongo.collection import Collection
 from gridfs import GridFS
 
 from app.common.errors import raise_error
 from fastapi import status
-
 
 def parse_filters(raw_filters: str | None, user_id: str) -> dict:
     base = {"userId": user_id}
@@ -150,3 +151,13 @@ def delete_job(jobs: Collection, job_id: str, user_id: str):
     jobs.delete_one(
         {"_id": ObjectId(job_id), "userId": user_id}
     )
+
+
+#Helper functions
+
+def is_valid_object_id(value: str) -> bool:
+    try:
+        ObjectId(value)
+        return True
+    except Exception:
+        return False

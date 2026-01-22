@@ -34,7 +34,8 @@ async def create_job(
         resume: UploadFile | None = form.get("resume")
         resume_id = None
 
-        if isinstance(resume, UploadFile):
+
+        if resume:
             resume_id = str(
                 fs.put(
                     resume.file,
@@ -99,7 +100,6 @@ async def update_job(
     fs = GridFS(db)
 
     content_type = request.headers.get("content-type", "")
-
     # ───────────────
     # Multipart update
     # ───────────────
@@ -119,10 +119,12 @@ async def update_job(
             )
 
         resume: UploadFile | None = form.get("resume")
+        
+        if resume:
+            existing_resume = existing.get("resume")
 
-        if isinstance(resume, UploadFile):
-            if existing.get("resume"):
-                fs.delete(ObjectId(existing["resume"]))
+            if existing_resume and service.is_valid_object_id(existing_resume):
+                fs.delete(ObjectId(existing_resume))
 
             update_fields["resume"] = str(
                 fs.put(
