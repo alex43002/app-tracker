@@ -14,6 +14,7 @@ import {
   createJob,
   updateJob,
   deleteJob,
+  fetchJobResume,
   type CreateJobPayload,
   type UpdateJobPayload,
 } from "../api/jobs";
@@ -114,8 +115,17 @@ export function Jobs() {
             <JobsTable
               jobs={jobs}
               loading={loading}
-              onEdit={(job: Job) => {
-                setEditingJob(job);
+              onEdit={async (job: Job) => {
+                let hydratedJob = job;
+
+                if (typeof job.resume === "string") {
+                  const file = await fetchJobResume(job.resume);
+                  if (file) {
+                    hydratedJob = { ...job, resume: file };
+                  }
+                }
+
+                setEditingJob(hydratedJob);
                 setModalOpen(true);
               }}
               onDelete={async (id: string) => {
@@ -140,11 +150,9 @@ export function Jobs() {
               onClose={() => setModalOpen(false)}
               onSave={async (payload) => {
                 if (editingJob) {
-                  console.log(payload);
                   const updatePayload =
                     payload as UpdateJobPayload;
 
-                    console.log(updatePayload);
                   const { updatedAt } =
                     await updateJob(
                       editingJob.id,

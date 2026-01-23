@@ -67,6 +67,60 @@ export function fetchJobs(
   );
 }
 
+/**
+ * Fetch resume file for a job.
+ *
+ * Notes:
+ * - Uses API_BASE_URL (critical)
+ * - Injects Authorization header
+ * - Returns a real File
+ */
+export async function fetchJobResume(
+  jobId: string
+): Promise<File | null> {
+  const token =
+    localStorage.getItem("careerlog_token");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${jobId}`,
+    {
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    }
+  );
+
+  // HARD GUARDS (prevents this bug forever)
+  if (!response.ok) {
+    console.error("Resume fetch failed", response.status);
+    return null;
+  }
+
+  const contentType =
+    response.headers.get("content-type") ?? "";
+
+  if (!contentType.startsWith("application/")) {
+    console.error(
+      "Invalid resume content type",
+      contentType
+    );
+    return null;
+  }
+
+  const blob = await response.blob();
+
+  const filename =
+    response.headers
+      .get("content-disposition")
+      ?.match(/filename="(.+)"/)?.[1] ??
+    "resume.pdf";
+
+  return new File([blob], filename, {
+    type: blob.type,
+  });
+}
+
+
 /* ============================================================
    Create
 ============================================================ */

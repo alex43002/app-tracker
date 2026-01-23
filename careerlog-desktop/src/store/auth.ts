@@ -31,13 +31,11 @@ export function loadAuthToken() {
 
   const expiresAt = Number(expiry);
   if (Date.now() >= expiresAt) {
-    console.log("Clearing Auth token")
     clearAuthToken();
     authReady = true;
     notify();
     return null;
   }
-  console.log("Setting auth token", token)
   setAuthToken(token);
   authReady = true;
   notify();

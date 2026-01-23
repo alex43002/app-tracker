@@ -5,6 +5,7 @@ from app.auth.routes import router as auth_router
 from app.users.routes import router as users_router
 from app.jobs.routes import router as jobs_router
 from app.alerts.routes import router as alerts_router
+from app.resumes.routes import router as resumes_router
 
 app = FastAPI(
     title="Job Tracker API",
@@ -20,6 +21,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 # Health check (non-authenticated)
@@ -34,3 +36,4 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users_router, prefix="/api/users", tags=["Users"])
 app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
+app.include_router(resumes_router, prefix="/api/resumes", tags=["Resumes"])

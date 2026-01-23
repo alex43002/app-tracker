@@ -66,7 +66,7 @@ export function useJobForm(
         salaryTarget: job.salaryTarget,
         salaryRange: job.salaryRange ?? null,
         status: job.status,
-        resume: null,
+        resume: job.resume ?? null,
         location: job.location,
         employmentType: job.employmentType,
       });

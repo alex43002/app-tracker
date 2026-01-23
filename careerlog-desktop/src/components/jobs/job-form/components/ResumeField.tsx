@@ -40,7 +40,6 @@ export function ResumeField({
         accept=".pdf,.doc,.docx"
         onChange={(e) => {
           const file = e.target.files?.[0] ?? null;
-          console.log(file);
           onChange(file);
         }}
         onBlur={onBlur}
