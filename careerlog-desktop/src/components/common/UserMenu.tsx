@@ -1,17 +1,9 @@
-import { useNavigate } from "react-router-dom";
-import { clearAuthToken } from "../../store/auth";
 import type { User } from "../../types/user";
 import LogoutButton from "./LogoutButton";
 
 export function UserMenu(user: User) {
-  const navigate = useNavigate();
-
-  function handleLogout() {
-    clearAuthToken();
-    navigate("/login", { replace: true });
-  }
-
-  const initials = (user.firstName + " " + user.lastName)
+  const fullName = `${user.firstName} ${user.lastName}`;
+  const initials = fullName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -19,27 +11,46 @@ export function UserMenu(user: User) {
     .toUpperCase();
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Avatar */}
-      {user.pfp ? (
-        <img
-          src={user.pfp}
-          alt="Profile"
-          className="h-8 w-8 rounded-full object-cover"
-        />
-      ) : (
-        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700">
-          {initials}
-        </div>
-      )}
+    <div className="flex items-center gap-4">
+      {/* Identity Block */}
+      <div className="flex items-center gap-3">
+        {user.pfp ? (
+          <img
+            src={user.pfp}
+            alt={fullName}
+            className="
+              h-9 w-9
+              rounded-full
+              object-cover
+              bg-gray-100
+            "
+          />
+        ) : (
+          <div
+            className="
+              h-9 w-9
+              rounded-full
+              bg-gray-100
+              flex items-center justify-center
+              text-xs font-medium text-gray-600
+            "
+          >
+            {initials}
+          </div>
+        )}
 
-      {/* Name */}
-      <span className="text-sm text-gray-700">
-        {(user.firstName + " " + user.lastName)}
-      </span>
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-medium text-gray-900 truncate max-w-[160px]">
+            {fullName}
+          </span>
+        </div>
+      </div>
+
+      {/* Divider (very subtle separation) */}
+      <div className="h-6 w-px bg-gray-200" />
 
       {/* Logout */}
-      <LogoutButton></LogoutButton>
+      <LogoutButton />
     </div>
   );
 }

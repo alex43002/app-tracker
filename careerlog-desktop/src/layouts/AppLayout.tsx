@@ -20,7 +20,7 @@ export function AppLayout({
       ============================================================ */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-gray-900/20 lg:hidden transition-colors duration-200 ease-out"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -31,15 +31,15 @@ export function AppLayout({
       <aside
         className={`
           fixed inset-y-0 left-0 z-40 w-56
-          transform bg-gray-50 border-r
-          transition-transform duration-200
+          transform bg-gray-50 border-r border-gray-200
+          transition-transform duration-200 ease-out
           lg:static lg:translate-x-0
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         {/* Branding */}
-        <div className="border-b px-4 py-5">
-          <h2 className="text-lg font-semibold">
+        <div className="border-b border-gray-200 px-4 py-5">
+          <h2 className="text-base font-semibold text-gray-900">
             CareerLog
           </h2>
           <p className="text-xs text-gray-500">
@@ -49,48 +49,34 @@ export function AppLayout({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3">
-          <NavLink
-            to="/"
-            end
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) =>
-              `block rounded-md px-3 py-2 text-sm transition ${
-                isActive
-                  ? "bg-gray-200 font-medium text-gray-900"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`
-            }
-          >
-            Dashboard
-          </NavLink>
-
-          <NavLink
-            to="/jobs"
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) =>
-              `block rounded-md px-3 py-2 text-sm transition ${
-                isActive
-                  ? "bg-gray-200 font-medium text-gray-900"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`
-            }
-          >
-            Jobs
-          </NavLink>
-
-          <NavLink
-            to="/alerts"
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) =>
-              `block rounded-md px-3 py-2 text-sm transition ${
-                isActive
-                  ? "bg-gray-200 font-medium text-gray-900"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`
-            }
-          >
-            Alerts
-          </NavLink>
+          {[
+            { to: "/", label: "Dashboard", end: true },
+            { to: "/jobs", label: "Jobs" },
+            { to: "/alerts", label: "Alerts" },
+          ].map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) =>
+                `
+                  block rounded-lg px-3 py-2 text-sm
+                  transition-colors duration-200 ease-out
+                  focus-visible:outline-none
+                  focus-visible:ring-2 focus-visible:ring-gray-300
+                  focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50
+                  ${
+                    isActive
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }
+                `
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
@@ -99,15 +85,24 @@ export function AppLayout({
       ============================================================ */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="z-10 flex h-14 items-center justify-between border-b bg-white px-4 sm:px-6 shadow-sm">
-          {/* Left: Hamburger (mobile) / Page title placeholder */}
+        <header className="z-10 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6">
+          {/* Left */}
           <div className="flex items-center gap-3">
             <button
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100 lg:hidden"
+              type="button"
+              className="
+                rounded-md p-2 text-gray-600
+                hover:bg-gray-100
+                active:bg-gray-200
+                transition-colors duration-200 ease-out
+                focus-visible:outline-none
+                focus-visible:ring-2 focus-visible:ring-gray-300
+                focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                lg:hidden
+              "
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
             >
-              {/* Hamburger icon */}
               <svg
                 className="h-5 w-5"
                 viewBox="0 0 24 24"
@@ -122,18 +117,16 @@ export function AppLayout({
             </button>
 
             <span className="text-sm font-medium text-gray-700">
-              {/* Reserved for dynamic page title */}
+              {/* Dynamic page title placeholder */}
             </span>
           </div>
 
-          {/* Right: User menu */}
+          {/* Right */}
           {user && <UserMenu {...user} />}
         </header>
 
-        {/* ============================================================
-           Scroll Container (single scroll owner)
-        ============================================================ */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Scroll Container */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           {children}
         </main>
       </div>
