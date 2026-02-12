@@ -106,6 +106,29 @@ function createWindow() {
       }
     );
   }
+
+  /* ============================================================
+     Window Initialization Fallback
+  ============================================================ */
+
+  mainWindow.webContents.on("did-fail-load", (_, code, desc) => {
+    console.error("did-fail-load:", code, desc);
+    mainWindow?.reload();
+    mainWindow?.show();
+  });
+
+  mainWindow.webContents.on("render-process-gone", (_, details) => {
+    console.error("renderer-process-gone:", details);
+    mainWindow?.reload();
+    mainWindow?.show();
+  });
+
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      console.warn("Forcing window show (ready-to-show did not fire)");
+      mainWindow.show();
+    }
+  }, 3000);
 }
 
 /* ============================================================
