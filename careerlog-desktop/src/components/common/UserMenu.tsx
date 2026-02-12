@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { clearAuthToken } from "../../store/auth";
 import type { User } from "../../types/user";
+import LogoutButton from "./LogoutButton";
 
 export function UserMenu(user: User) {
   const navigate = useNavigate();
@@ -38,12 +39,7 @@ export function UserMenu(user: User) {
       </span>
 
       {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="text-sm text-red-600 hover:underline"
-      >
-        Sign out
-      </button>
+      <LogoutButton></LogoutButton>
     </div>
   );
 }
