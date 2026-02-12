@@ -1,5 +1,6 @@
 import type { Job } from "../../../../types/job";
 import type { JobFormSavePayload } from "../types";
+import { forwardRef, useImperativeHandle } from "react";
 
 import { JOB_FORM_FIELDS, JOB_FORM_SECTIONS } from "../config/formFields";
 import { useJobForm } from "../hooks/useJobForm";
@@ -11,6 +12,10 @@ import { TextField } from "./TextField";
 import { SelectField } from "./SelectField";
 import { SalaryField } from "./SalaryField";
 import { ResumeField } from "./ResumeField";
+
+export interface JobFormHandle {
+  submit: () => void;
+}
 
 /**
  * JobForm
@@ -25,13 +30,11 @@ import { ResumeField } from "./ResumeField";
  * - Handle modal lifecycle
  * - Handle animations
  */
-export function JobForm({
-  job,
-  onSave,
-}: {
+export const JobForm = forwardRef<JobFormHandle, {
   job: Job | null;
   onSave: (payload: JobFormSavePayload) => void;
-}) {
+}>(function JobForm({ job, onSave }, ref) {
+
   const {
     values,
     errors,
@@ -55,6 +58,10 @@ export function JobForm({
       onSave(normalizeJobPayload(values));
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    submit: handleSave,
+  }));
 
   return (
     <div className="space-y-8">
@@ -136,11 +143,6 @@ export function JobForm({
           </JobFormSection>
         );
       })}
-
-      {/* Save button is intentionally owned by the parent modal */}
-      <div className="hidden" data-save-handler>
-        <button onClick={handleSave} />
-      </div>
     </div>
   );
-}
+});

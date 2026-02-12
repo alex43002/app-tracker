@@ -5,7 +5,7 @@ import type {
   UpdateJobPayload,
 } from "../../api/jobs";
 
-import { JobForm } from "./job-form/components/JobForm";
+import { JobForm, type JobFormHandle } from "./job-form/components/JobForm";
 
 /* ============================================================
    Types
@@ -30,8 +30,7 @@ export function JobFormModal({
 }: JobFormModalProps) {
   const [isVisible, setIsVisible] = useState(open);
   const [isAnimating, setIsAnimating] = useState(false);
-  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
-
+  const formRef = useRef<JobFormHandle>(null);
   /* ============================
      Mount / Unmount w/ Animation
   ============================ */
@@ -90,6 +89,7 @@ export function JobFormModal({
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           <JobForm
+            ref={formRef} 
             job={job}
             onSave={(payload) => onSave(payload)}
           />
@@ -106,11 +106,7 @@ export function JobFormModal({
 
           <button
             onClick={() => {
-              // Trigger hidden save handler inside JobForm
-              const btn = document.querySelector<HTMLButtonElement>(
-                '[data-save-handler] button'
-              );
-              btn?.click();
+              formRef.current?.submit()
             }}
             className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800"
           >
