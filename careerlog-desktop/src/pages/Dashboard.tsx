@@ -50,7 +50,7 @@ export function Dashboard() {
      Fetch Jobs (for table + pipeline only)
   ============================================================ */
   useEffect(() => {
-    fetchJobs(1, 50) // Fetch only what the UI needs
+    fetchJobs(1, 10, "createdAt", "desc") // Fetch only what the UI needs
       .then((res) => {
         setJobs(res.items);
       })
@@ -105,7 +105,7 @@ export function Dashboard() {
             <JobStatsGrid stats={jobStats} isLoading={loadingStats}/>
 
             {/* Pipeline visualization still relies on actual jobs */}
-            <PipelineVisualization jobs={jobs} />
+            <PipelineVisualization stats={jobStats} isLoading={loadingStats}/>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <RecentJobsTable jobs={jobs} />
