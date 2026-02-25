@@ -6,6 +6,7 @@ from app.users.routes import router as users_router
 from app.jobs.routes import router as jobs_router
 from app.alerts.routes import router as alerts_router
 from app.resumes.routes import router as resumes_router
+from app.analytics.routes import router as analytics_router
 
 app = FastAPI(
     title="Job Tracker API",
@@ -37,3 +38,4 @@ app.include_router(users_router, prefix="/api/users", tags=["Users"])
 app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 app.include_router(resumes_router, prefix="/api/resumes", tags=["Resumes"])
+app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
