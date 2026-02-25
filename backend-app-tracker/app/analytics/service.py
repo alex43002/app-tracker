@@ -17,7 +17,7 @@ def get_job_status_counts(jobs: Collection, user_id: str) -> dict:
         "applied": 0,
         "interviewing": 0,
         "offer": 0,
-        "denied": 0,
+        "rejected": 0,
         "total": 0,
     }
 
