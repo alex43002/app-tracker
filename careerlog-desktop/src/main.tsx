@@ -4,6 +4,8 @@ import "./index.css";
 import App from "./App";
 import { loadAuthToken } from "./store/auth";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { Toaster } from "react-hot-toast";
+import { ConfirmDialogHost } from "./components/common/dialogs/ConfirmDialog";
 
 try {
   loadAuthToken();
@@ -15,6 +17,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
+      {/* Global UI Infrastructure */}
+      <ConfirmDialogHost />
+      <Toaster position="top-right" />
     </ErrorBoundary>
   </StrictMode>
 );

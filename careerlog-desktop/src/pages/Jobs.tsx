@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { confirm } from "../components/common/dialogs/ConfirmDialog";
+import toast from "react-hot-toast";
+
 import { AppLayout } from "../layouts/AppLayout";
 import { PageScroll } from "../components/common/PageScroll";
 
@@ -23,6 +26,26 @@ import type { Job } from "../types/job";
 import type { User } from "../types/user";
 
 const PAGE_SIZE = 25;
+
+async function handleDelete(jobId: string) {
+  const ok = await confirm({
+    title: "Delete this job?",
+    description:
+      "This action cannot be undone. The job record will be permanently removed.",
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    destructive: true,
+  });
+
+  if (!ok) return;
+
+  try {
+    await deleteJob(jobId);
+    toast.success("Job deleted");
+  } catch (err) {
+    toast.error("Failed to delete job");
+  }
+}
 
 export function Jobs() {
   const [user, setUser] = useState<User | null>(null);
@@ -128,13 +151,7 @@ export function Jobs() {
                 setEditingJob(hydratedJob);
                 setModalOpen(true);
               }}
-              onDelete={async (id: string) => {
-                await deleteJob(id);
-                setJobs((prev) =>
-                  prev.filter((j) => j.id !== id)
-                );
-                setTotalItems((prev) => prev - 1);
-              }}
+              onDelete={handleDelete}
             />
 
             <JobsPagination
