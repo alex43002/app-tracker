@@ -356,7 +356,10 @@ Errors: `INVALID_RESUME_ID` (400), `RESUME_NOT_FOUND` (404), `FORBIDDEN` (403).
 
 ## Alerts
 
-Alerts are **configuration records only** in v1 — stored but never delivered.
+Alerts are follow-up reminders. A background scheduler delivers each alert once its
+`scheduledAlert` time passes (via the configured notifier — console by default, or
+SMTP email when configured) and stamps `lastAlertAt`. Rescheduling an alert to a new
+time lets it fire again. Delivery can be turned off with `ALERTS_ENABLED=false`.
 
 ### Create Alert
 
@@ -456,10 +459,10 @@ Response (`data`):
 
 ---
 
-## v1 Non-Goals (the frontend must not assume these exist)
+## Non-Goals (the frontend must not assume these exist)
 
-- Alerts actually send email/SMS
-- Background jobs / schedulers
 - Real-time updates, WebSockets, push notifications
+- SMS delivery to a real provider (email via SMTP is supported; SMS currently
+  logs via the console notifier until a provider like Twilio is added)
 
-These are **v2** features — see [ROADMAP.md](../ROADMAP.md).
+See [ROADMAP.md](../ROADMAP.md) for what's planned next.

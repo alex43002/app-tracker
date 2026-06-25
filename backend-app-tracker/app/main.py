@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import get_db, ensure_indexes
 from app.common.responses import failure
 from app.common.ratelimit import limiter
+from app.alerts import runner as alert_runner
 
 from app.auth.routes import router as auth_router
 from app.users.routes import router as users_router
@@ -25,7 +26,11 @@ from app.analytics.routes import router as analytics_router
 async def lifespan(app: FastAPI):
     # Ensure the documented indexes exist before serving traffic.
     ensure_indexes(get_db())
-    yield
+    alert_runner.start(app)
+    try:
+        yield
+    finally:
+        await alert_runner.stop(app)
 
 
 app = FastAPI(

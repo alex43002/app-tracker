@@ -41,6 +41,18 @@ class Settings(BaseSettings):
     # Rate limit applied to authentication endpoints (login/register).
     auth_rate_limit: str = "5/minute"
 
+    # Alert delivery (background scheduler).
+    alerts_enabled: bool = True
+    alerts_poll_seconds: int = 60
+
+    # Optional SMTP provider for email alerts. When unset, alerts are logged
+    # via the console notifier instead of actually being sent.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "no-reply@careerlog.app"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

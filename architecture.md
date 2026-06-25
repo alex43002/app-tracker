@@ -26,15 +26,16 @@ CareerLog helps a job seeker track their applications end to end. A user can:
   `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts
   and a pipeline visualization.
 - **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a
-  message and scheduled time. In v1 alerts are **configuration-only**: the backend
-  stores them but does not actually send messages or run background jobs.
+  message and scheduled time. A background scheduler delivers due alerts through a
+  pluggable notifier (console by default, SMTP email when configured) and stamps
+  `lastAlertAt`.
 - **Attach résumés** — upload a résumé per job; files are stored server-side in
   MongoDB GridFS and downloaded on demand.
 
-### Explicit non-goals (v1)
+### Explicit non-goals
 - No local authoritative data storage on the client (no offline mode).
 - No real-time updates / push.
-- No actual SMS/email delivery or scheduled background execution.
+- SMS is not yet wired to a real provider (logs via the console notifier).
 - No business logic in the frontend beyond the API contract.
 
 ---
@@ -81,7 +82,7 @@ app/
 ├── auth/          # register / login / refresh  → issues JWTs
 ├── users/         # user profile endpoints
 ├── jobs/          # job CRUD + résumé multipart handling
-├── alerts/        # alert CRUD (config-only)
+├── alerts/        # alert CRUD + delivery (service.process_due_alerts, runner)
 ├── resumes/       # GridFS résumé download
 ├── analytics/     # aggregation (status counts) for the dashboard
 └── common/
@@ -239,11 +240,16 @@ an existing valid one.
 ```
 MONGODB_URI=mongodb://localhost:27017/jobtracker
 MONGODB_DB_NAME=jobtracker
-JWT_SECRET=<secret>
+JWT_SECRET=<secret, min 16 chars>
 JWT_ALGORITHM=HS256
 JWT_EXPIRY_HOURS=2
+REFRESH_TOKEN_EXPIRY_DAYS=7
+ALERTS_ENABLED=true
+ALERTS_POLL_SECONDS=60
+# SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM  (optional email)
 ```
 Run: `uvicorn app.main:app --reload` → `http://localhost:8000` (docs at `/docs`).
+The alert scheduler starts with the app (FastAPI lifespan) when `ALERTS_ENABLED`.
 Test: `pytest`. CI runs the suite against a `mongo:7` service on every push/PR to
 `main`.
 

@@ -11,10 +11,10 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > P2 items, including the full access/refresh **token-rotation** flow (SEC-4) across
 > backend + desktop. The backend has a `mongomock`-backed harness (runs with **no
 > external Mongo**) gated by `ruff`; the desktop client has a `vitest` harness and
-> its own CI. **All P0–P2 items are now complete.** Current state: **backend 25
-> tests + ruff clean; desktop 16 tests + typecheck + eslint clean.** Remaining work
-> is the larger v2 features (alert delivery) and P3 items (response-model validation,
-> residual lint warnings, enumeration hardening).
+> its own CI. **All P0–P2 items are complete, plus the v2 headline (alert
+> delivery).** Current state: **backend 29 tests + ruff clean; desktop 16 tests +
+> typecheck + eslint clean.** Remaining work is follow-on v2 features (SMS provider,
+> multi-instance scheduler, analytics) and P3 cleanups.
 
 ---
 
@@ -25,8 +25,8 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 - **Jobs** — full CRUD with JSON or multipart; résumé upload/replace/download via
   GridFS (now type/size validated); free-text **notes**; pagination, sorting, and
   whitelisted filters on list.
-- **Alerts** — CRUD for follow-up reminder records (**configuration only — never
-  delivered**).
+- **Alerts** — CRUD for follow-up reminders, **delivered by a background scheduler**
+  via a pluggable notifier (console default, SMTP email when configured).
 - **Analytics** — job status-count aggregation feeding the dashboard.
 - **Users** — get / update / delete self (ownership-enforced, service-layered).
 - **Desktop client** — Electron + React app with login, dashboard (stat grid +
@@ -64,6 +64,7 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | CLN-7 | Cleanup | `ruff` added to CI (`ruff.toml`, `F`/`E9`) + a lint step in `ci.yml`. |
 | CLN-9 | Cleanup | Desktop test harness added (`vitest` + jsdom): tests for the auth store (incl. BUG-1 expiry regression) and the API client envelope handling. Desktop CI workflow added (typecheck + test). |
 | FEAT-1 | Feature | Job **notes** field added end-to-end (schema, service, multipart, contract) and wired through the desktop form (config, hook, normalize/diff, help text). + test. |
+| FEAT-4 / FEAT-5 | Feature | **Alert delivery (v2 headline).** A background scheduler (`app/alerts/runner.py`, started from the lifespan) scans for due alerts and delivers them via a **pluggable notifier** (`app/notifications/notifier.py`): `ConsoleNotifier` default, `SmtpEmailNotifier` when SMTP is configured. Core `process_due_alerts` is idempotent per schedule, supports rescheduling, stamps `lastAlertAt`, and is unit-tested directly. Configurable via `ALERTS_ENABLED` / `ALERTS_POLL_SECONDS` / `SMTP_*`. + tests. |
 | TEST | Infra | `tests/conftest.py` backs the app with `mongomock` (incl. GridFS); suite runs offline. New test/runtime deps pinned in `requirements.txt`. |
 
 ---
@@ -95,13 +96,14 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
   screen surfaces server validation; the job form still shows only its own
   client-side validation for server errors.
 
-### v2 — the headline release (alerts that actually fire)
-- **FEAT-4 (P1): Deliver alerts.** Background scheduler (APScheduler/Celery + broker)
-  that sends `email`/`sms` at `scheduledAlert` and updates `lastAlertAt`. Biggest gap
-  between the stored model and user expectation.
-- **FEAT-5 (P2): Email/SMS providers** (SES/SendGrid, Twilio) behind a pluggable
-  notifier interface.
-- **FEAT-6 (P2): Password reset & email verification** flows.
+### v2
+- **FEAT-5 follow-up (P2): SMS provider.** Email delivery (SMTP) is implemented;
+  add a real SMS provider (e.g. Twilio) behind the existing `Notifier` interface.
+- **FEAT-12 (P2): Scheduler robustness for multi-instance.** The in-process loop is
+  fine for a single worker; for horizontal scaling, move to a shared scheduler/lock
+  (APScheduler with a jobstore, or a leader-election / `findAndModify` claim) so an
+  alert isn't delivered by multiple workers.
+- **FEAT-6 (P2): Password reset & email verification** flows (can reuse the notifier).
 - **FEAT-7 (P2): Richer analytics** — response rate, time-to-offer, applications over
   time, per-company funnels.
 
@@ -117,7 +119,8 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5) — the headline feature.
+1. **Harden alert delivery for scale (FEAT-12)** and add the SMS provider (FEAT-5
+   follow-up) — the scheduler now works for a single worker.
 2. **Tighten contracts:** CLN-5 response models (carefully — see note).
 3. **Platform & polish:** FEAT-8 builds, remaining analytics, enumeration hardening,
    and promoting the downgraded lint warnings back to errors (CLN-11).

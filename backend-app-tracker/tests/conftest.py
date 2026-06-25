@@ -6,6 +6,8 @@ os.environ.setdefault("MONGODB_URI", "mongodb://localhost:27017/jobtracker_test"
 os.environ.setdefault("MONGODB_DB_NAME", "jobtracker_test")
 os.environ.setdefault("JWT_SECRET", "test-secret-do-not-use-in-prod")
 os.environ.setdefault("JWT_EXPIRY_HOURS", "2")
+# The background alert scheduler is tested via process_due_alerts directly.
+os.environ.setdefault("ALERTS_ENABLED", "false")
 
 import mongomock
 import mongomock.gridfs
@@ -43,6 +45,11 @@ def _reset_rate_limiter():
 @pytest.fixture(scope="session")
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def db():
+    return database.get_db()
 
 
 @pytest.fixture(scope="session")

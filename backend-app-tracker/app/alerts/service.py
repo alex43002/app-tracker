@@ -1,10 +1,17 @@
+import logging
 from datetime import datetime, timezone
+
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo.collection import Collection
+from pymongo.database import Database
 from fastapi import status
 
 from app.common.errors import raise_error
 from app.common.query import parse_filters, paginate
+from app.notifications.notifier import EMAIL, Notifier
+
+logger = logging.getLogger("careerlog.alerts")
 
 # Fields a client is allowed to filter / sort alerts by.
 ALERT_FILTERABLE_FIELDS = ("smsOrEmail",)
@@ -112,3 +119,60 @@ def delete_alert(alerts: Collection, alert_id: str, user_id: str):
             message="Alert not found",
             http_status=status.HTTP_404_NOT_FOUND,
         )
+
+
+# ---------------------------------------------------------------------------
+# Alert delivery (FEAT-4)
+# ---------------------------------------------------------------------------
+
+def _to_naive_utc(dt: datetime | None) -> datetime | None:
+    """Normalize to naive UTC — MongoDB stores datetimes without tzinfo."""
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def _is_due(alert: dict, now: datetime) -> bool:
+    """An alert fires when its scheduled time has passed and it hasn't already
+    fired for the current schedule (supports rescheduling)."""
+    scheduled = _to_naive_utc(alert.get("scheduledAlert"))
+    if scheduled is None or scheduled > now:
+        return False
+    last = _to_naive_utc(alert.get("lastAlertAt"))
+    return last is None or last < scheduled
+
+
+def process_due_alerts(db: Database, notifier: Notifier, now: datetime) -> int:
+    """Deliver every due alert and stamp ``lastAlertAt``. Returns the count sent.
+
+    Designed to be idempotent per schedule and safe to call repeatedly.
+    """
+    now = _to_naive_utc(now)
+    sent = 0
+    for alert in db.alerts.find({"scheduledAlert": {"$lte": now}}):
+        if not _is_due(alert, now):
+            continue
+
+        try:
+            user = db.users.find_one({"_id": ObjectId(alert["userId"])})
+        except (InvalidId, TypeError):
+            user = None
+        if not user:
+            continue
+
+        channel = alert.get("smsOrEmail", EMAIL)
+        recipient = user.get("email") if channel == EMAIL else user.get("phoneNumber")
+
+        try:
+            notifier.send(channel, recipient, alert.get("message", ""))
+        except Exception:
+            logger.exception("Failed to deliver alert %s", alert.get("_id"))
+            continue
+
+        db.alerts.update_one(
+            {"_id": alert["_id"]},
+            {"$set": {"lastAlertAt": now}},
+        )
+        sent += 1
+
+    return sent

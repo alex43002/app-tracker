@@ -96,7 +96,7 @@ Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
   smsOrEmail: String,       // "sms" | "email"
   message: String,
 
-  lastAlertAt: Date,        // nullable; always null in v1 (alerts never fire)
+  lastAlertAt: Date,        // nullable; set when the scheduler delivers the alert
 
   createdAt: Date,
   updatedAt: Date
