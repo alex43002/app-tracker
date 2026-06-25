@@ -45,14 +45,14 @@ careerlog-desktop (Electron + React)  ──HTTPS + Bearer JWT──▶  backend
 
 End users do **not** need Python, Node, or this source tree. The desktop client ships as a packaged **Windows installer**.
 
-1. Go to the **[Releases page](https://github.com/alex43002/careerlog-desktop/releases)**.
+1. Go to the **[Releases page](https://github.com/alex43002/app-tracker/releases)**.
 2. Download the latest installer asset (`CareerLog Setup <version>.exe`) from **Assets**.
 3. Run the `.exe` and follow the NSIS installer prompts. CareerLog installs and creates a shortcut.
 4. Launch CareerLog and sign in. The app **requires a running CareerLog backend** (see [Backend setup](#1-backend--backend-app-tracker)); point it at your backend via the `VITE_API_BASE_URL` used at build time (defaults to `http://127.0.0.1:8000`).
 
 Once installed, CareerLog **auto-updates** itself from GitHub Releases via `electron-updater` — new versions are picked up automatically.
 
-> Releases are published to the [`alex43002/careerlog-desktop`](https://github.com/alex43002/careerlog-desktop) repository, as configured in [careerlog-desktop/package.json](careerlog-desktop/package.json).
+> Releases are published to the [`alex43002/app-tracker`](https://github.com/alex43002/app-tracker) repository.
 
 ---
 
