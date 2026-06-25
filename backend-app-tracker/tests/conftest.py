@@ -30,6 +30,14 @@ def _patch_db():
 
 
 from app.main import app  # noqa: E402  (imported after env + db patch)
+from app.common.ratelimit import limiter  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    # Keep auth rate limits from leaking across tests.
+    limiter.reset()
+    yield
 
 
 @pytest.fixture(scope="session")

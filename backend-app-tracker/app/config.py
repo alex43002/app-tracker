@@ -1,4 +1,15 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Obvious placeholder secrets that must never be used to sign real tokens.
+_WEAK_SECRETS = {
+    "secret",
+    "changeme",
+    "change-me",
+    "your-secret-key",
+    "jwt-secret",
+}
+_MIN_SECRET_LENGTH = 16
 
 
 class Settings(BaseSettings):
@@ -11,9 +22,23 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 2
 
+    @field_validator("jwt_secret")
+    @classmethod
+    def _validate_jwt_secret(cls, value: str) -> str:
+        if value.strip().lower() in _WEAK_SECRETS:
+            raise ValueError("JWT_SECRET is a known weak/placeholder value")
+        if len(value) < _MIN_SECRET_LENGTH:
+            raise ValueError(
+                f"JWT_SECRET must be at least {_MIN_SECRET_LENGTH} characters"
+            )
+        return value
+
     # CORS — comma-separated list of allowed origins for the desktop client.
     # Defaults to the Vite dev server; tighten/extend per environment.
     cors_allow_origins: str = "http://localhost:5173"
+
+    # Rate limit applied to authentication endpoints (login/register).
+    auth_rate_limit: str = "5/minute"
 
     model_config = SettingsConfigDict(
         env_file=".env",

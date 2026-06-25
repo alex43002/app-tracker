@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
+from app.config import settings
 from app.database import get_db
 from app.common.responses import success
 from app.common.errors import raise_error
 from app.common.auth import create_jwt, decode_jwt
+from app.common.ratelimit import limiter
 from app.auth.schemas import (
     RegisterRequest,
     LoginRequest,
@@ -17,7 +19,8 @@ router = APIRouter()
 
 
 @router.post("/register")
-def register(payload: RegisterRequest):
+@limiter.limit(settings.auth_rate_limit)
+def register(request: Request, payload: RegisterRequest):
     db = get_db()
     users = db.users
 
@@ -69,7 +72,8 @@ def register(payload: RegisterRequest):
 
 
 @router.post("/login")
-def login(payload: LoginRequest):
+@limiter.limit(settings.auth_rate_limit)
+def login(request: Request, payload: LoginRequest):
     db = get_db()
     users = db.users
 

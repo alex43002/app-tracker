@@ -7,10 +7,12 @@ desktop client (`careerlog-desktop/`). It captures **what the product does today
 then the prioritized work ahead. Items are tagged by area and rough priority
 (**P0** critical → **P3** nice-to-have) and status (✅ done · 🟡 partial · ⬜ open).
 
-> **Status note:** A remediation pass on 2026-06-25 closed most P0–P2 backend
-> items. A `mongomock`-backed test harness was added (`tests/conftest.py`) so the
-> suite runs with **no external Mongo**, and `ruff` now gates CI. Backend: 10
-> tests passing + lint clean; desktop renderer typechecks clean.
+> **Status note:** Two remediation passes on 2026-06-25 closed all P0–P1 and most
+> P2 items. The backend has a `mongomock`-backed harness (runs with **no external
+> Mongo**) gated by `ruff`; the desktop client now has a `vitest` harness and its
+> own CI. Current state: **backend 14 tests + lint clean; desktop 8 tests + typecheck
+> clean.** Remaining work is the larger v2 features (alert delivery) and a few
+> contract-changing items (token rotation, profile images to GridFS).
 
 ---
 
@@ -31,13 +33,16 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ---
 
-## 2. ✅ Completed in the 2026-06-25 pass
+## 2. ✅ Completed (2026-06-25)
 
 | ID | Area | What changed |
 | --- | --- | --- |
 | SEC-1 | Security | `filters` is now whitelisted per resource, forces `userId` last, and rejects Mongo operators / operator-object values. Closes the IDOR + injection hole. (`app/common/query.py`) + tests. |
 | SEC-2 | Security | CORS no longer uses `"*"`; origins come from `Settings.cors_allow_origins` (defaults to the Vite dev origin). |
+| SEC-3 | Security | Rate limiting on `login`/`register` via `slowapi` (`Settings.auth_rate_limit`, default 5/min); throttled responses use the standard `RATE_LIMITED` envelope. + test. |
+| SEC-5 | Security | `get_current_user` now re-validates that the user still exists — a token for a deleted account is rejected. + test. |
 | SEC-7 | Security | Résumé uploads validated: allowed MIME types (`pdf/doc/docx/txt`) and ≤5MB, on both create & update. + tests. |
+| SEC-8 | Security | `JWT_SECRET` strength enforced at config load (rejects known-weak placeholders and secrets < 16 chars). + tests. |
 | BUG-1 | Correctness | Frontend auth types corrected to the real `{ user, jwt, expiresAt }`; `saveAuthToken` now consumes the ISO `expiresAt` (was reading a non-existent `expiresIn` → `NaN` expiry). Signup now uses its own returned session (no redundant login). |
 | BUG-2 | Correctness | `test_create_and_list_jobs` fixed to send required `company`; tests added for the validation envelope. |
 | BUG-3 | Correctness | Analytics `denied` → `rejected`; response now validated through `JobStatusCounts`. |
@@ -50,8 +55,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | CLN-4 | Cleanup | Deprecated `.dict()` → `.model_dump()`; `config.py` migrated to `SettingsConfigDict`. |
 | CLN-6 | Cleanup | Unused imports removed (ruff autofix). |
 | CLN-7 | Cleanup | `ruff` added to CI (`ruff.toml`, `F`/`E9`) + a lint step in `ci.yml`. |
+| CLN-9 | Cleanup | Desktop test harness added (`vitest` + jsdom): tests for the auth store (incl. BUG-1 expiry regression) and the API client envelope handling. Desktop CI workflow added (typecheck + test). |
 | FEAT-1 | Feature | Job **notes** field added end-to-end (schema, service, multipart, contract) and wired through the desktop form (config, hook, normalize/diff, help text). + test. |
-| TEST | Infra | `tests/conftest.py` rewritten to back the app with `mongomock` (incl. GridFS); suite runs offline. |
+| TEST | Infra | `tests/conftest.py` backs the app with `mongomock` (incl. GridFS); suite runs offline. New test/runtime deps pinned in `requirements.txt`. |
 
 ---
 
@@ -59,11 +65,12 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 | ID | Pri | Issue | Notes |
 | --- | --- | --- | --- |
-| SEC-3 | P1 | **No rate limiting / lockout** on `login` & `register`; distinct 401 vs 409 leaks which emails exist. | Needs a limiter dep (e.g. slowapi) + a store; not added to avoid a half-baked in-memory solution under multi-worker gunicorn. |
-| SEC-4 | P1 | **No token revocation / refresh rotation** — a leaked token is valid for its full 2h. | Short access token + rotating refresh token, or a server-side denylist. |
-| SEC-5 | P2 | **JWT `sub` not re-validated** against the DB; a deleted user's token still works until expiry. | Optional per-request existence check for sensitive ops. |
-| SEC-6 | P2 | **`pfp` base64 stored inline** in the user doc — unbounded growth; sent on every `/users/me`. | Move profile images to GridFS (mirror the résumé approach) + size cap. Pairs with FEAT-3. |
-| SEC-8 | P2 | **`JWT_SECRET` strength not enforced.** | Fail fast on weak/missing secret in prod. |
+| SEC-4 | P1 | **No token revocation / refresh rotation** — a leaked token is valid for its full 2h. | Short access token + rotating refresh token (with a `type` claim) or a server-side denylist. Contract-changing: the desktop store currently holds a single token, so this needs coordinated frontend work. |
+| SEC-6 | P2 | **`pfp` base64 stored inline** in the user doc — unbounded growth; sent on every `/users/me`. | Move profile images to GridFS (mirror the résumé approach) + size cap. Changes the user contract — pairs with FEAT-3. |
+
+> Also consider making `register` not leak which emails exist (uniform messaging);
+> rate limiting (SEC-3, done) blunts enumeration but the 409-vs-401 distinction
+> remains.
 
 ---
 
@@ -71,10 +78,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 | ID | Pri | Item |
 | --- | --- | --- |
-| CLN-5 | P2 | **Response models mostly unused.** Analytics now validates via `JobStatusCounts`, but jobs/alerts/users handlers still return raw dicts. Wire `response_model` (envelope-aware) or drop the dead schemas. |
+| CLN-5 | P2 | **Response models mostly unused.** Analytics validates via `JobStatusCounts`, but jobs/alerts/users handlers still return raw dicts. Wire `response_model` (envelope-aware) or drop the dead schemas. Note: validating list items through `Job` would coerce `url`→`HttpUrl` and may alter serialized output, so do it deliberately. |
 | CLN-8 | P3 | **Naming:** path param `id` vs document field `jobId` (external ref) is confusing. |
-| CLN-9 | P2 | **No desktop/renderer tests.** Backend now has a harness; the frontend has none. Add Vitest + React Testing Library for the API client and forms. |
-| CLN-10 | P3 | **Pydantic v2 style:** several modules could adopt `ConfigDict`/typed responses more broadly; consider widening the ruff ruleset beyond `F`/`E9` once the codebase is clean. |
+| CLN-10 | P3 | **Widen lint once clean.** Backend `ruff` is scoped to `F`/`E9`; the desktop has **16 pre-existing eslint errors** (explicit `any`, set-state-in-effect, unused vars) — fix them, then enable the eslint step in the desktop CI workflow and broaden rulesets. |
 
 ---
 
@@ -108,7 +114,11 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Finish the security sprint:** SEC-3, SEC-4 (P1) → SEC-5/6/8.
-2. **Tighten contracts/tests:** CLN-5 response models, CLN-9 desktop tests, FEAT-2.
-3. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5).
-4. **Platform & polish:** FEAT-8 builds, remaining analytics & cleanup.
+1. **Token lifecycle (SEC-4):** the last P1 — design the access/refresh split with the
+   desktop store together, since it changes the auth contract.
+2. **Tighten contracts/tests:** CLN-5 response models, FEAT-2 (surface `error.details`
+   in forms), then SEC-6/FEAT-3 (profile images to GridFS).
+3. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
+   step back on.
+4. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5).
+5. **Platform & polish:** FEAT-8 builds, remaining analytics & cleanup.

@@ -14,7 +14,9 @@
     "build:electron:preload": "tsc -p electron/tsconfig.preload.json",
     "build:electron:ts": "npm run build:electron:main && npm run build:electron:preload",
     "build": "npm run build:electron:ts && npm run build:renderer && npm run build:electron",
-    "dist": "npm run build"
+    "dist": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "build": {
     "appId": "com.careerlog.desktop",
@@ -63,12 +65,14 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
+    "vitest": "^2.1.9",
     "wait-on": "^9.0.3"
   }
 }

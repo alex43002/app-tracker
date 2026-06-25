@@ -1,14 +1,28 @@
 from datetime import datetime, timedelta, timezone
 from typing import Dict
 
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.database import get_db
 
 
 security = HTTPBearer()
+
+
+def _auth_error(message: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "success": False,
+            "data": None,
+            "error": {"code": "AUTH_TOKEN_INVALID", "message": message},
+        },
+    )
 
 
 def create_jwt(user_id: str, email: str) -> Dict[str, str]:
@@ -81,16 +95,16 @@ def get_current_user(
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "data": None,
-                "error": {
-                    "code": "AUTH_TOKEN_INVALID",
-                    "message": "Token missing subject",
-                },
-            },
-        )
+        raise _auth_error("Token missing subject")
+
+    # Re-validate that the user still exists — a token for a deleted account
+    # must not remain usable until expiry.
+    try:
+        object_id = ObjectId(user_id)
+    except (InvalidId, TypeError):
+        raise _auth_error("Invalid token subject")
+
+    if not get_db().users.find_one({"_id": object_id}, {"_id": 1}):
+        raise _auth_error("User no longer exists")
 
     return user_id
