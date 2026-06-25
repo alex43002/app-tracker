@@ -168,6 +168,8 @@ Response (`data`):
 
 Errors: `AUTH_TOKEN_INVALID` (401) if the token is invalid/expired, is not a
 refresh token, has already been rotated/revoked, or its user no longer exists.
+**Replaying an already-rotated refresh token is treated as theft**: the user's
+entire refresh-token family is revoked (every session must re-authenticate).
 
 ### Logout
 

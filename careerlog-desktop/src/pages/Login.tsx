@@ -47,7 +47,7 @@ export default function Login() {
       navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(err.displayMessage);
       } else {
         setError("Authentication failed");
       }

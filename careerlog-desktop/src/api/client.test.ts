@@ -42,6 +42,29 @@ describe("apiClient", () => {
     await expect(apiClient.get("/api/x")).rejects.toBeInstanceOf(ApiError);
   });
 
+  it("exposes field-level validation details via displayMessage (FEAT-2)", async () => {
+    mockFetch(422, {
+      success: false,
+      data: null,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Request validation failed",
+        details: [
+          { field: "email", message: "value is not a valid email address" },
+          { field: "password", message: "String should have at least 8 characters" },
+        ],
+      },
+    });
+
+    const err = (await apiClient
+      .get("/api/x")
+      .catch((e) => e)) as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.details).toHaveLength(2);
+    expect(err.displayMessage).toContain("email:");
+    expect(err.displayMessage).toContain("password:");
+  });
+
   it("unwraps FastAPI detail-wrapped envelopes", async () => {
     mockFetch(404, {
       detail: {

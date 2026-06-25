@@ -103,6 +103,26 @@ def test_refresh_rotates_and_old_token_is_revoked(client, auth_payload):
     assert replay.json()["error"]["code"] == "AUTH_TOKEN_INVALID"
 
 
+def test_refresh_reuse_revokes_token_family(client, auth_payload):
+    """SEC-9: replaying a rotated refresh token revokes the whole family."""
+    data = _fresh_session(client, auth_payload, "sec9-family@example.com")
+    r0 = data["refreshToken"]
+
+    # Legitimate rotation: r0 -> r1.
+    r1 = client.post("/api/auth/refresh", json={"refreshToken": r0}).json()["data"][
+        "refreshToken"
+    ]
+
+    # Attacker replays the old, already-rotated r0 -> reuse detected, 401.
+    replay = client.post("/api/auth/refresh", json={"refreshToken": r0})
+    assert replay.status_code == 401
+
+    # The legitimate current token r1 is now also invalid (family revoked).
+    after = client.post("/api/auth/refresh", json={"refreshToken": r1})
+    assert after.status_code == 401
+    assert after.json()["error"]["code"] == "AUTH_TOKEN_INVALID"
+
+
 def test_logout_revokes_refresh_token(client, auth_payload):
     """SEC-4: logout revokes the refresh token so it can no longer rotate."""
     data = _fresh_session(client, auth_payload, "sec4-logout@example.com")

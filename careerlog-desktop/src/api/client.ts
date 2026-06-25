@@ -37,11 +37,20 @@ export function setAuthToken(token: string | null) {
 ============================================================ */
 
 /**
+ * A single field-level validation problem (present on VALIDATION_ERROR).
+ */
+export interface ApiErrorDetail {
+  field: string;
+  message: string;
+}
+
+/**
  * Structured error payload returned by the backend.
  */
 export interface ApiErrorPayload {
   code: string;
   message: string;
+  details?: ApiErrorDetail[];
 }
 
 /**
@@ -86,11 +95,26 @@ export interface PaginatedResponse<T> {
 export class ApiError extends Error {
   code: string;
   status: number;
+  details?: ApiErrorDetail[];
 
   constructor(payload: ApiErrorPayload, status: number) {
     super(payload.message);
     this.code = payload.code;
     this.status = status;
+    this.details = payload.details;
+  }
+
+  /**
+   * A user-facing message that prefers field-level validation detail when
+   * present, falling back to the top-level message.
+   */
+  get displayMessage(): string {
+    if (this.details && this.details.length > 0) {
+      return this.details
+        .map((d) => (d.field ? `${d.field}: ${d.message}` : d.message))
+        .join("\n");
+    }
+    return this.message;
   }
 }
 

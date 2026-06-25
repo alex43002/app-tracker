@@ -27,10 +27,12 @@ from app.auth.service import hash_password, verify_password
 router = APIRouter()
 
 
-def _issue_session(user_id: str, email: str) -> dict:
+def _issue_session(user_id: str, email: str, generation: int = 0) -> dict:
     """Build the access + refresh token pair returned by login/register."""
     access = create_access_token(user_id=user_id, email=email)
-    refresh = create_refresh_token(user_id=user_id, email=email)
+    refresh = create_refresh_token(
+        user_id=user_id, email=email, generation=generation
+    )
     return {
         "jwt": access["jwt"],
         "expiresAt": access["expiresAt"],
@@ -62,6 +64,7 @@ def register(request: Request, payload: RegisterRequest):
         "firstName": payload.firstName,
         "lastName": payload.lastName,
         "pfp": payload.pfp,
+        "tokenGeneration": 0,
         "createdAt": now,
         "updatedAt": now,
     }
@@ -121,8 +124,18 @@ def login(request: Request, payload: LoginRequest):
                 "createdAt": user["createdAt"],
                 "updatedAt": user["updatedAt"],
             },
-            **_issue_session(user_id, user["email"]),
+            **_issue_session(
+                user_id, user["email"], service.user_token_generation(user)
+            ),
         }
+    )
+
+
+def _reject_refresh(message: str) -> None:
+    raise_error(
+        code="AUTH_TOKEN_INVALID",
+        message=message,
+        http_status=status.HTTP_401_UNAUTHORIZED,
     )
 
 
@@ -134,35 +147,39 @@ def refresh(payload: RefreshRequest):
     user_id = claims["sub"]
     jti = claims.get("jti")
 
-    # Reject replayed / already-rotated refresh tokens.
-    if not jti or service.is_refresh_jti_revoked(db, jti):
-        raise_error(
-            code="AUTH_TOKEN_INVALID",
-            message="Refresh token is no longer valid",
-            http_status=status.HTTP_401_UNAUTHORIZED,
-        )
+    if not jti:
+        _reject_refresh("Refresh token is no longer valid")
 
     # The owning user must still exist.
     try:
         object_id = ObjectId(user_id)
     except (InvalidId, TypeError):
-        raise_error(
-            code="AUTH_TOKEN_INVALID",
-            message="Invalid token subject",
-            http_status=status.HTTP_401_UNAUTHORIZED,
-        )
+        _reject_refresh("Invalid token subject")
 
-    if not db.users.find_one({"_id": object_id}, {"_id": 1}):
-        raise_error(
-            code="AUTH_TOKEN_INVALID",
-            message="User no longer exists",
-            http_status=status.HTTP_401_UNAUTHORIZED,
-        )
+    user = db.users.find_one({"_id": object_id})
+    if not user:
+        _reject_refresh("User no longer exists")
 
-    # Rotate: revoke the presented refresh token, then issue a fresh pair.
+    # Reuse detection: a presented token whose jti is already revoked means it was
+    # rotated (or logged out) earlier. Treat replay as theft and revoke the whole
+    # family (bump generation), forcing every session for this user to re-auth.
+    if service.is_refresh_jti_revoked(db, jti):
+        service.revoke_user_refresh_family(db, object_id)
+        _reject_refresh("Refresh token reuse detected — session revoked")
+
+    # Family revocation: reject tokens from a superseded generation.
+    if service.is_refresh_generation_stale(user, claims.get("gen", 0)):
+        _reject_refresh("Refresh token has been revoked")
+
+    # Rotate: revoke the presented refresh token, then issue a fresh pair at the
+    # user's current generation.
     service.revoke_refresh_jti(db, jti, service.exp_to_datetime(claims["exp"]))
 
-    return success(data=_issue_session(user_id, claims["email"]))
+    return success(
+        data=_issue_session(
+            user_id, claims["email"], service.user_token_generation(user)
+        )
+    )
 
 
 @router.post("/logout")

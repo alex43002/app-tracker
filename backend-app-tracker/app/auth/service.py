@@ -35,5 +35,22 @@ def is_refresh_jti_revoked(db, jti: str) -> bool:
     return db.revoked_tokens.find_one({"jti": jti}, {"_id": 1}) is not None
 
 
+def user_token_generation(user: dict) -> int:
+    """The user's current refresh-token generation (0 for legacy users)."""
+    return user.get("tokenGeneration", 0)
+
+
+def revoke_user_refresh_family(db, user_id) -> None:
+    """Invalidate every outstanding refresh token for a user by bumping their
+    generation. Used as a theft response when a rotated token is replayed.
+    """
+    db.users.update_one({"_id": user_id}, {"$inc": {"tokenGeneration": 1}})
+
+
+def is_refresh_generation_stale(user: dict, generation: int) -> bool:
+    """True if the token's generation predates the user's current generation."""
+    return generation < user_token_generation(user)
+
+
 def exp_to_datetime(exp: int) -> datetime:
     return datetime.fromtimestamp(exp, tz=timezone.utc)

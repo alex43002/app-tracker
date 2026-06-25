@@ -11,7 +11,7 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > P2 items, including the full access/refresh **token-rotation** flow (SEC-4) across
 > backend + desktop. The backend has a `mongomock`-backed harness (runs with **no
 > external Mongo**) gated by `ruff`; the desktop client has a `vitest` harness and
-> its own CI. Current state: **backend 18 tests + lint clean; desktop 12 tests +
+> its own CI. Current state: **backend 19 tests + lint clean; desktop 13 tests +
 > typecheck clean.** Remaining work is the larger v2 features (alert delivery) and a
 > few P2/P3 items (profile images to GridFS, response-model validation, lint debt).
 
@@ -42,6 +42,8 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | SEC-2 | Security | CORS no longer uses `"*"`; origins come from `Settings.cors_allow_origins` (defaults to the Vite dev origin). |
 | SEC-3 | Security | Rate limiting on `login`/`register` via `slowapi` (`Settings.auth_rate_limit`, default 5/min); throttled responses use the standard `RATE_LIMITED` envelope. + test. |
 | SEC-4 | Security | **Token rotation.** Short-lived **access** tokens + long-lived **refresh** tokens (typed via a `type` claim, `jti` per refresh). `/refresh` rotates and revokes the presented token (`revoked_tokens` collection + TTL index); replay is rejected. Added `/logout` (revokes a refresh token). Desktop: store persists both tokens, the API client silently refreshes on 401 and retries (single-flight), logout revokes server-side. Backend + desktop tests. |
+| SEC-9 | Security | **Refresh-token family revocation.** Replaying an already-rotated refresh token is treated as theft: the user's whole token family is revoked via a per-user `tokenGeneration` (deterministic, no timing dependence). Refresh tokens carry a `gen` claim; stale generations are rejected. + test. |
+| FEAT-2 | Feature | **Field-level validation in the UI.** `ApiError` now carries `details`; `displayMessage` formats them; the auth screen surfaces per-field messages (and `AuthError` preserves line breaks). + test. |
 | SEC-5 | Security | `get_current_user` now re-validates that the user still exists — a token for a deleted account is rejected. + test. |
 | SEC-7 | Security | Résumé uploads validated: allowed MIME types (`pdf/doc/docx/txt`) and ≤5MB, on both create & update. + tests. |
 | SEC-8 | Security | `JWT_SECRET` strength enforced at config load (rejects known-weak placeholders and secrets < 16 chars). + tests. |
@@ -68,7 +70,6 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | ID | Pri | Issue | Notes |
 | --- | --- | --- | --- |
 | SEC-6 | P2 | **`pfp` base64 stored inline** in the user doc — unbounded growth; sent on every `/users/me`. | Move profile images to GridFS (mirror the résumé approach) + size cap. Changes the user contract — pairs with FEAT-3. |
-| SEC-9 | P2 | **Refresh-token reuse doesn't revoke the family.** A replayed (already-rotated) refresh token is rejected, but ideally detecting reuse should revoke all of that user's refresh tokens (theft response). | Track a token family / per-user generation. |
 
 > Also consider making `register` not leak which emails exist (uniform messaging);
 > rate limiting (SEC-3, done) blunts enumeration but the 409-vs-401 distinction
@@ -89,10 +90,11 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 ## 5. ⬜ Next Functionality
 
 ### v1.x
-- **FEAT-2 (P2): Surface field-level validation in the UI.** The backend now returns
-  `error.details`; the desktop client should map these onto form fields.
 - **FEAT-3 (P2): Profile-picture upload to GridFS** (pairs with SEC-6) with a real
   upload UI.
+- **FEAT-2 follow-up (P3): Map `error.details` onto job-form fields.** The auth
+  screen surfaces server validation; the job form still shows only its own
+  client-side validation for server errors.
 
 ### v2 — the headline release (alerts that actually fire)
 - **FEAT-4 (P1): Deliver alerts.** Background scheduler (APScheduler/Celery + broker)
@@ -116,10 +118,10 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Tighten contracts/tests:** CLN-5 response models, FEAT-2 (surface `error.details`
-   in forms), then SEC-6/FEAT-3 (profile images to GridFS).
-2. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
+1. **Profile images (SEC-6 + FEAT-3):** move `pfp` to GridFS with an upload UI — the
+   main remaining P2; coordinate the user-contract change across backend + desktop.
+2. **Tighten contracts:** CLN-5 response models (carefully — see note).
+3. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
    step back on.
-3. **Auth hardening polish:** SEC-9 (refresh-token family revocation on reuse).
 4. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5).
 5. **Platform & polish:** FEAT-8 builds, remaining analytics & cleanup.

@@ -20,6 +20,8 @@
 
   pfp: String,              // base64-encoded string (stored inline)
 
+  tokenGeneration: Number,  // refresh-token family generation (bumped on reuse)
+
   createdAt: Date,
   updatedAt: Date
 }

@@ -52,10 +52,13 @@ def create_access_token(user_id: str, email: str) -> Dict[str, str]:
     return {"jwt": token, "expiresAt": expires_at.isoformat()}
 
 
-def create_refresh_token(user_id: str, email: str) -> Dict[str, str]:
+def create_refresh_token(
+    user_id: str, email: str, generation: int = 0
+) -> Dict[str, str]:
     """Create a long-lived refresh token (lifetime = refresh_token_expiry_days).
 
-    Carries a unique ``jti`` so it can be individually revoked / rotated.
+    Carries a unique ``jti`` (for individual revocation/rotation) and the user's
+    refresh-token ``gen`` (for family revocation on reuse).
     """
     now = datetime.now(tz=timezone.utc)
     expires_at = now + timedelta(days=settings.refresh_token_expiry_days)
@@ -67,6 +70,7 @@ def create_refresh_token(user_id: str, email: str) -> Dict[str, str]:
             "email": email,
             "type": REFRESH_TOKEN,
             "jti": jti,
+            "gen": generation,
             "iat": int(now.timestamp()),
             "exp": int(expires_at.timestamp()),
             "iss": "job-tracker-api",
