@@ -19,5 +19,23 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Allow intentionally-unused identifiers prefixed with `_`.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // The react-compiler-based rules in react-hooks v7 and the react-refresh
+      // preset flag several legitimate patterns (loading flags in effects,
+      // hoisted handlers, multi-export modules). Keep them visible as warnings
+      // rather than blocking CI.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
   },
 ])

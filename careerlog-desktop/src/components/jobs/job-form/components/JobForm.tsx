@@ -92,10 +92,8 @@ export const JobForm = forwardRef<JobFormHandle, {
                     <TextField
                       key={field.key}
                       {...commonProps}
-                      value={(values as any)[field.key] ?? ""}
-                      onChange={(v) =>
-                        setFieldValue(field.key as any, v)
-                      }
+                      value={String(values[field.key] ?? "")}
+                      onChange={(v) => setFieldValue(field.key, v)}
                     />
                   );
 
@@ -104,11 +102,9 @@ export const JobForm = forwardRef<JobFormHandle, {
                     <SelectField
                       key={field.key}
                       {...commonProps}
-                      value={(values as any)[field.key]}
+                      value={String(values[field.key] ?? "")}
                       options={field.options ?? []}
-                      onChange={(v) =>
-                        setFieldValue(field.key as any, v)
-                      }
+                      onChange={(v) => setFieldValue(field.key, v)}
                     />
                   );
 

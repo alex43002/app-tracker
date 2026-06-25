@@ -19,7 +19,7 @@ export function diffJobPayload(
   const payload: UpdateJobPayload = {};
 
   (Object.keys(values) as (keyof JobFormValues)[]).forEach((key) => {
-    const originalValue = (original as any)[key];
+    const originalValue = (original as unknown as Record<string, unknown>)[key];
     const nextValue = values[key];
 
     // ---- Resume (explicit handling) ----
@@ -35,7 +35,7 @@ export function diffJobPayload(
       // Never propagate null into UpdateJobPayload
       if (nextValue === null) return;
 
-      (payload as any)[key] = nextValue;
+      (payload as unknown as Record<string, unknown>)[key] = nextValue;
     }
   });
 

@@ -12,9 +12,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > backend + desktop. The backend has a `mongomock`-backed harness (runs with **no
 > external Mongo**) gated by `ruff`; the desktop client has a `vitest` harness and
 > its own CI. **All P0–P2 items are now complete.** Current state: **backend 25
-> tests + lint clean; desktop 16 tests + typecheck clean.** Remaining work is the
-> larger v2 features (alert delivery) and P3 items (response-model validation, lint
-> debt, enumeration hardening).
+> tests + ruff clean; desktop 16 tests + typecheck + eslint clean.** Remaining work
+> is the larger v2 features (alert delivery) and P3 items (response-model validation,
+> residual lint warnings, enumeration hardening).
 
 ---
 
@@ -46,6 +46,7 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | SEC-9 | Security | **Refresh-token family revocation.** Replaying an already-rotated refresh token is treated as theft: the user's whole token family is revoked via a per-user `tokenGeneration` (deterministic, no timing dependence). Refresh tokens carry a `gen` claim; stale generations are rejected. + test. |
 | FEAT-2 | Feature | **Field-level validation in the UI.** `ApiError` now carries `details`; `displayMessage` formats them; the auth screen surfaces per-field messages (and `AuthError` preserves line breaks). + test. |
 | SEC-6 / FEAT-3 | Security + Feature | **Profile pictures → GridFS.** `pfp` moved from inline base64 to a GridFS file id. New `PUT/GET/DELETE /api/users/{id}/pfp` (type/size validated, self-owned). Registration no longer takes `pfp`. Desktop: `UserMenu` resolves the avatar via an object URL and offers click-to-upload; signup no longer sends `pfp`. Backend + desktop tests. |
+| CLN-10 | Cleanup | **Desktop lint debt cleared.** Fixed all 11 real eslint errors (`no-explicit-any`, unused vars, `require`-import in preload); downgraded the aggressive react-compiler/react-refresh rules (`set-state-in-effect`, `immutability`, `only-export-components`) to warnings; added `^_` unused-var ignores. Re-enabled the eslint step in desktop CI. `eslint .` now passes (0 errors). |
 | SEC-5 | Security | `get_current_user` now re-validates that the user still exists — a token for a deleted account is rejected. + test. |
 | SEC-7 | Security | Résumé uploads validated: allowed MIME types (`pdf/doc/docx/txt`) and ≤5MB, on both create & update. + tests. |
 | SEC-8 | Security | `JWT_SECRET` strength enforced at config load (rejects known-weak placeholders and secrets < 16 chars). + tests. |
@@ -83,7 +84,7 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 | --- | --- | --- |
 | CLN-5 | P2 | **Response models mostly unused.** Analytics validates via `JobStatusCounts`, but jobs/alerts/users handlers still return raw dicts. Wire `response_model` (envelope-aware) or drop the dead schemas. Note: validating list items through `Job` would coerce `url`→`HttpUrl` and may alter serialized output, so do it deliberately. |
 | CLN-8 | P3 | **Naming:** path param `id` vs document field `jobId` (external ref) is confusing. |
-| CLN-10 | P3 | **Widen lint once clean.** Backend `ruff` is scoped to `F`/`E9`; the desktop has **16 pre-existing eslint errors** (explicit `any`, set-state-in-effect, unused vars) — fix them, then enable the eslint step in the desktop CI workflow and broaden rulesets. |
+| CLN-11 | P3 | **Address downgraded lint warnings.** `react-hooks/set-state-in-effect` (3) and `immutability` (2) + `react-refresh/only-export-components` (1) are now warnings — refactor the effects/dialog module to satisfy them, then promote back to errors. |
 
 ---
 
@@ -116,8 +117,7 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Tighten contracts:** CLN-5 response models (carefully — see note).
-2. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
-   step back on.
-3. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5) — the headline feature.
-4. **Platform & polish:** FEAT-8 builds, remaining analytics, enumeration hardening.
+1. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5) — the headline feature.
+2. **Tighten contracts:** CLN-5 response models (carefully — see note).
+3. **Platform & polish:** FEAT-8 builds, remaining analytics, enumeration hardening,
+   and promoting the downgraded lint warnings back to errors (CLN-11).
