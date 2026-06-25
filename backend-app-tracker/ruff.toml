@@ -1,0 +1,6 @@
+# Conservative ruff config: catch real bugs (pyflakes + syntax) without
+# imposing broad style churn on the existing codebase.
+line-length = 100
+
+[lint]
+select = ["F", "E9"]

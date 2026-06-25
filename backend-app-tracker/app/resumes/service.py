@@ -29,7 +29,7 @@ def get_resume_file(db, resume_id: str, user_id: str):
     # Ownership enforcement (same rule as jobs)
     if file.metadata.get("userId") != user_id:
         raise_error(
-            code="FORBIDDEN",
+            code="RESOURCE_OWNERSHIP_VIOLATION",
             message="Not authorized to access this resume",
             http_status=status.HTTP_403_FORBIDDEN,
         )

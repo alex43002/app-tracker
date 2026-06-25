@@ -42,10 +42,10 @@ export function loadAuthToken() {
   return token;
 }
 
-export function saveAuthToken(token: string, expiresIn: number) {
-  const expiresAt = Date.now() + expiresIn * 1000;
+export function saveAuthToken(token: string, expiresAt: string) {
+  const expiresAtMs = new Date(expiresAt).getTime();
   localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(EXPIRY_KEY, String(expiresAt));
+  localStorage.setItem(EXPIRY_KEY, String(expiresAtMs));
   setAuthToken(token);
 }
 

@@ -24,6 +24,7 @@ const EMPTY_VALUES: JobFormValues = {
   resume: null,
   location: "",
   employmentType: "full-time",
+  notes: null,
 };
 
 /**
@@ -69,6 +70,7 @@ export function useJobForm(
         resume: job.resume ?? null,
         location: job.location,
         employmentType: job.employmentType,
+        notes: job.notes ?? null,
       });
     } else {
       setValues(EMPTY_VALUES);

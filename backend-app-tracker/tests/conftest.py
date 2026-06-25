@@ -1,8 +1,35 @@
 import os
+
+# Settings are validated at import time, so required env vars must exist before
+# `app.config` is imported. These are test-only values.
+os.environ.setdefault("MONGODB_URI", "mongodb://localhost:27017/jobtracker_test")
+os.environ.setdefault("MONGODB_DB_NAME", "jobtracker_test")
+os.environ.setdefault("JWT_SECRET", "test-secret-do-not-use-in-prod")
+os.environ.setdefault("JWT_EXPIRY_HOURS", "2")
+
+import mongomock
+import mongomock.gridfs
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+# Back the app with an in-memory Mongo (incl. GridFS) so the suite needs no
+# external database.
+mongomock.gridfs.enable_gridfs_integration()
+
+import app.database as database
+
+_mock_client = mongomock.MongoClient()
+_mock_db = _mock_client[os.environ["MONGODB_DB_NAME"]]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _patch_db():
+    database._client = _mock_client
+    database._db = _mock_db
+    yield
+
+
+from app.main import app  # noqa: E402  (imported after env + db patch)
 
 
 @pytest.fixture(scope="session")
@@ -18,7 +45,7 @@ def auth_payload():
         "phoneNumber": "1234567890",
         "firstName": "Test",
         "lastName": "User",
-        "pfp": "base64pfp"
+        "pfp": "base64pfp",
     }
 
 

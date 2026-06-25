@@ -1,86 +1,75 @@
 # CareerLog REST API — v1 Contract
 
+> This document reflects the **currently implemented** behaviour of the backend in
+> `app/`. It is the authoritative source for the desktop client. When code and this
+> document disagree, the code wins — update this file.
+
 **Base URL (local)**
 
 ```
 http://127.0.0.1:8000
 ```
 
-**All application endpoints**
+**Application endpoints** are mounted under `/api/*`. An unauthenticated
+`GET /health` returns `{ "status": "ok" }`.
 
-```
-/api/*
-```
-
-**Auth**
-
-* JWT Bearer token
-* Header:
+**Auth** — JWT Bearer token:
 
 ```
 Authorization: Bearer <JWT>
 ```
 
+The token (HS256) is valid for `JWT_EXPIRY_HOURS` (default **2h**) and carries
+`sub` (user id), `email`, issuer `job-tracker-api`, audience `desktop-client`,
+and `scope: "user"`.
+
 ---
 
 ## Global Conventions
 
-### Response Envelope (ALL endpoints)
+### Response Envelope (all JSON endpoints)
 
 ```json
-{
-  "success": true,
-  "data": {},
-  "error": null
-}
+{ "success": true,  "data": {}, "error": null }
 ```
 
 On error:
 
 ```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human readable message"
-  }
-}
+{ "success": false, "data": null, "error": { "code": "ERROR_CODE", "message": "Human readable message" } }
 ```
 
----
+> All errors — including framework/validation errors — are returned as the bare
+> envelope above (global exception handlers normalize them). Request-validation
+> failures additionally include `error.details: [{ field, message }]`.
 
-### Pagination (List endpoints)
+### Pagination (list endpoints: jobs, alerts)
 
-Query params:
+Query params: `?page=1&pageSize=25&sortBy=createdAt&sortOrder=asc&filters=<json>`
 
-```
-?page=1&pageSize=10
-```
+- `page` ≥ 1 (default `1`)
+- `pageSize` 1–100 (default **25**)
+- `sortBy` — any document field (default `createdAt`)
+- `sortOrder` — `asc` | `desc` (default `asc`)
+- `filters` — optional JSON-encoded object merged into the query
 
-Response shape:
+Response `data` shape:
 
 ```json
 {
   "items": [],
-  "meta": {
-    "page": 1,
-    "pageSize": 10,
-    "totalItems": 0,
-    "totalPages": 0
-  }
+  "meta": { "page": 1, "pageSize": 25, "totalItems": 0, "totalPages": 0 }
 }
 ```
 
----
+`filters` is **whitelisted per resource** and can never override the `userId`
+scope; unknown keys, Mongo operators (`$...`), and operator-object values are
+rejected with `VALIDATION_ERROR` (400). Allowed fields:
 
-### Filtering (optional)
+- **jobs:** `status`, `employmentType`, `company`, `location`
+- **alerts:** `smsOrEmail`
 
-```
-?filters={"field":"value"}
-```
-
-JSON-encoded string.
+`sortBy` is likewise restricted to known fields (falls back to `createdAt`).
 
 ---
 
@@ -97,25 +86,34 @@ Request:
 ```json
 {
   "email": "test@example.com",
-  "password": "plaintext",
-  "fullName": "Test User",
+  "password": "plaintext (min 8 chars)",
+  "phoneNumber": "1234567890",
+  "firstName": "Test",
+  "lastName": "User",
   "pfp": "base64-string"
 }
 ```
 
-Response:
+Response (`data`): the new user **plus** an issued session token.
 
 ```json
 {
-  "success": true,
-  "data": {
-    "userId": "string"
+  "user": {
+    "id": "string",
+    "email": "test@example.com",
+    "phoneNumber": "1234567890",
+    "firstName": "Test",
+    "lastName": "User",
+    "pfp": "base64-string",
+    "createdAt": "ISO-8601",
+    "updatedAt": "ISO-8601"
   },
-  "error": null
+  "jwt": "JWT",
+  "expiresAt": "ISO-8601"
 }
 ```
 
----
+Errors: `RESOURCE_ALREADY_EXISTS` (409) if the email is taken.
 
 ### Login
 
@@ -126,29 +124,41 @@ POST /api/auth/login
 Request:
 
 ```json
-{
-  "email": "test@example.com",
-  "password": "plaintext"
-}
+{ "email": "test@example.com", "password": "plaintext" }
 ```
 
-Response:
+Response (`data`): identical shape to Register — `{ user, jwt, expiresAt }`.
+
+Errors: `AUTH_INVALID_CREDENTIALS` (401).
+
+### Refresh
+
+```
+POST /api/auth/refresh
+```
+
+Re-issues a token from an existing valid one.
+
+Request:
 
 ```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "JWT",
-    "tokenType": "bearer",
-    "expiresIn": 7200
-  },
-  "error": null
-}
+{ "jwt": "current-valid-JWT" }
 ```
+
+Response (`data`):
+
+```json
+{ "jwt": "new-JWT", "expiresAt": "ISO-8601" }
+```
+
+Errors: `AUTH_TOKEN_INVALID` (401) if the supplied token is invalid/expired.
 
 ---
 
 ## Users
+
+All user routes require auth and enforce **self-ownership** — the `{id}` in the
+path must equal the JWT `sub`, otherwise `RESOURCE_OWNERSHIP_VIOLATION` (403).
 
 ### Get Current User
 
@@ -156,68 +166,54 @@ Response:
 GET /api/users/me
 ```
 
-Response:
+Response (`data`):
 
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "string",
-    "email": "string",
-    "fullName": "string",
-    "pfp": "string",
-    "createdAt": "ISO-8601"
-  },
-  "error": null
+  "id": "string",
+  "email": "string",
+  "phoneNumber": "string",
+  "firstName": "string",
+  "lastName": "string",
+  "pfp": "string",
+  "createdAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
 }
 ```
 
----
+### Get User by Id
+
+```
+GET /api/users/{id}
+```
+
+Same response shape as `/me`. `RESOURCE_OWNERSHIP_VIOLATION` (403) if `id` is not
+the caller; `RESOURCE_NOT_FOUND` (404) if missing.
 
 ### Update User
 
 ```
-PUT /api/users/me
+PUT /api/users/{id}
 ```
 
-Request (partial allowed):
+Request (partial; at least one field required):
 
 ```json
-{
-  "fullName": "New Name",
-  "pfp": "new-base64"
-}
+{ "phoneNumber": "...", "firstName": "...", "lastName": "...", "pfp": "..." }
 ```
 
-Response:
+Response (`data`): `{ "updatedAt": "ISO-8601" }`. Empty payload →
+`VALIDATION_ERROR` (400).
 
-```json
-{
-  "success": true,
-  "data": {
-    "updatedAt": "ISO-8601"
-  },
-  "error": null
-}
-```
-
----
+> Note: `email` is **not** updatable via this endpoint.
 
 ### Delete User
 
 ```
-DELETE /api/users/me
+DELETE /api/users/{id}
 ```
 
-Response:
-
-```json
-{
-  "success": true,
-  "data": null,
-  "error": null
-}
-```
+Response (`data`): `null`.
 
 ---
 
@@ -229,90 +225,81 @@ Response:
 POST /api/jobs/
 ```
 
-Request:
+Accepts **either** `application/json` **or** `multipart/form-data` (when uploading
+a résumé file under the `resume` field).
+
+Fields:
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `url` | string (URL) | ✅ | Validated as an `HttpUrl` |
+| `jobTitle` | string | ✅ | |
+| `company` | string | ✅ | |
+| `salaryTarget` | number | ✅ | |
+| `status` | string | ✅ | e.g. `applied`, `interviewing`, `offer`, `rejected` |
+| `location` | string | ✅ | |
+| `employmentType` | string | ✅ | e.g. `full-time` |
+| `jobId` | string | — | Optional external reference |
+| `salaryRange` | string | — | |
+| `notes` | string | — | Free-text notes |
+| `resume` | file (multipart) / GridFS id (json) | — | Stored in GridFS; ≤5MB; `pdf`, `doc`, `docx`, or `txt` only |
+
+Response (`data`):
 
 ```json
-{
-  "company": "Google",
-  "title": "Software Engineer",
-  "location": "NYC",
-  "status": "applied",
-  "notes": "Applied via referral"
-}
+{ "id": "string", "createdAt": "ISO-8601", "updatedAt": "ISO-8601" }
 ```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "string",
-    "createdAt": "ISO-8601"
-  },
-  "error": null
-}
-```
-
----
 
 ### List Jobs
 
 ```
-GET /api/jobs/?page=1&pageSize=10
+GET /api/jobs/?page=1&pageSize=25&sortBy=createdAt&sortOrder=asc
 ```
 
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "string",
-        "company": "string",
-        "title": "string",
-        "status": "string",
-        "createdAt": "ISO-8601"
-      }
-    ],
-    "meta": {}
-  },
-  "error": null
-}
-```
-
----
+Response `data` is paginated. Each item is the full job document with `id`
+(string) instead of `_id`, including `userId`, all job fields, `resume` (GridFS
+file id or `null`), `createdAt`, `updatedAt`.
 
 ### Update Job
 
 ```
-PUT /api/jobs/{jobId}
+PUT /api/jobs/{id}
 ```
 
-Request (partial allowed):
-
-```json
-{
-  "status": "interviewing",
-  "notes": "Recruiter call scheduled"
-}
-```
-
----
+Partial update. Accepts JSON or multipart (to replace the résumé — the previous
+GridFS file is deleted). Response (`data`): `{ "updatedAt": "ISO-8601" }`.
+Empty payload → `VALIDATION_ERROR` (400); unknown/foreign job →
+`RESOURCE_NOT_FOUND` (404).
 
 ### Delete Job
 
 ```
-DELETE /api/jobs/{jobId}
+DELETE /api/jobs/{id}
 ```
+
+Deletes the job and its GridFS résumé (if any). Response (`data`): `null`.
+
+---
+
+## Résumés
+
+### Download Résumé
+
+```
+GET /api/resumes/{resume_id}
+```
+
+`resume_id` is the **GridFS file id** stored on a job's `resume` field. Returns the
+raw file bytes (not an envelope) with `Content-Disposition: attachment` and the
+stored content type. Ownership is enforced via the file's `metadata.userId`.
+
+Errors: `INVALID_RESUME_ID` (400), `RESUME_NOT_FOUND` (404), `FORBIDDEN` (403).
 
 ---
 
 ## Alerts
 
-Alerts are **customizable configuration records**, not executed notifications (v1).
+Alerts are **configuration records only** in v1 — stored but never delivered.
 
 ### Create Alert
 
@@ -330,107 +317,92 @@ Request:
 }
 ```
 
-Response:
+`smsOrEmail` must be `"sms"` or `"email"`. Response (`data`):
 
 ```json
-{
-  "success": true,
-  "data": {
-    "id": "string",
-    "createdAt": "ISO-8601"
-  },
-  "error": null
-}
+{ "id": "string", "createdAt": "ISO-8601", "updatedAt": "ISO-8601" }
 ```
-
----
 
 ### List Alerts
 
 ```
-GET /api/alerts/?page=1&pageSize=10
+GET /api/alerts/?page=1&pageSize=25
 ```
 
-Response:
+Paginated. Each item:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "string",
-        "scheduledAlert": "ISO-8601",
-        "smsOrEmail": "email",
-        "message": "string",
-        "lastAlertAt": null
-      }
-    ],
-    "meta": {}
-  },
-  "error": null
+  "id": "string",
+  "userId": "string",
+  "scheduledAlert": "ISO-8601",
+  "smsOrEmail": "email",
+  "message": "string",
+  "lastAlertAt": null,
+  "createdAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
 }
 ```
-
----
 
 ### Update Alert
 
 ```
-PUT /api/alerts/{alertId}
+PUT /api/alerts/{id}
 ```
 
-Request:
-
-```json
-{
-  "message": "Second follow-up",
-  "smsOrEmail": "sms"
-}
-```
-
----
+Partial (`scheduledAlert`, `smsOrEmail`, `message`). Response (`data`):
+`{ "updatedAt": "ISO-8601" }`.
 
 ### Delete Alert
 
 ```
-DELETE /api/alerts/{alertId}
+DELETE /api/alerts/{id}
+```
+
+Response (`data`): `null`.
+
+---
+
+## Analytics
+
+### Job Status Counts
+
+```
+GET /api/analytics/status-counts
+```
+
+Response (`data`):
+
+```json
+{ "applied": 0, "interviewing": 0, "offer": 0, "rejected": 0, "total": 0 }
 ```
 
 ---
 
-## Error Codes (v1)
+## Error Codes (v1, as implemented)
 
-| Code             | Meaning                    |
-| ---------------- | -------------------------- |
-| AUTH_REQUIRED    | Missing or invalid JWT     |
-| FORBIDDEN        | Resource not owned by user |
-| NOT_FOUND        | Resource does not exist    |
-| VALIDATION_ERROR | Invalid input              |
-| INTERNAL_ERROR   | Unexpected server error    |
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `AUTH_REQUIRED` | 401 | No/!malformed Authorization header |
+| `AUTH_TOKEN_INVALID` | 401 | Malformed or expired JWT |
+| `AUTH_INVALID_CREDENTIALS` | 401 | Bad email/password on login |
+| `RESOURCE_ALREADY_EXISTS` | 409 | Email already registered |
+| `RESOURCE_OWNERSHIP_VIOLATION` | 403 | Resource not owned by caller (users & résumés) |
+| `RESOURCE_NOT_FOUND` | 404 | Resource does not exist |
+| `INVALID_RESUME_ID` | 400 | Résumé id is not a valid ObjectId |
+| `RESUME_NOT_FOUND` | 404 | No GridFS file for that id |
+| `VALIDATION_ERROR` | 400 / 413 / 422 | Empty update, bad/forbidden filters, request validation failure, or oversized/invalid résumé |
 
----
-
-## Explicit v1 Non-Goals (Important for Frontend)
-
-The frontend **must not assume**:
-
-* Alerts actually send emails/SMS
-* Background jobs exist
-* Real-time updates
-* WebSockets
-* Push notifications
-
-These are **v2 features**.
+> Request-validation failures (missing required field, bad `EmailStr`/`HttpUrl`)
+> return `VALIDATION_ERROR` (422) as the standard envelope, with
+> `error.details: [{ field, message }]`.
 
 ---
 
-## Frontend Assumptions (Safe)
+## v1 Non-Goals (the frontend must not assume these exist)
 
-The frontend **can assume**:
+- Alerts actually send email/SMS
+- Background jobs / schedulers
+- Real-time updates, WebSockets, push notifications
 
-* Stable response envelopes
-* Partial updates allowed
-* Pagination everywhere
-* Ownership enforced server-side
-* JWT stored client-side
+These are **v2** features — see [ROADMAP.md](../ROADMAP.md).

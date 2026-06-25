@@ -1,5 +1,4 @@
 from fastapi import HTTPException, status
-from typing import Optional
 
 from app.common.responses import failure
 

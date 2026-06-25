@@ -25,5 +25,6 @@ export function normalizeJobPayload(
     resume: values.resume,
     location: values.location.trim(),
     employmentType: values.employmentType,
+    notes: values.notes?.trim() || null,
   };
 }

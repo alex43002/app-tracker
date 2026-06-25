@@ -4,5 +4,5 @@ class JobStatusCounts(BaseModel):
     applied: int
     interviewing: int
     offer: int
-    denied: int
+    rejected: int
     total: int

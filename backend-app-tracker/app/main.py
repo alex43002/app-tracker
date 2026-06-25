@@ -1,5 +1,15 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.config import settings
+from app.database import get_db, ensure_indexes
+from app.common.responses import failure
 
 from app.auth.routes import router as auth_router
 from app.users.routes import router as users_router
@@ -8,29 +18,95 @@ from app.alerts.routes import router as alerts_router
 from app.resumes.routes import router as resumes_router
 from app.analytics.routes import router as analytics_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure the documented indexes exist before serving traffic.
+    ensure_indexes(get_db())
+    yield
+
+
 app = FastAPI(
     title="Job Tracker API",
     version="v1",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# CORS (locked to desktop app use; can be tightened later)
+# CORS — restricted to the configured desktop/dev origins (see Settings).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten when Electron origin is fixed
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
 
+
+def _field_errors(exc) -> list[dict]:
+    """Reduce a (Request)ValidationError to a JSON-safe field/message list."""
+    out = []
+    for err in exc.errors():
+        loc = [str(p) for p in err.get("loc", []) if p not in ("body",)]
+        out.append({"field": ".".join(loc), "message": err.get("msg", "Invalid value")})
+    return out
+
+
+def _validation_response(exc) -> JSONResponse:
+    envelope = failure(code="VALIDATION_ERROR", message="Request validation failed")
+    envelope["error"]["details"] = _field_errors(exc)
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=envelope,
+    )
+
+
+_STATUS_CODE_TO_ERROR = {
+    401: "AUTH_REQUIRED",
+    403: "FORBIDDEN",
+    404: "RESOURCE_NOT_FOUND",
+}
+
+
+# Standardize every HTTPException onto the bare error envelope. Handlers that
+# already raise an envelope (via raise_error / auth) pass it straight through;
+# framework-raised exceptions (e.g. missing bearer token) get wrapped.
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict) and "success" in detail:
+        content = detail
+    else:
+        content = failure(
+            code=_STATUS_CODE_TO_ERROR.get(exc.status_code, "HTTP_ERROR"),
+            message=str(detail),
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content,
+        headers=getattr(exc, "headers", None),
+    )
+
+
+# Normalize validation failures into the standard error envelope so the desktop
+# client can surface them uniformly (instead of FastAPI's default 422 shape).
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(request: Request, exc: RequestValidationError):
+    return _validation_response(exc)
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_handler(request: Request, exc: ValidationError):
+    return _validation_response(exc)
+
+
 # Health check (non-authenticated)
 @app.get("/health")
 def health_check():
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
+
 
 # API Routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])

@@ -20,6 +20,7 @@ export type CreateJobPayload = {
   resume: File | null;
   location: string;
   employmentType: string;
+  notes?: string | null;
 };
 
 /**
@@ -76,13 +77,13 @@ export function fetchJobs(
  * - Returns a real File
  */
 export async function fetchJobResume(
-  jobId: string
+  resumeId: string
 ): Promise<File | null> {
   const token =
     localStorage.getItem("careerlog_token");
 
   const response = await fetch(
-    `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${jobId}`,
+    `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${resumeId}`,
     {
       headers: token
         ? { Authorization: `Bearer ${token}` }

@@ -15,6 +15,7 @@ export interface Job {
   resume: File | null;
   location: string;
   employmentType: string;
+  notes?: string | null;
 
   createdAt: string;
   updatedAt: string;

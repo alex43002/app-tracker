@@ -21,7 +21,8 @@ export type JobFormFieldKey =
   | "salaryTarget"
   | "salaryRange"
   | "resume"
-  | "status";
+  | "status"
+  | "notes";
 
 export type JobFormSectionKey =
   | "jobInfo"
@@ -126,5 +127,11 @@ export const JOB_FORM_FIELDS: JobFormFieldConfig[] = [
       { value: "offer", label: "Offer" },
       { value: "rejected", label: "Rejected" },
     ],
+  },
+  {
+    key: "notes",
+    label: "Notes",
+    section: "applicationDetails",
+    component: "text",
   },
 ];

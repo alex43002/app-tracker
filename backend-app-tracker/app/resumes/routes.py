@@ -1,11 +1,7 @@
 from fastapi import APIRouter, Depends, Response
-from bson import ObjectId
-from bson.errors import InvalidId
-from gridfs import GridFS
 
 from app.database import get_db
 from app.common.auth import get_current_user
-from app.common.errors import raise_error
 from app.resumes import service
 
 router = APIRouter()

@@ -17,6 +17,7 @@ export interface JobFormValues {
   resume: File | null;
   location: string;
   employmentType: string;
+  notes: string | null;
 }
 
 /**

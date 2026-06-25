@@ -151,7 +151,7 @@ Contributions are welcome. The two repositories are versioned against the **Care
 ### Reference docs
 
 - [architecture.md](architecture.md) — end-to-end system design.
-- [backend-app-tracker/API_CONTRACT.MD](backend-app-tracker/API_CONTRACT.MD) / [API_CONTRACT_V2.MD](backend-app-tracker/API_CONTRACT_V2.MD) — request/response contracts.
+- [backend-app-tracker/API_CONTRACT_V2.MD](backend-app-tracker/API_CONTRACT_V2.MD) — the v1 request/response contract (authoritative).
 - [backend-app-tracker/MONGO_SCHEMA.MD](backend-app-tracker/MONGO_SCHEMA.MD) — data model.
 - [backend-app-tracker/README.MD](backend-app-tracker/README.MD) and [careerlog-desktop/README.md](careerlog-desktop/README.md) — per-repository setup details.
 

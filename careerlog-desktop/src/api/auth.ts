@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { User } from "../types/user";
 
 /* ============================================================
    Auth Types
@@ -7,12 +8,6 @@ import { apiClient } from "./client";
 export interface LoginRequest {
   email: string;
   password: string;
-}
-
-export interface LoginResponse {
-  jwt: string;
-  tokenType: "bearer";
-  expiresIn: number;
 }
 
 export interface SignupRequest {
@@ -24,9 +19,14 @@ export interface SignupRequest {
   pfp: string;
 }
 
-
-export interface SignupResponse {
-  userId: string;
+/**
+ * Both /login and /register return the authenticated user plus an issued
+ * session token. `expiresAt` is an ISO-8601 timestamp.
+ */
+export interface AuthSession {
+  user: User;
+  jwt: string;
+  expiresAt: string;
 }
 
 /* ============================================================
@@ -34,9 +34,9 @@ export interface SignupResponse {
 ============================================================ */
 
 export function login(request: LoginRequest) {
-    return apiClient.post<LoginResponse>("/api/auth/login", request);;
+  return apiClient.post<AuthSession>("/api/auth/login", request);
 }
 
 export function signup(request: SignupRequest) {
-  return apiClient.post<SignupResponse>("/api/auth/register", request);
+  return apiClient.post<AuthSession>("/api/auth/register", request);
 }

@@ -1,31 +1,27 @@
 from datetime import datetime, timezone
-import json
 from bson import ObjectId
 from pymongo.collection import Collection
 from fastapi import status
 
 from app.common.errors import raise_error
+from app.common.query import parse_filters, paginate
+
+# Fields a client is allowed to filter / sort alerts by.
+ALERT_FILTERABLE_FIELDS = ("smsOrEmail",)
+ALERT_SORTABLE_FIELDS = ("createdAt", "updatedAt", "scheduledAlert")
 
 
-def parse_filters(raw_filters: str | None, user_id: str) -> dict:
-    base = {"userId": user_id}
-
-    if not raw_filters:
-        return base
-
-    try:
-        filters = json.loads(raw_filters)
-        if not isinstance(filters, dict):
-            raise ValueError
-    except Exception:
-        raise_error(
-            code="VALIDATION_ERROR",
-            message="Invalid filters format",
-            http_status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    base.update(filters)
-    return base
+def _serialize_alert(alert: dict) -> dict:
+    return {
+        "id": str(alert["_id"]),
+        "userId": alert["userId"],
+        "scheduledAlert": alert["scheduledAlert"],
+        "smsOrEmail": alert["smsOrEmail"],
+        "message": alert["message"],
+        "lastAlertAt": alert.get("lastAlertAt"),
+        "createdAt": alert["createdAt"],
+        "updatedAt": alert["updatedAt"],
+    }
 
 
 def create_alert(alerts: Collection, payload, user_id: str):
@@ -60,49 +56,24 @@ def list_alerts(
     sort_order: str,
     filters: str | None,
 ):
-    mongo_filters = parse_filters(filters, user_id)
+    mongo_filters = parse_filters(filters, user_id, ALERT_FILTERABLE_FIELDS)
 
-    sort_direction = 1 if sort_order == "asc" else -1
-    skip = (page - 1) * page_size
-
-    cursor = (
-        alerts.find(mongo_filters)
-        .sort(sort_by, sort_direction)
-        .skip(skip)
-        .limit(page_size)
+    return paginate(
+        alerts,
+        mongo_filters,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        serializer=_serialize_alert,
+        sortable_fields=ALERT_SORTABLE_FIELDS,
     )
-
-    items = []
-    for alert in cursor:
-        items.append({
-            "id": str(alert["_id"]),
-            "userId": alert["userId"],
-            "scheduledAlert": alert["scheduledAlert"],
-            "smsOrEmail": alert["smsOrEmail"],
-            "message": alert["message"],
-            "lastAlertAt": alert.get("lastAlertAt"),
-            "createdAt": alert["createdAt"],
-            "updatedAt": alert["updatedAt"],
-        })
-
-    total_items = alerts.count_documents(mongo_filters)
-    total_pages = (total_items + page_size - 1) // page_size
-
-    return {
-        "items": items,
-        "meta": {
-            "page": page,
-            "pageSize": page_size,
-            "totalItems": total_items,
-            "totalPages": total_pages,
-        },
-    }
 
 
 def update_alert(alerts: Collection, alert_id: str, user_id: str, payload):
     update_fields = {
         k: v
-        for k, v in payload.dict().items()
+        for k, v in payload.model_dump().items()
         if v is not None
     }
 

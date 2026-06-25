@@ -20,3 +20,19 @@ def get_db() -> Database:
         client = get_client()
         _db = client[settings.mongodb_db_name]
     return _db
+
+
+def ensure_indexes(db: Database) -> None:
+    """Create the indexes documented in MONGO_SCHEMA.MD.
+
+    Idempotent — safe to call on every startup.
+    """
+    db.users.create_index("email", unique=True)
+
+    db.jobs.create_index("userId")
+    db.jobs.create_index("status")
+    db.jobs.create_index("employmentType")
+    db.jobs.create_index([("createdAt", -1)])
+
+    db.alerts.create_index("userId")
+    db.alerts.create_index("scheduledAlert")

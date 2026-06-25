@@ -32,19 +32,18 @@ export default function Login() {
     setLoading(true);
 
     try {
-      if (isSignup) {
-        await signup({
-          email,
-          password,
-          firstName,
-          lastName,
-          phoneNumber,
-          pfp: "",
-        });
-      }
+      const session = isSignup
+        ? await signup({
+            email,
+            password,
+            firstName,
+            lastName,
+            phoneNumber,
+            pfp: "",
+          })
+        : await login({ email, password });
 
-      const res = await login({ email, password });
-      saveAuthToken(res.jwt, res.expiresIn);
+      saveAuthToken(session.jwt, session.expiresAt);
       navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {

@@ -24,6 +24,7 @@ class Job(BaseModel):
     resume: Optional[str] = None  # GridFS file id
     location: str
     employmentType: str
+    notes: Optional[str] = None
 
     createdAt: datetime
     updatedAt: datetime
@@ -44,6 +45,7 @@ class CreateJobRequest(BaseModel):
     resume: Optional[str] = None
     location: str
     employmentType: str
+    notes: Optional[str] = None
 
 
 class UpdateJobRequest(BaseModel):
@@ -57,6 +59,7 @@ class UpdateJobRequest(BaseModel):
     resume: Optional[str] = None
     location: Optional[str] = None
     employmentType: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # =====================

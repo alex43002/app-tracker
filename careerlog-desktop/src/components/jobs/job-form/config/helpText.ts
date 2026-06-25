@@ -39,6 +39,9 @@ export const HELP_TEXT = {
 
   status:
     "The current stage of your application process, such as applied, interviewing, offer, or rejected.",
+
+  notes:
+    "Optional free-text notes for this application — e.g. referral name, recruiter contact, or follow-up reminders.",
 } as const;
 
 export type HelpTextKey = keyof typeof HELP_TEXT;

@@ -259,8 +259,7 @@ Test: `pytest`. CI runs the suite against a `mongo:7` service on every push/PR t
 ## 7. Versioning & Contracts
 
 The frontend targets **CareerLog API v1**. The request/response shapes are pinned in
-the backend's [API_CONTRACT.MD](backend-app-tracker/API_CONTRACT.MD) /
-[API_CONTRACT_V2.MD](backend-app-tracker/API_CONTRACT_V2.MD) and
+the backend's [API_CONTRACT_V2.MD](backend-app-tracker/API_CONTRACT_V2.MD) and
 [MONGO_SCHEMA.MD](backend-app-tracker/MONGO_SCHEMA.MD). Breaking frontend changes
 must align with backend versioning; the uniform response envelope and pagination
 contract are the stable seam between the two repositories.

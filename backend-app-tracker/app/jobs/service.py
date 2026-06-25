@@ -1,33 +1,50 @@
 from datetime import datetime, timezone
-import json
 from bson import ObjectId
-from bson.errors import InvalidId
 
 from pymongo.collection import Collection
 from gridfs import GridFS
 
 from app.common.errors import raise_error
+from app.common.query import parse_filters, paginate
 from fastapi import status
 
-def parse_filters(raw_filters: str | None, user_id: str) -> dict:
-    base = {"userId": user_id}
+# Fields a client is allowed to filter / sort jobs by.
+JOB_FILTERABLE_FIELDS = ("status", "employmentType", "company", "location")
+JOB_SORTABLE_FIELDS = ("createdAt", "updatedAt", "company", "jobTitle", "status")
 
-    if not raw_filters:
-        return base
+# Résumé upload constraints.
+ALLOWED_RESUME_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
+MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
 
-    try:
-        filters = json.loads(raw_filters)
-        if not isinstance(filters, dict):
-            raise ValueError
-    except Exception:
+
+def read_validated_resume(upload) -> bytes:
+    """Validate an uploaded résumé's type/size and return its bytes."""
+    if upload.content_type not in ALLOWED_RESUME_TYPES:
         raise_error(
             code="VALIDATION_ERROR",
-            message="Invalid filters format",
+            message="Unsupported resume file type",
             http_status=status.HTTP_400_BAD_REQUEST,
         )
 
-    base.update(filters)
-    return base
+    data = upload.file.read()
+    if len(data) > MAX_RESUME_BYTES:
+        raise_error(
+            code="VALIDATION_ERROR",
+            message="Resume exceeds the 5MB size limit",
+            http_status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        )
+    return data
+
+
+def _serialize_job(job: dict) -> dict:
+    job["id"] = str(job["_id"])
+    del job["_id"]
+    return job
 
 
 def create_job(jobs: Collection, payload, user_id: str):
@@ -45,6 +62,7 @@ def create_job(jobs: Collection, payload, user_id: str):
         "resume": payload.resume,
         "location": payload.location,
         "employmentType": payload.employmentType,
+        "notes": payload.notes,
         "createdAt": now,
         "updatedAt": now,
     }
@@ -68,42 +86,24 @@ def list_jobs(
     sort_order: str,
     filters: str | None,
 ):
-    mongo_filters = parse_filters(filters, user_id)
+    mongo_filters = parse_filters(filters, user_id, JOB_FILTERABLE_FIELDS)
 
-    sort_direction = 1 if sort_order == "asc" else -1
-    skip = (page - 1) * page_size
-
-    cursor = (
-        jobs.find(mongo_filters)
-        .sort(sort_by, sort_direction)
-        .skip(skip)
-        .limit(page_size)
+    return paginate(
+        jobs,
+        mongo_filters,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        serializer=_serialize_job,
+        sortable_fields=JOB_SORTABLE_FIELDS,
     )
-
-    items = []
-    for job in cursor:
-        job["id"] = str(job["_id"])
-        del job["_id"]
-        items.append(job)
-
-    total_items = jobs.count_documents(mongo_filters)
-    total_pages = (total_items + page_size - 1) // page_size
-
-    return {
-        "items": items,
-        "meta": {
-            "page": page,
-            "pageSize": page_size,
-            "totalItems": total_items,
-            "totalPages": total_pages,
-        },
-    }
 
 
 def update_job(jobs: Collection, job_id: str, user_id: str, payload):
     update_fields = {
         k: (str(v) if k == "url" else v)
-        for k, v in payload.dict().items()
+        for k, v in payload.model_dump().items()
         if v is not None
     }
 

@@ -36,9 +36,10 @@ async def create_job(
 
 
         if resume:
+            resume_bytes = service.read_validated_resume(resume)
             resume_id = str(
                 fs.put(
-                    resume.file,
+                    resume_bytes,
                     filename=resume.filename,
                     content_type=resume.content_type,
                     metadata={"userId": current_user_id},
@@ -56,6 +57,7 @@ async def create_job(
             resume=resume_id,
             location=form["location"],
             employmentType=form["employmentType"],
+            notes=form.get("notes"),
         )
 
     # ───────────────
@@ -123,12 +125,14 @@ async def update_job(
         if resume:
             existing_resume = existing.get("resume")
 
+            resume_bytes = service.read_validated_resume(resume)
+
             if existing_resume and service.is_valid_object_id(existing_resume):
                 fs.delete(ObjectId(existing_resume))
 
             update_fields["resume"] = str(
                 fs.put(
-                    resume.file,
+                    resume_bytes,
                     filename=resume.filename,
                     content_type=resume.content_type,
                     metadata={"userId": current_user_id},
@@ -145,6 +149,7 @@ async def update_job(
             "status",
             "location",
             "employmentType",
+            "notes",
         ):
             if key in form:
                 update_fields[key] = (
