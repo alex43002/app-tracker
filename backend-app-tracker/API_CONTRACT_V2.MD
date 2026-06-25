@@ -95,10 +95,12 @@ Request:
   "password": "plaintext (min 8 chars)",
   "phoneNumber": "1234567890",
   "firstName": "Test",
-  "lastName": "User",
-  "pfp": "base64-string"
+  "lastName": "User"
 }
 ```
+
+> Profile pictures are **not** part of registration — `pfp` starts `null` and is
+> uploaded separately via `PUT /api/users/{id}/pfp` (see Users).
 
 Response (`data`): the new user **plus** an issued session token.
 
@@ -110,7 +112,7 @@ Response (`data`): the new user **plus** an issued session token.
     "phoneNumber": "1234567890",
     "firstName": "Test",
     "lastName": "User",
-    "pfp": "base64-string",
+    "pfp": null,
     "createdAt": "ISO-8601",
     "updatedAt": "ISO-8601"
   },
@@ -210,11 +212,14 @@ Response (`data`):
   "phoneNumber": "string",
   "firstName": "string",
   "lastName": "string",
-  "pfp": "string",
+  "pfp": "GridFS file id, or null",
   "createdAt": "ISO-8601",
   "updatedAt": "ISO-8601"
 }
 ```
+
+`pfp` is a GridFS file id (or `null`); fetch the image bytes from
+`GET /api/users/{id}/pfp`.
 
 ### Get User by Id
 
@@ -234,11 +239,28 @@ PUT /api/users/{id}
 Request (partial; at least one field required):
 
 ```json
-{ "phoneNumber": "...", "firstName": "...", "lastName": "...", "pfp": "..." }
+{ "phoneNumber": "...", "firstName": "...", "lastName": "..." }
 ```
 
 Response (`data`): `{ "updatedAt": "ISO-8601" }`. Empty payload →
-`VALIDATION_ERROR` (400).
+`VALIDATION_ERROR` (400). (Profile pictures are managed via the `pfp` endpoints
+below, not this route.)
+
+### Profile Picture
+
+Stored in GridFS, like résumés; self-ownership enforced.
+
+```
+PUT    /api/users/{id}/pfp     # multipart, field `pfp` (image)
+GET    /api/users/{id}/pfp     # returns the raw image bytes (inline)
+DELETE /api/users/{id}/pfp     # removes the picture
+```
+
+- Allowed types: `png`, `jpeg`, `webp`, `gif`; max **2MB** — otherwise
+  `VALIDATION_ERROR` (400/413).
+- `PUT` response (`data`): `{ "pfp": "GridFS-id", "updatedAt": "ISO-8601" }`
+  (replaces and deletes any previous picture).
+- `GET` returns `RESOURCE_NOT_FOUND` (404) when no picture is set.
 
 > Note: `email` is **not** updatable via this endpoint.
 

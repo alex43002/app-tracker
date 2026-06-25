@@ -16,7 +16,6 @@ export interface SignupRequest {
   phoneNumber: string;
   firstName: string;
   lastName: string;
-  pfp: string;
 }
 
 /** Access + refresh token bundle. `expiresAt` fields are ISO-8601 timestamps. */

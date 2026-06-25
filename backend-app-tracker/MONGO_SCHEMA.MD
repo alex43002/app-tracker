@@ -18,7 +18,7 @@
   firstName: String,
   lastName: String,
 
-  pfp: String,              // base64-encoded string (stored inline)
+  pfp: String,              // GridFS file id (or null) — image stored in GridFS
 
   tokenGeneration: Number,  // refresh-token family generation (bumped on reuse)
 
@@ -143,7 +143,8 @@ logged out, so they cannot be replayed.
 * `userId` is **never trusted from the request body** — always from JWT `sub`
 * Ownership enforced via JWT `sub`
 * All timestamps stored as `Date` (UTC)
-* Résumé binaries live in GridFS, not inline; `pfp` is stored inline as base64
+* Binary assets (résumés and profile pictures) live in GridFS; the document holds
+  only the file id
 
 > The indexes above are created on application startup by
 > `app.database.ensure_indexes()` (called from the FastAPI lifespan handler).

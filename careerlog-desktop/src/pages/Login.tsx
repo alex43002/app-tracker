@@ -39,7 +39,6 @@ export default function Login() {
             firstName,
             lastName,
             phoneNumber,
-            pfp: "",
           })
         : await login({ email, password });
 

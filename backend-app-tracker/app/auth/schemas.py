@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 from datetime import datetime
 
 
@@ -12,7 +13,7 @@ class RegisterRequest(BaseModel):
     phoneNumber: str
     firstName: str
     lastName: str
-    pfp: str  # base64 or binary encoded string
+    # Profile pictures are uploaded separately (PUT /api/users/{id}/pfp).
 
 
 class LoginRequest(BaseModel):
@@ -38,7 +39,7 @@ class UserAuthResponse(BaseModel):
     phoneNumber: str
     firstName: str
     lastName: str
-    pfp: str
+    pfp: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
 

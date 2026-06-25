@@ -11,9 +11,10 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > P2 items, including the full access/refresh **token-rotation** flow (SEC-4) across
 > backend + desktop. The backend has a `mongomock`-backed harness (runs with **no
 > external Mongo**) gated by `ruff`; the desktop client has a `vitest` harness and
-> its own CI. Current state: **backend 19 tests + lint clean; desktop 13 tests +
-> typecheck clean.** Remaining work is the larger v2 features (alert delivery) and a
-> few P2/P3 items (profile images to GridFS, response-model validation, lint debt).
+> its own CI. **All P0–P2 items are now complete.** Current state: **backend 25
+> tests + lint clean; desktop 16 tests + typecheck clean.** Remaining work is the
+> larger v2 features (alert delivery) and P3 items (response-model validation, lint
+> debt, enumeration hardening).
 
 ---
 
@@ -44,6 +45,7 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | SEC-4 | Security | **Token rotation.** Short-lived **access** tokens + long-lived **refresh** tokens (typed via a `type` claim, `jti` per refresh). `/refresh` rotates and revokes the presented token (`revoked_tokens` collection + TTL index); replay is rejected. Added `/logout` (revokes a refresh token). Desktop: store persists both tokens, the API client silently refreshes on 401 and retries (single-flight), logout revokes server-side. Backend + desktop tests. |
 | SEC-9 | Security | **Refresh-token family revocation.** Replaying an already-rotated refresh token is treated as theft: the user's whole token family is revoked via a per-user `tokenGeneration` (deterministic, no timing dependence). Refresh tokens carry a `gen` claim; stale generations are rejected. + test. |
 | FEAT-2 | Feature | **Field-level validation in the UI.** `ApiError` now carries `details`; `displayMessage` formats them; the auth screen surfaces per-field messages (and `AuthError` preserves line breaks). + test. |
+| SEC-6 / FEAT-3 | Security + Feature | **Profile pictures → GridFS.** `pfp` moved from inline base64 to a GridFS file id. New `PUT/GET/DELETE /api/users/{id}/pfp` (type/size validated, self-owned). Registration no longer takes `pfp`. Desktop: `UserMenu` resolves the avatar via an object URL and offers click-to-upload; signup no longer sends `pfp`. Backend + desktop tests. |
 | SEC-5 | Security | `get_current_user` now re-validates that the user still exists — a token for a deleted account is rejected. + test. |
 | SEC-7 | Security | Résumé uploads validated: allowed MIME types (`pdf/doc/docx/txt`) and ≤5MB, on both create & update. + tests. |
 | SEC-8 | Security | `JWT_SECRET` strength enforced at config load (rejects known-weak placeholders and secrets < 16 chars). + tests. |
@@ -67,13 +69,11 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ## 3. ⬜ Remaining Security Hardening
 
+_All P0–P2 security items are complete._ Remaining hardening is lower priority:
+
 | ID | Pri | Issue | Notes |
 | --- | --- | --- | --- |
-| SEC-6 | P2 | **`pfp` base64 stored inline** in the user doc — unbounded growth; sent on every `/users/me`. | Move profile images to GridFS (mirror the résumé approach) + size cap. Changes the user contract — pairs with FEAT-3. |
-
-> Also consider making `register` not leak which emails exist (uniform messaging);
-> rate limiting (SEC-3, done) blunts enumeration but the 409-vs-401 distinction
-> remains.
+| SEC-10 | P3 | **`register` leaks which emails exist** (409 vs 401 + timing). Rate limiting (SEC-3) blunts enumeration but the distinction remains. | Consider uniform messaging / response timing. |
 
 ---
 
@@ -90,8 +90,6 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 ## 5. ⬜ Next Functionality
 
 ### v1.x
-- **FEAT-3 (P2): Profile-picture upload to GridFS** (pairs with SEC-6) with a real
-  upload UI.
 - **FEAT-2 follow-up (P3): Map `error.details` onto job-form fields.** The auth
   screen surfaces server validation; the job form still shows only its own
   client-side validation for server errors.
@@ -118,10 +116,8 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Profile images (SEC-6 + FEAT-3):** move `pfp` to GridFS with an upload UI — the
-   main remaining P2; coordinate the user-contract change across backend + desktop.
-2. **Tighten contracts:** CLN-5 response models (carefully — see note).
-3. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
+1. **Tighten contracts:** CLN-5 response models (carefully — see note).
+2. **Lint debt (CLN-10):** clear the 16 desktop eslint errors, then turn the eslint CI
    step back on.
-4. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5).
-5. **Platform & polish:** FEAT-8 builds, remaining analytics & cleanup.
+3. **v2 kickoff:** FEAT-4 alert delivery + providers (FEAT-5) — the headline feature.
+4. **Platform & polish:** FEAT-8 builds, remaining analytics, enumeration hardening.
