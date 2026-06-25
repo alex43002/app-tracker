@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict
 
@@ -10,6 +11,8 @@ from jose import JWTError, jwt
 from app.config import settings
 from app.database import get_db
 
+ACCESS_TOKEN = "access"
+REFRESH_TOKEN = "refresh"
 
 security = HTTPBearer()
 
@@ -25,39 +28,57 @@ def _auth_error(message: str) -> HTTPException:
     )
 
 
-def create_jwt(user_id: str, email: str) -> Dict[str, str]:
-    """
-    Create a JWT with a fixed 2-hour lifespan.
-    """
+def _encode(payload: dict) -> str:
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def create_access_token(user_id: str, email: str) -> Dict[str, str]:
+    """Create a short-lived access token (lifetime = jwt_expiry_hours)."""
     now = datetime.now(tz=timezone.utc)
     expires_at = now + timedelta(hours=settings.jwt_expiry_hours)
 
-    payload = {
-        "sub": user_id,
-        "email": email,
-        "iat": int(now.timestamp()),
-        "exp": int(expires_at.timestamp()),
-        "iss": "job-tracker-api",
-        "aud": "desktop-client",
-        "scope": "user",
-    }
-
-    token = jwt.encode(
-        payload,
-        settings.jwt_secret,
-        algorithm=settings.jwt_algorithm,
+    token = _encode(
+        {
+            "sub": user_id,
+            "email": email,
+            "type": ACCESS_TOKEN,
+            "iat": int(now.timestamp()),
+            "exp": int(expires_at.timestamp()),
+            "iss": "job-tracker-api",
+            "aud": "desktop-client",
+            "scope": "user",
+        }
     )
-
-    return {
-        "jwt": token,
-        "expiresAt": expires_at.isoformat(),
-    }
+    return {"jwt": token, "expiresAt": expires_at.isoformat()}
 
 
-def decode_jwt(token: str) -> Dict:
+def create_refresh_token(user_id: str, email: str) -> Dict[str, str]:
+    """Create a long-lived refresh token (lifetime = refresh_token_expiry_days).
+
+    Carries a unique ``jti`` so it can be individually revoked / rotated.
     """
-    Decode and validate a JWT.
-    """
+    now = datetime.now(tz=timezone.utc)
+    expires_at = now + timedelta(days=settings.refresh_token_expiry_days)
+    jti = uuid.uuid4().hex
+
+    token = _encode(
+        {
+            "sub": user_id,
+            "email": email,
+            "type": REFRESH_TOKEN,
+            "jti": jti,
+            "iat": int(now.timestamp()),
+            "exp": int(expires_at.timestamp()),
+            "iss": "job-tracker-api",
+            "aud": "desktop-client",
+            "scope": "user",
+        }
+    )
+    return {"token": token, "expiresAt": expires_at.isoformat(), "jti": jti}
+
+
+def decode_jwt(token: str, expected_type: str | None = None) -> Dict:
+    """Decode and validate a JWT, optionally enforcing its ``type`` claim."""
     try:
         payload = jwt.decode(
             token,
@@ -66,19 +87,13 @@ def decode_jwt(token: str) -> Dict:
             audience="desktop-client",
             issuer="job-tracker-api",
         )
-        return payload
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "data": None,
-                "error": {
-                    "code": "AUTH_TOKEN_INVALID",
-                    "message": "Invalid or expired token",
-                },
-            },
-        )
+        raise _auth_error("Invalid or expired token")
+
+    if expected_type is not None and payload.get("type") != expected_type:
+        raise _auth_error(f"Expected a {expected_type} token")
+
+    return payload
 
 
 def get_current_user(
@@ -91,7 +106,7 @@ def get_current_user(
         userId (str) derived from JWT `sub`
     """
     token = credentials.credentials
-    payload = decode_jwt(token)
+    payload = decode_jwt(token, expected_type=ACCESS_TOKEN)
 
     user_id = payload.get("sub")
     if not user_id:

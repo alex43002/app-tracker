@@ -21,7 +21,11 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    jwt: str
+    refreshToken: str
+
+
+class LogoutRequest(BaseModel):
+    refreshToken: str
 
 
 # =====================
@@ -43,3 +47,5 @@ class AuthTokenResponse(BaseModel):
     user: UserAuthResponse
     jwt: str
     expiresAt: datetime
+    refreshToken: str
+    refreshExpiresAt: datetime

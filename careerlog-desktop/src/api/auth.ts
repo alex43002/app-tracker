@@ -19,14 +19,20 @@ export interface SignupRequest {
   pfp: string;
 }
 
-/**
- * Both /login and /register return the authenticated user plus an issued
- * session token. `expiresAt` is an ISO-8601 timestamp.
- */
-export interface AuthSession {
-  user: User;
+/** Access + refresh token bundle. `expiresAt` fields are ISO-8601 timestamps. */
+export interface SessionTokens {
   jwt: string;
   expiresAt: string;
+  refreshToken: string;
+  refreshExpiresAt: string;
+}
+
+/**
+ * Both /login and /register return the authenticated user plus an issued
+ * session (access + refresh tokens).
+ */
+export interface AuthSession extends SessionTokens {
+  user: User;
 }
 
 /* ============================================================
@@ -39,4 +45,12 @@ export function login(request: LoginRequest) {
 
 export function signup(request: SignupRequest) {
   return apiClient.post<AuthSession>("/api/auth/register", request);
+}
+
+export function refreshSession(refreshToken: string) {
+  return apiClient.post<SessionTokens>("/api/auth/refresh", { refreshToken });
+}
+
+export function logout(refreshToken: string) {
+  return apiClient.post<null>("/api/auth/logout", { refreshToken });
 }

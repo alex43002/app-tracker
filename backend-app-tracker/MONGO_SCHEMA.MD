@@ -110,6 +110,30 @@ Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
 
 ---
 
+## Revoked Tokens Collection
+
+**Collection name:** `revoked_tokens`
+
+Tracks refresh-token `jti`s that have been rotated (used at `/api/auth/refresh`) or
+logged out, so they cannot be replayed.
+
+```js
+{
+  _id: ObjectId,
+  jti: String,              // unique; the refresh token's id
+  expiresAt: Date           // when the token would have expired anyway
+}
+```
+
+### Indexes
+
+```js
+{ jti: 1 }        // unique
+{ expiresAt: 1 }  // TTL (expireAfterSeconds: 0) — purges entries after expiry
+```
+
+---
+
 ## Global Rules (LOCKED)
 
 * `_id` is the MongoDB authority

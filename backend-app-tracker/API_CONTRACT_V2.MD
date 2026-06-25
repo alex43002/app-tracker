@@ -19,9 +19,15 @@ http://127.0.0.1:8000
 Authorization: Bearer <JWT>
 ```
 
-The token (HS256) is valid for `JWT_EXPIRY_HOURS` (default **2h**) and carries
-`sub` (user id), `email`, issuer `job-tracker-api`, audience `desktop-client`,
-and `scope: "user"`.
+Two HS256 token types are issued (distinguished by a `type` claim):
+
+- **access** — sent as the `Bearer` token on every request. Lifetime
+  `JWT_EXPIRY_HOURS` (default **2h**). Carries `sub`, `email`, `type: "access"`,
+  issuer `job-tracker-api`, audience `desktop-client`, `scope: "user"`.
+- **refresh** — long-lived (default **7d**, `REFRESH_TOKEN_EXPIRY_DAYS`), carries a
+  unique `jti`, and is exchanged at `/api/auth/refresh` for a new pair. Refresh
+  tokens **rotate** (the presented one is revoked) and can be revoked via
+  `/api/auth/logout`. Only an access token is accepted on protected routes.
 
 ---
 
@@ -108,8 +114,10 @@ Response (`data`): the new user **plus** an issued session token.
     "createdAt": "ISO-8601",
     "updatedAt": "ISO-8601"
   },
-  "jwt": "JWT",
-  "expiresAt": "ISO-8601"
+  "jwt": "ACCESS_JWT",
+  "expiresAt": "ISO-8601",
+  "refreshToken": "REFRESH_JWT",
+  "refreshExpiresAt": "ISO-8601"
 }
 ```
 
@@ -127,7 +135,8 @@ Request:
 { "email": "test@example.com", "password": "plaintext" }
 ```
 
-Response (`data`): identical shape to Register — `{ user, jwt, expiresAt }`.
+Response (`data`): identical shape to Register —
+`{ user, jwt, expiresAt, refreshToken, refreshExpiresAt }`.
 
 Errors: `AUTH_INVALID_CREDENTIALS` (401).
 
@@ -137,21 +146,45 @@ Errors: `AUTH_INVALID_CREDENTIALS` (401).
 POST /api/auth/refresh
 ```
 
-Re-issues a token from an existing valid one.
+Exchanges a **refresh** token for a new access + refresh pair, **rotating** it (the
+presented refresh token is revoked and cannot be reused).
 
 Request:
 
 ```json
-{ "jwt": "current-valid-JWT" }
+{ "refreshToken": "current-valid-REFRESH_JWT" }
 ```
 
 Response (`data`):
 
 ```json
-{ "jwt": "new-JWT", "expiresAt": "ISO-8601" }
+{
+  "jwt": "new-ACCESS_JWT",
+  "expiresAt": "ISO-8601",
+  "refreshToken": "new-REFRESH_JWT",
+  "refreshExpiresAt": "ISO-8601"
+}
 ```
 
-Errors: `AUTH_TOKEN_INVALID` (401) if the supplied token is invalid/expired.
+Errors: `AUTH_TOKEN_INVALID` (401) if the token is invalid/expired, is not a
+refresh token, has already been rotated/revoked, or its user no longer exists.
+
+### Logout
+
+```
+POST /api/auth/logout
+```
+
+Revokes a refresh token so it can no longer be used to refresh. Idempotent and
+best-effort (always returns success).
+
+Request:
+
+```json
+{ "refreshToken": "REFRESH_JWT" }
+```
+
+Response (`data`): `null`.
 
 ---
 

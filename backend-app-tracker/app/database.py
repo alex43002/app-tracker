@@ -36,3 +36,7 @@ def ensure_indexes(db: Database) -> None:
 
     db.alerts.create_index("userId")
     db.alerts.create_index("scheduledAlert")
+
+    # Revoked refresh tokens — TTL purges entries once expired.
+    db.revoked_tokens.create_index("jti", unique=True)
+    db.revoked_tokens.create_index("expiresAt", expireAfterSeconds=0)

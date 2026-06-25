@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient, ApiError } from "./client";
+import { saveSession, getRefreshToken } from "../store/auth";
+
+const FUTURE = "2999-01-01T00:00:00.000Z";
 
 function mockFetch(status: number, body: unknown) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({
+      ok: status >= 200 && status < 300,
       status,
       json: async () => body,
     }))
@@ -50,5 +54,48 @@ describe("apiClient", () => {
     await expect(apiClient.get("/api/x")).rejects.toMatchObject({
       code: "RESOURCE_NOT_FOUND",
     });
+  });
+
+  it("silently refreshes on 401 and retries the original request (SEC-4)", async () => {
+    saveSession({
+      jwt: "expired-access",
+      expiresAt: FUTURE,
+      refreshToken: "valid-refresh",
+      refreshExpiresAt: FUTURE,
+    });
+
+    const unauthorized = {
+      success: false,
+      data: null,
+      error: { code: "AUTH_TOKEN_INVALID", message: "expired" },
+    };
+    const refreshed = {
+      success: true,
+      data: {
+        jwt: "new-access",
+        expiresAt: FUTURE,
+        refreshToken: "new-refresh",
+        refreshExpiresAt: FUTURE,
+      },
+      error: null,
+    };
+    const ok = { success: true, data: { ok: true }, error: null };
+
+    const fetchMock = vi
+      .fn()
+      // 1) original protected request -> 401
+      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => unauthorized })
+      // 2) POST /api/auth/refresh -> new session
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshed })
+      // 3) retried protected request -> success
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ok });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiClient.get("/api/jobs")).resolves.toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1][0]).toContain("/api/auth/refresh");
+    // The rotated refresh token was persisted.
+    expect(getRefreshToken()).toBe("new-refresh");
   });
 });

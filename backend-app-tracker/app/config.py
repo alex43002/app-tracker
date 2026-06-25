@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_expiry_hours: int = 2
+    jwt_expiry_hours: int = 2  # access-token lifetime
+    refresh_token_expiry_days: int = 7  # refresh-token lifetime
 
     @field_validator("jwt_secret")
     @classmethod

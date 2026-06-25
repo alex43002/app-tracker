@@ -57,6 +57,64 @@ def test_deleted_user_token_is_rejected(client, auth_payload):
     assert after.json()["error"]["code"] == "AUTH_TOKEN_INVALID"
 
 
+def _fresh_session(client, auth_payload, email):
+    res = client.post("/api/auth/register", json={**auth_payload, "email": email})
+    assert res.status_code == 200
+    return res.json()["data"]
+
+
+def test_login_returns_access_and_refresh_tokens(client, auth_payload):
+    """SEC-4: register/login issue an access token + a refresh token."""
+    data = _fresh_session(client, auth_payload, "sec4-pair@example.com")
+    for key in ("jwt", "expiresAt", "refreshToken", "refreshExpiresAt"):
+        assert key in data
+    assert data["jwt"] != data["refreshToken"]
+
+
+def test_access_token_cannot_be_used_to_refresh(client, auth_payload):
+    """SEC-4: an access token is rejected by /refresh (type enforcement)."""
+    data = _fresh_session(client, auth_payload, "sec4-type@example.com")
+
+    res = client.post("/api/auth/refresh", json={"refreshToken": data["jwt"]})
+    assert res.status_code == 401
+    assert res.json()["error"]["code"] == "AUTH_TOKEN_INVALID"
+
+
+def test_refresh_rotates_and_old_token_is_revoked(client, auth_payload):
+    """SEC-4: refreshing rotates the token; the used one can't be replayed."""
+    data = _fresh_session(client, auth_payload, "sec4-rotate@example.com")
+    old_refresh = data["refreshToken"]
+
+    first = client.post("/api/auth/refresh", json={"refreshToken": old_refresh})
+    assert first.status_code == 200
+    new_tokens = first.json()["data"]
+    assert new_tokens["refreshToken"] != old_refresh
+
+    # New access token works against a protected route.
+    me = client.get(
+        "/api/users/me",
+        headers={"Authorization": f"Bearer {new_tokens['jwt']}"},
+    )
+    assert me.status_code == 200
+
+    # Replaying the old (now-revoked) refresh token fails.
+    replay = client.post("/api/auth/refresh", json={"refreshToken": old_refresh})
+    assert replay.status_code == 401
+    assert replay.json()["error"]["code"] == "AUTH_TOKEN_INVALID"
+
+
+def test_logout_revokes_refresh_token(client, auth_payload):
+    """SEC-4: logout revokes the refresh token so it can no longer rotate."""
+    data = _fresh_session(client, auth_payload, "sec4-logout@example.com")
+    refresh_token = data["refreshToken"]
+
+    out = client.post("/api/auth/logout", json={"refreshToken": refresh_token})
+    assert out.status_code == 200
+
+    after = client.post("/api/auth/refresh", json={"refreshToken": refresh_token})
+    assert after.status_code == 401
+
+
 def test_login_is_rate_limited(client):
     """SEC-3: repeated auth attempts are throttled (default 5/minute)."""
     body = {"email": "ratelimit@example.com", "password": "wrong-password"}
