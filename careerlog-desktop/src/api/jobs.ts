@@ -1,4 +1,4 @@
-import type { Job } from "../types/job";
+import type { Job, JobResume } from "../types/job";
 import { apiClient, type PaginatedResponse } from "./client";
 
 /* ============================================================
@@ -121,6 +121,59 @@ export async function fetchJobResume(
   });
 }
 
+
+/* ============================================================
+   Multiple résumés per job (FEAT-10)
+============================================================ */
+
+/** List the résumés attached to a job. */
+export async function fetchJobResumes(jobId: string): Promise<JobResume[]> {
+  const res = await apiClient.get<{ resumes: JobResume[] }>(
+    `/api/jobs/${jobId}/resumes`
+  );
+  return res.resumes;
+}
+
+/** Attach a résumé file to a job; returns the created entry. */
+export function uploadJobResume(jobId: string, file: File) {
+  const form = new FormData();
+  form.append("resume", file);
+  return apiClient.post<JobResume>(`/api/jobs/${jobId}/resumes`, form);
+}
+
+/** Remove a résumé from a job (also deletes the underlying file). */
+export function deleteJobResume(jobId: string, resumeId: string) {
+  return apiClient.delete<void>(`/api/jobs/${jobId}/resumes/${resumeId}`);
+}
+
+/**
+ * Fetch a résumé as a blob object URL suitable for in-app preview (FEAT-10).
+ *
+ * The bytes are fetched with the bearer token (native preview elements like
+ * <iframe>/<embed> can't send Authorization headers, so we can't point them at
+ * the API directly). The caller owns the returned URL and must
+ * `URL.revokeObjectURL` it when done. Returns null on failure.
+ */
+export async function fetchResumePreviewUrl(
+  resumeId: string
+): Promise<string | null> {
+  const token = localStorage.getItem("careerlog_token");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${resumeId}?disposition=inline`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }
+  );
+
+  if (!response.ok) {
+    console.error("Resume preview fetch failed", response.status);
+    return null;
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
 
 /* ============================================================
    Create

@@ -72,8 +72,11 @@ def register(request: Request, payload: RegisterRequest):
     db = get_db()
     users = db.users
 
-    # Enforce unique email
+    # Enforce unique email. Spend the same Argon2 cost as the create path before
+    # responding so the 409 can't be distinguished from a fresh signup by timing
+    # alone (SEC-10); the explicit 409 is a deliberate UX tradeoff.
     if users.find_one({"email": payload.email}):
+        service.equalize_password_timing(payload.password)
         raise_error(
             code="RESOURCE_ALREADY_EXISTS",
             message="Email already registered",
@@ -126,6 +129,9 @@ def login(request: Request, payload: LoginRequest):
 
     user = users.find_one({"email": payload.email})
     if not user:
+        # Verify against a dummy hash so a missing account takes the same time as
+        # a wrong password — no timing oracle for which emails exist (SEC-10).
+        service.equalize_password_timing(payload.password)
         raise_error(
             code="AUTH_INVALID_CREDENTIALS",
             message="Invalid email or password",

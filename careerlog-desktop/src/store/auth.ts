@@ -1,4 +1,5 @@
 import { setAuthToken } from "../api/client";
+import { clearOfflineCache } from "../api/offlineCache";
 
 const TOKEN_KEY = "careerlog_token";
 const EXPIRY_KEY = "careerlog_token_expiry";
@@ -83,5 +84,7 @@ export function clearAuthToken() {
   localStorage.removeItem(EXPIRY_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(REFRESH_EXPIRY_KEY);
+  // Drop any cached offline data so it can't leak across accounts (FEAT-9).
+  clearOfflineCache();
   setAuthToken(null);
 }

@@ -4,11 +4,26 @@ from app.notifications.notifier import (
     EMAIL,
     SMS,
     ConsoleNotifier,
+    Notifier,
+    RetryingNotifier,
     RoutingNotifier,
     SmtpEmailNotifier,
     TwilioSmsNotifier,
     build_notifier,
 )
+
+
+class _FlakyNotifier(Notifier):
+    """Fails the first ``fail_times`` sends, then succeeds."""
+
+    def __init__(self, fail_times):
+        self.fail_times = fail_times
+        self.attempts = 0
+
+    def send(self, channel, recipient, message):
+        self.attempts += 1
+        if self.attempts <= self.fail_times:
+            raise RuntimeError("transient")
 
 
 def _settings(**overrides):
@@ -93,6 +108,45 @@ def test_routing_notifier_dispatches_by_channel():
     assert email_sent == [(EMAIL, "user@example.com", "e")]
     assert sms_sent == [(SMS, "+1555", "s")]
     assert fallback_sent == [("push", "device", "p")]
+
+
+def test_retrying_notifier_recovers_after_transient_failures():
+    """CLN-12: a flaky provider is retried until it succeeds."""
+    slept = []
+    inner = _FlakyNotifier(fail_times=2)
+    notifier = RetryingNotifier(
+        inner, max_attempts=3, backoff_seconds=0.1, sleep=slept.append
+    )
+
+    notifier.send(EMAIL, "user@example.com", "hi")
+
+    assert inner.attempts == 3  # failed twice, succeeded on the third
+    assert slept == [0.1, 0.2]  # exponential backoff between the three attempts
+
+
+def test_retrying_notifier_dead_letters_after_exhausting_attempts(caplog):
+    """CLN-12: a permanent failure is logged as a dead letter, not raised."""
+    inner = _FlakyNotifier(fail_times=99)
+    notifier = RetryingNotifier(
+        inner, max_attempts=2, backoff_seconds=0, sleep=lambda _s: None
+    )
+
+    with caplog.at_level("ERROR"):
+        notifier.send(SMS, "+1555", "call recruiter")  # must not raise
+
+    assert inner.attempts == 2
+    assert any("DEAD-LETTER" in r.message for r in caplog.records)
+
+
+def test_build_notifier_wraps_providers_with_retries():
+    """CLN-12: configured providers are wrapped in RetryingNotifier."""
+    notifier = build_notifier(
+        _settings(
+            smtp_host="smtp.example.com",
+            notifier_max_attempts=3,
+        )
+    )
+    assert isinstance(notifier._routes[EMAIL], RetryingNotifier)
 
 
 def test_build_notifier_defaults_to_console():

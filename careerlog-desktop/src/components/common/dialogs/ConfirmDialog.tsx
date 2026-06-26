@@ -1,27 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
-export type ConfirmDialogOptions = {
-  title: string;
-  description?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  destructive?: boolean;
-};
+import {
+  registerConfirmDialog,
+  type ConfirmDialogOptions,
+} from "./confirmController";
 
 type InternalState = ConfirmDialogOptions & {
   open: boolean;
-  resolve?: (value: boolean) => void;
 };
-
-let openDialog: ((opts: ConfirmDialogOptions) => Promise<boolean>) | null = null;
-
-export function confirm(options: ConfirmDialogOptions): Promise<boolean> {
-  if (!openDialog) {
-    throw new Error("ConfirmDialog is not mounted.");
-  }
-  return openDialog(options);
-}
 
 export function ConfirmDialogHost() {
   const [state, setState] = useState<InternalState>({
@@ -32,39 +19,27 @@ export function ConfirmDialogHost() {
   const [loading, setLoading] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastActiveRef = useRef<HTMLElement | null>(null);
+  const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
   useEffect(() => {
-    openDialog = (opts) => {
+    return registerConfirmDialog((opts) => {
       lastActiveRef.current = document.activeElement as HTMLElement;
       return new Promise<boolean>((resolve) => {
-        setState({ ...opts, open: true, resolve });
+        resolveRef.current = resolve;
+        setState({ ...opts, open: true });
       });
-    };
-    return () => {
-      openDialog = null;
-    };
+    });
   }, []);
 
-  useEffect(() => {
-    if (!state.open) return;
+  const close = useCallback((result: boolean) => {
+    resolveRef.current?.(result);
+    resolveRef.current = null;
+    setState((s) => ({ ...s, open: false }));
+    setLoading(false);
+    lastActiveRef.current?.focus();
+  }, []);
 
-    const el = dialogRef.current;
-    el?.focus();
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        handleCancel();
-      }
-      if (e.key === "Tab") {
-        trapFocus(e);
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [state.open]);
-
-  function trapFocus(e: KeyboardEvent) {
+  const trapFocus = useCallback((e: KeyboardEvent) => {
     const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
       "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
     );
@@ -80,14 +55,12 @@ export function ConfirmDialogHost() {
       e.preventDefault();
       first.focus();
     }
-  }
+  }, []);
 
-  function close(result: boolean) {
-    state.resolve?.(result);
-    setState((s) => ({ ...s, open: false, resolve: undefined }));
-    setLoading(false);
-    lastActiveRef.current?.focus();
-  }
+  const handleCancel = useCallback(() => {
+    if (loading) return;
+    close(false);
+  }, [loading, close]);
 
   function handleConfirm() {
     if (loading) return;
@@ -95,10 +68,23 @@ export function ConfirmDialogHost() {
     close(true);
   }
 
-  function handleCancel() {
-    if (loading) return;
-    close(false);
-  }
+  useEffect(() => {
+    if (!state.open) return;
+
+    dialogRef.current?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+      if (e.key === "Tab") {
+        trapFocus(e);
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [state.open, handleCancel, trapFocus]);
 
   if (!state.open) return null;
 

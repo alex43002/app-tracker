@@ -11,12 +11,19 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > items, including the full access/refresh **token-rotation** flow (SEC-4), the v2
 > alert-delivery headline, **multi-instance scheduler safety (FEAT-12)**, the
 > **Twilio SMS provider (FEAT-5 follow-up)**, and response-model cleanup (CLN-5).
+> A final P3 sweep on 2026-06-26 closed **every remaining roadmap item** —
+> enumeration-timing hardening (SEC-10), notifier retry/dead-letter (CLN-12),
+> status-history timing + interval (FEAT-13), a combined analytics summary
+> (CLN-13), **multiple résumés per job (FEAT-10)**, **saved searches (FEAT-11)**,
+> job-form server-error mapping (FEAT-2 follow-up), **optional offline caching
+> (FEAT-9)**, the id/jobId naming note (CLN-8), and promoting the downgraded
+> desktop lint rules back to errors (CLN-11).
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
-> Current state: **backend 53 tests + ruff clean; desktop 34 tests + typecheck +
-> eslint clean.** Desktop UI for FEAT-6/FEAT-7 has shipped and **cross-platform
-> builds (FEAT-8)** are wired (config + release workflow). Remaining work is P3
-> cleanups — tracked under **§5 "Follow-ups from recent work."**
+> Current state: **backend 73 tests + ruff clean; desktop 48 tests + typecheck +
+> eslint clean (0 warnings).** Desktop UI for FEAT-6/FEAT-7 has shipped and
+> **cross-platform builds (FEAT-8)** are wired (config + release workflow).
+> **No open roadmap items remain** beyond the optional release-prep checklist in §6.
 
 ---
 
@@ -87,31 +94,47 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ---
 
-## 3. ⬜ Remaining Security Hardening
+## 2c. ✅ Completed (2026-06-26, final P3 sweep)
 
-_All P0–P2 security items are complete._ Remaining hardening is lower priority:
-
-| ID | Pri | Issue | Notes |
-| --- | --- | --- | --- |
-| SEC-10 | P3 | **`register` leaks which emails exist** (409 vs 401 + timing). Rate limiting (SEC-3) blunts enumeration but the distinction remains. | Consider uniform messaging / response timing. |
-
----
-
-## 4. ⬜ Remaining Cleanup & Tech Debt
-
-| ID | Pri | Item |
+| ID | Area | What changed |
 | --- | --- | --- |
-| CLN-8 | P3 | **Naming:** path param `id` vs document field `jobId` (external ref) is confusing. |
-| CLN-11 | P3 | **Address downgraded lint warnings (8 total).** `react-hooks/set-state-in-effect` (3), `react-hooks/immutability` (2), `react-hooks/exhaustive-deps` (2), and `react-refresh/only-export-components` (1) are warnings — refactor the effects/dialog modules to satisfy them, then promote back to errors. |
+| SEC-10 | Security | **Enumeration-timing hardening.** `register` (taken email) and `login` (missing account) now spend the same Argon2 cost as the success path (`equalize_password_timing`), so neither leaks which emails exist via response latency; login's missing-account and wrong-password responses are byte-identical. The explicit register 409 is kept as a deliberate UX tradeoff. + tests. |
+| CLN-12 | Cleanup | **Notifier delivery hardening.** `RetryingNotifier` wraps the real SMTP/Twilio providers with bounded retries + exponential backoff; a final failure is logged as a **dead letter** rather than dropped, and request-time delivery (password reset / verification) never turns a provider outage into a 500. Configurable via `NOTIFIER_MAX_ATTEMPTS` / `NOTIFIER_RETRY_BACKOFF_SECONDS`. + tests. |
+| FEAT-13 | Feature | **Accurate status-transition timing.** Jobs carry a `statusHistory` timeline (seeded at create, appended on each status change). `time-to-offer` now measures from it (exact, falling back to `updatedAt` for legacy jobs); `applications-over-time` accepts an `interval` of `week`/`month`/`quarter`. + tests, schema + contract docs. |
+| CLN-13 | Cleanup | **Analytics read efficiency.** New `GET /api/analytics/summary` returns funnel + over-time + time-to-offer + by-company from a **single** per-user fetch (the per-endpoint routes still exist). Desktop `fetchAnalyticsSummary`. + tests. |
+| FEAT-10 | Feature | **Multiple résumés per job + in-app preview.** Each job has a `resumes[]` list; new `GET/POST/DELETE /api/jobs/{id}/resumes` manage them (type/size validated, ownership-enforced, GridFS-backed), and `/api/resumes/{id}?disposition=inline` supports preview. The legacy single `resume` is surfaced as a synthesized entry. Desktop: API client + a `JobResumeManager` in the job form (list / upload / preview / delete). + backend (5) & desktop (3) tests, docs. |
+| FEAT-11 | Feature | **Saved searches / advanced filtering.** New `saved_searches` CRUD (`/api/saved-searches`) storing named filter+sort views, validated against the same hardened whitelist as the jobs list (SEC-1). Desktop: API client + a `SavedSearchesBar` on the Jobs page (save current view, apply, delete). Also **fixed a latent bug**: the toolbar's free-text search sent `$or`/`$regex` filters the hardened backend rejects (400) — search is now applied client-side; only whitelisted fields hit the server. + backend (5) & desktop (4) tests, docs. |
+| FEAT-2 (follow-up) | Feature | **Job-form server-error mapping.** A failed save now maps the backend's `error.details` onto the matching job-form fields (was: only client-side validation), falling back to a toast for non-field errors. `useJobForm` gained `setServerErrors`. + test. |
+| FEAT-9 | Feature | **Optional offline caching.** A small read-through localStorage cache (`withOfflineCache`): successful reads are cached and, when a later fetch fails (offline), the last-known value is shown with a "showing cached data" banner. Wired into the jobs list; cleared on logout so data can't leak across accounts. + tests. |
+| CLN-8 | Cleanup | **id/jobId naming.** Documented the distinction in code (`Job.jobId` is the user-supplied external reference; `id` is the server-assigned record id) so the path-param/field overlap is no longer confusing. |
+| CLN-11 | Cleanup | **Downgraded lint warnings promoted back to errors.** Fixed all 8: extracted the confirm-dialog imperative API into its own module (only-export-components) and `useCallback`-ed its handlers (immutability + exhaustive-deps); removed the job-form prefill effect in favor of key-remount + lazy init (set-state-in-effect); deferred the modal animation's state updates into rAF; made the jobs fetch effect cancellation-safe; memoized the toolbar `onChange`. `react-hooks/set-state-in-effect`, `react-hooks/immutability`, and `react-refresh/only-export-components` are back to **error**. |
 
 ---
 
-## 5. ⬜ Next Functionality
+## 3. ✅ Remaining Security Hardening — none open
+
+_All security items, including the final P3, are complete._
+
+| ID | Pri | Status |
+| --- | --- | --- |
+| SEC-10 | P3 | ✅ Done — enumeration-timing hardening (see §2c). |
+
+---
+
+## 4. ✅ Remaining Cleanup & Tech Debt — none open
+
+| ID | Pri | Status |
+| --- | --- | --- |
+| CLN-8 | P3 | ✅ Done — id/jobId naming documented (see §2c). |
+| CLN-11 | P3 | ✅ Done — all 8 warnings fixed; rules back to errors (see §2c). |
+
+---
+
+## 5. ✅ Next Functionality — all delivered
 
 ### v1.x
-- **FEAT-2 follow-up (P3): Map `error.details` onto job-form fields.** The auth
-  screen surfaces server validation; the job form still shows only its own
-  client-side validation for server errors.
+- ✅ **FEAT-2 follow-up (P3): Map `error.details` onto job-form fields.** Done —
+  the job form now surfaces backend field-level validation on save (see §2c).
 
 ### v2
 - ✅ **FEAT-5 follow-up (P2): SMS provider.** Done — `TwilioSmsNotifier` behind the
@@ -131,16 +154,17 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
   electron-builder targets, signing/notarization scaffolding, and a tag-driven
   GitHub Actions release workflow. _Prereq before a branded release: add a
   1024×1024 `assets/icon.png` and configure the signing secrets._
-- **FEAT-9 (P3): Optional offline caching.**
-- **FEAT-10 (P3): Multiple résumés per job** + in-app preview.
-- **FEAT-11 (P3): Saved searches / advanced filtering UI** (now safe to build on the
-  hardened filter mechanism).
+- ✅ **FEAT-9 (P3): Optional offline caching.** Done — read-through localStorage
+  cache with a stale/offline banner (see §2c).
+- ✅ **FEAT-10 (P3): Multiple résumés per job** + in-app preview. Done (see §2c).
+- ✅ **FEAT-11 (P3): Saved searches / advanced filtering UI.** Done — built on the
+  hardened filter whitelist; also fixed the latent `$regex` search bug (see §2c).
 
 ### Follow-ups from recent work (captured 2026-06-26)
 
-_Loose ends from the FEAT-5/6/7/12 deliveries. The desktop-UI follow-ups
-(FEAT-6-UI, FEAT-7-UI, FEAT-14) have since shipped; the remaining backend/data
-threads (FEAT-13, CLN-12, CLN-13) are still open._
+_Loose ends from the FEAT-5/6/7/12 deliveries — all now shipped: the desktop-UI
+follow-ups (FEAT-6-UI, FEAT-7-UI, FEAT-14) and the backend/data threads (FEAT-13,
+CLN-12, CLN-13)._
 
 - ✅ **FEAT-6-UI (P2): Desktop reset/verify screens.** Done — `/reset-password`
   (request + confirm phases) and `/verify-email` (confirm + resend) pages on top
@@ -151,30 +175,27 @@ threads (FEAT-13, CLN-12, CLN-13) are still open._
   `AnalyticsInsights` dashboard section fetches all four endpoints and renders
   conversion-rate cards, an applications-over-time bar chart, time-to-offer KPIs,
   and a per-company breakdown (loading / empty / error states + tests).
-- **FEAT-13 (P3): Accurate status-transition timing.** `time-to-offer` currently
-  approximates using a job's `updatedAt`. Add per-status timestamps (a status
-  history) so transition timing is exact; this also unlocks stage-by-stage funnel
-  timing and lets `applications-over-time` parametrize the interval
-  (week/month/quarter) instead of the hardcoded month.
+- ✅ **FEAT-13 (P3): Accurate status-transition timing.** Done — jobs carry a
+  `statusHistory` timeline; `time-to-offer` measures from it and
+  `applications-over-time` takes a week/month/quarter interval (see §2c).
 - ✅ **FEAT-14 (P3): Consume `emailVerified` in the desktop.** Done — the
   dashboard shows an `EmailVerificationBanner` (with a link to `/verify-email`)
   when the current user isn't verified. Gating sensitive actions on verification
   remains optional/future.
-- **CLN-12 (P3): Notifier delivery hardening.** `TwilioSmsNotifier` /
-  `SmtpEmailNotifier` have no retry/backoff and don't track delivery status —
-  failures are only logged. Consider retry + dead-letter logging for request-time
-  emails (password reset / verification) where a silent drop is user-visible.
-- **CLN-13 (P3): Analytics read efficiency.** Each analytics endpoint does a full
-  per-user `find`. Fine at current scale; if job counts grow, add a combined
-  `/summary` endpoint or move the date metrics to server-side aggregation.
+- ✅ **CLN-12 (P3): Notifier delivery hardening.** Done — `RetryingNotifier`
+  (retry + backoff + dead-letter) around the real providers (see §2c).
+- ✅ **CLN-13 (P3): Analytics read efficiency.** Done — combined
+  `/api/analytics/summary` from a single per-user fetch (see §2c).
 
 ---
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Polish:** enumeration hardening (SEC-10), notifier hardening (CLN-12), and
-   promoting the downgraded lint warnings back to errors (CLN-11).
-2. **Data model depth:** FEAT-13 status history (accurate time-to-offer / funnel
-   timing), then richer analytics/efficiency (CLN-13).
-3. **Release prep:** add a 1024×1024 `assets/icon.png` and configure signing
+All functional roadmap items are complete. The only remaining work is
+**release prep**, which is an ops task rather than a code item:
+
+1. Add a 1024×1024 `assets/icon.png` and configure the signing/notarization
    secrets, then cut the first cross-platform tagged release (FEAT-8).
+2. Optional future scaling, only if data volumes grow: move the per-user
+   analytics `find` to server-side aggregation, and add an APScheduler jobstore
+   if the alert poll loop itself needs deduping across instances.

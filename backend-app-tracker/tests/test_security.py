@@ -135,6 +135,37 @@ def test_logout_revokes_refresh_token(client, auth_payload):
     assert after.status_code == 401
 
 
+def test_login_unknown_email_is_indistinguishable_from_wrong_password(
+    client, auth_payload
+):
+    """SEC-10: a missing account and a wrong password return the identical
+    envelope (code + message), so the response body reveals nothing about which
+    emails exist. The matching dummy-hash verify also equalizes timing."""
+    wrong_pw = client.post(
+        "/api/auth/login",
+        json={"email": auth_payload["email"], "password": "definitely-wrong"},
+    )
+    unknown = client.post(
+        "/api/auth/login",
+        json={"email": "nobody-here@example.com", "password": "definitely-wrong"},
+    )
+
+    assert wrong_pw.status_code == unknown.status_code == 401
+    assert wrong_pw.json()["error"] == unknown.json()["error"]
+    assert wrong_pw.json()["error"]["code"] == "AUTH_INVALID_CREDENTIALS"
+
+
+def test_register_duplicate_email_still_rejected(client, auth_payload):
+    """SEC-10: the timing-equalizer must not change the duplicate-email outcome."""
+    email = "sec10-dup@example.com"
+    first = client.post("/api/auth/register", json={**auth_payload, "email": email})
+    assert first.status_code == 200
+
+    res = client.post("/api/auth/register", json={**auth_payload, "email": email})
+    assert res.status_code == 409
+    assert res.json()["error"]["code"] == "RESOURCE_ALREADY_EXISTS"
+
+
 def test_login_is_rate_limited(client):
     """SEC-3: repeated auth attempts are throttled (default 5/minute)."""
     body = {"email": "ratelimit@example.com", "password": "wrong-password"}

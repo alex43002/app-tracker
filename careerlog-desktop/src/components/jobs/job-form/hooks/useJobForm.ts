@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   VALIDATION_RULES,
 } from "../config/validationRules";
+import type { Job } from "../../../../types/job";
 import type {
   JobFormErrors,
   JobFormInitOptions,
@@ -27,6 +28,24 @@ const EMPTY_VALUES: JobFormValues = {
   notes: null,
 };
 
+/** Build initial form values from a job (or the empty defaults). */
+function valuesFromJob(job: Job | null): JobFormValues {
+  if (!job) return EMPTY_VALUES;
+  return {
+    jobId: job.jobId ?? null,
+    url: job.url,
+    jobTitle: job.jobTitle,
+    company: job.company,
+    salaryTarget: job.salaryTarget,
+    salaryRange: job.salaryRange ?? null,
+    status: job.status,
+    resume: job.resume ?? null,
+    location: job.location,
+    employmentType: job.employmentType,
+    notes: job.notes ?? null,
+  };
+}
+
 /**
  * useJobForm
  *
@@ -46,39 +65,15 @@ export function useJobForm(
 ): UseJobFormResult {
   const { job } = options;
 
+  // Initialize directly from the job prop. The form is remounted (keyed on the
+  // job id) when the edited job changes, so there's no prefill effect to sync
+  // state to props — initial state derives from the prop on mount.
   const [values, setValues] =
-    useState<JobFormValues>(EMPTY_VALUES);
+    useState<JobFormValues>(() => valuesFromJob(job));
   const [errors, setErrors] =
     useState<JobFormErrors>({});
   const [touched, setTouched] =
     useState<UseJobFormResult["touched"]>({});
-
-  /* ============================
-     Prefill / Reset
-  ============================ */
-
-  useEffect(() => {
-    if (job) {
-      setValues({
-        jobId: job.jobId ?? null,
-        url: job.url,
-        jobTitle: job.jobTitle,
-        company: job.company,
-        salaryTarget: job.salaryTarget,
-        salaryRange: job.salaryRange ?? null,
-        status: job.status,
-        resume: job.resume ?? null,
-        location: job.location,
-        employmentType: job.employmentType,
-        notes: job.notes ?? null,
-      });
-    } else {
-      setValues(EMPTY_VALUES);
-    }
-
-    setErrors({});
-    setTouched({});
-  }, [job]);
 
   /* ============================
      Field Setters
@@ -141,6 +136,25 @@ export function useJobForm(
   }, [values]);
 
   /* ============================
+     Server-side field errors (FEAT-2 follow-up)
+  ============================ */
+
+  const setServerErrors = useCallback((serverErrors: JobFormErrors) => {
+    const keys = Object.keys(serverErrors) as (keyof JobFormErrors)[];
+    if (keys.length === 0) return;
+
+    setErrors((prev) => ({ ...prev, ...serverErrors }));
+    // Mark the affected fields touched so their messages render immediately.
+    setTouched((prev) => {
+      const next = { ...prev };
+      keys.forEach((key) => {
+        next[key] = true;
+      });
+      return next;
+    });
+  }, []);
+
+  /* ============================
      Reset
   ============================ */
 
@@ -158,6 +172,7 @@ export function useJobForm(
     setFieldTouched,
     touchAllFields,
     validateForm,
+    setServerErrors,
     resetForm,
   };
 }

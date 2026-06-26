@@ -42,3 +42,12 @@ class CompanyFunnel(JobStatusCounts):
 
 class CompanyFunnels(BaseModel):
     companies: list[CompanyFunnel]
+
+
+class AnalyticsSummary(BaseModel):
+    """All headline analytics in one payload (CLN-13)."""
+
+    funnel: Funnel
+    applicationsOverTime: ApplicationsOverTime
+    timeToOffer: TimeToOffer
+    byCompany: CompanyFunnels

@@ -9,6 +9,7 @@ email via stdlib `smtplib` when SMTP settings are configured; SMS providers
 
 import logging
 import smtplib
+import time
 import urllib.parse
 import urllib.request
 from abc import ABC, abstractmethod
@@ -117,6 +118,51 @@ class RoutingNotifier(Notifier):
         self._routes.get(channel, self._fallback).send(channel, recipient, message)
 
 
+class RetryingNotifier(Notifier):
+    """Wraps a notifier with bounded retries + exponential backoff (CLN-12).
+
+    Transient delivery failures (a flaky SMTP/Twilio call) are retried a few
+    times with growing backoff. If every attempt fails the message is logged as
+    a **dead letter** and the failure is swallowed — a user-visible drop (a
+    password-reset or verification email) is at least observable in the logs,
+    and request-time delivery never turns a provider outage into a 500. The
+    delay is taken via ``sleep`` so tests can run without really waiting.
+    """
+
+    def __init__(self, inner, *, max_attempts=3, backoff_seconds=0.5, sleep=time.sleep):
+        self._inner = inner
+        self._max_attempts = max(1, max_attempts)
+        self._backoff = backoff_seconds
+        self._sleep = sleep
+
+    def send(self, channel: str, recipient: str | None, message: str) -> None:
+        last_exc: Exception | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                self._inner.send(channel, recipient, message)
+                return
+            except Exception as exc:  # noqa: BLE001 — retry any delivery error
+                last_exc = exc
+                logger.warning(
+                    "ALERT delivery attempt %d/%d failed [%s -> %s]: %s",
+                    attempt,
+                    self._max_attempts,
+                    channel,
+                    recipient,
+                    exc,
+                )
+                if attempt < self._max_attempts:
+                    self._sleep(self._backoff * (2 ** (attempt - 1)))
+
+        logger.error(
+            "ALERT DEAD-LETTER [%s -> %s]: %s | last error: %s",
+            channel,
+            recipient,
+            message,
+            last_exc,
+        )
+
+
 def build_notifier(settings) -> Notifier:
     """Choose a notifier from configuration.
 
@@ -125,24 +171,41 @@ def build_notifier(settings) -> Notifier:
     Channels without a configured provider fall back to the console notifier.
     """
     console = ConsoleNotifier()
+
+    def with_retries(notifier: Notifier) -> Notifier:
+        # Wrap real (network) providers so transient failures retry and a final
+        # failure dead-letters instead of dropping silently (CLN-12).
+        attempts = getattr(settings, "notifier_max_attempts", 1)
+        if attempts <= 1:
+            return notifier
+        return RetryingNotifier(
+            notifier,
+            max_attempts=attempts,
+            backoff_seconds=getattr(settings, "notifier_retry_backoff_seconds", 0.5),
+        )
+
     routes: dict[str, Notifier] = {}
 
     if settings.smtp_host:
-        routes[EMAIL] = SmtpEmailNotifier(
-            host=settings.smtp_host,
-            port=settings.smtp_port,
-            user=settings.smtp_user,
-            password=settings.smtp_password,
-            sender=settings.smtp_from,
-            fallback=console,
+        routes[EMAIL] = with_retries(
+            SmtpEmailNotifier(
+                host=settings.smtp_host,
+                port=settings.smtp_port,
+                user=settings.smtp_user,
+                password=settings.smtp_password,
+                sender=settings.smtp_from,
+                fallback=console,
+            )
         )
 
     if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from:
-        routes[SMS] = TwilioSmsNotifier(
-            account_sid=settings.twilio_account_sid,
-            auth_token=settings.twilio_auth_token,
-            sender=settings.twilio_from,
-            fallback=console,
+        routes[SMS] = with_retries(
+            TwilioSmsNotifier(
+                account_sid=settings.twilio_account_sid,
+                auth_token=settings.twilio_auth_token,
+                sender=settings.twilio_from,
+                fallback=console,
+            )
         )
 
     if not routes:

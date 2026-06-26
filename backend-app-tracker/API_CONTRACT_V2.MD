@@ -399,10 +399,15 @@ file id or `null`), `createdAt`, `updatedAt`.
 PUT /api/jobs/{id}
 ```
 
-Partial update. Accepts JSON or multipart (to replace the résumé — the previous
-GridFS file is deleted). Response (`data`): `{ "updatedAt": "ISO-8601" }`.
+Partial update. Accepts JSON or multipart (to replace the legacy single résumé —
+the previous GridFS file is deleted). Response (`data`): `{ "updatedAt": "ISO-8601" }`.
 Empty payload → `VALIDATION_ERROR` (400); unknown/foreign job →
 `RESOURCE_NOT_FOUND` (404).
+
+> **Status history (FEAT-13).** Changing a job's `status` appends
+> `{ status, at }` to the job's `statusHistory` array (seeded with the initial
+> status at create time). A no-op status update adds no entry. Analytics use this
+> timeline for exact transition timing.
 
 ### Delete Job
 
@@ -410,21 +415,44 @@ Empty payload → `VALIDATION_ERROR` (400); unknown/foreign job →
 DELETE /api/jobs/{id}
 ```
 
-Deletes the job and its GridFS résumé (if any). Response (`data`): `null`.
+Deletes the job and **all** its GridFS résumés (the legacy single `resume` plus
+every `resumes[]` entry). Response (`data`): `null`.
+
+### Job Résumés (FEAT-10)
+
+A job may carry multiple résumés. Each is stored in GridFS (type/size validated,
+ownership-stamped) with metadata tracked in the job's `resumes[]` array.
+
+```
+GET    /api/jobs/{id}/resumes
+POST   /api/jobs/{id}/resumes          # multipart, field name "resume"
+DELETE /api/jobs/{id}/resumes/{resumeId}
+```
+
+- **GET** → `{ "resumes": [ { id, filename, contentType, size, uploadedAt } ] }`.
+  A résumé attached via the legacy single-`resume` create flow is surfaced as a
+  synthesized entry, so older jobs still list their attachment.
+- **POST** (multipart, `resume` file) → the created entry
+  `{ id, filename, contentType, size, uploadedAt }`. Validates type
+  (`pdf/doc/docx/txt`) and size (≤5MB) like the create flow.
+- **DELETE** removes the résumé from GridFS and the job. Unknown job/résumé →
+  `RESOURCE_NOT_FOUND` (404).
 
 ---
 
 ## Résumés
 
-### Download Résumé
+### Download / Preview Résumé
 
 ```
-GET /api/resumes/{resume_id}
+GET /api/resumes/{resume_id}[?disposition=inline]
 ```
 
-`resume_id` is the **GridFS file id** stored on a job's `resume` field. Returns the
-raw file bytes (not an envelope) with `Content-Disposition: attachment` and the
-stored content type. Ownership is enforced via the file's `metadata.userId`.
+`resume_id` is the **GridFS file id** of any résumé owned by the caller (a job's
+legacy `resume` field or a `resumes[]` entry's `id`). Returns the raw file bytes
+(not an envelope) with the stored content type. `Content-Disposition` defaults to
+`attachment`; pass `disposition=inline` for the in-app preview. Ownership is
+enforced via the file's `metadata.userId`.
 
 Errors: `INVALID_RESUME_ID` (400), `RESUME_NOT_FOUND` (404), `FORBIDDEN` (403).
 
@@ -539,10 +567,12 @@ Status counts plus headline conversion rates. Each rate is a `0..1` ratio.
 ### Applications Over Time
 
 ```
-GET /api/analytics/applications-over-time
+GET /api/analytics/applications-over-time[?interval=week|month|quarter]
 ```
 
-Applications grouped by calendar month (by `createdAt`), ascending.
+Applications grouped by period (by `createdAt`), ascending. `interval` defaults
+to `month`; an unknown value falls back to `month`. Period labels are
+`YYYY-MM` (month), `YYYY-Www` (ISO week), or `YYYY-Qn` (quarter).
 
 ```json
 {
@@ -560,9 +590,10 @@ Applications grouped by calendar month (by `createdAt`), ascending.
 GET /api/analytics/time-to-offer
 ```
 
-Average / median **days** from application (`createdAt`) to offer. Since the
-schema has no per-status timestamps, an offer's `updatedAt` approximates when the
-offer landed. `averageDays` / `medianDays` are `null` when there are no offers.
+Average / median **days** from application (`createdAt`) to offer. Uses the job's
+`statusHistory` (FEAT-13) to find when the offer landed — exact when history is
+present, falling back to `updatedAt` for jobs created before status history
+existed. `averageDays` / `medianDays` are `null` when there are no offers.
 
 ```json
 { "offers": 2, "averageDays": 15.0, "medianDays": 15.0 }
@@ -582,6 +613,55 @@ Per-company status breakdown, busiest companies first.
     { "company": "BigCo", "applied": 1, "interviewing": 1, "offer": 1, "rejected": 0, "total": 3 },
     { "company": "SmallCo", "applied": 0, "interviewing": 0, "offer": 0, "rejected": 1, "total": 1 }
   ]
+}
+```
+
+### Summary (combined)
+
+```
+GET /api/analytics/summary[?interval=week|month|quarter]
+```
+
+All headline analytics in one response, computed from a single per-user fetch
+(CLN-13). Saves the dashboard four round-trips.
+
+```json
+{
+  "funnel": { "...": "see Funnel" },
+  "applicationsOverTime": { "...": "see Applications Over Time" },
+  "timeToOffer": { "...": "see Time To Offer" },
+  "byCompany": { "...": "see By Company" }
+}
+```
+
+---
+
+## Saved Searches (FEAT-11)
+
+Named, reusable job-list queries (filters + sort) scoped to the authenticated
+user. `filters` is validated against the same whitelist as the jobs list endpoint
+(`status`, `employmentType`, `company`, `location`); `sortBy` must be a sortable
+job field and `sortOrder` is `asc`/`desc`. Disallowed fields or Mongo operators →
+`VALIDATION_ERROR` (400).
+
+```
+POST   /api/saved-searches            # { name, filters?, sortBy?, sortOrder? }
+GET    /api/saved-searches            # { items: [ SavedSearch ] }
+PUT    /api/saved-searches/{id}       # partial update
+DELETE /api/saved-searches/{id}
+```
+
+A `SavedSearch` is:
+
+```json
+{
+  "id": "…",
+  "name": "Remote offers",
+  "filters": { "status": "offer", "location": "Remote" },
+  "sortBy": "company",
+  "sortOrder": "desc",
+  "createdAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
 }
 ```
 

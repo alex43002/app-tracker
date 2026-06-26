@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
-import { confirm } from "../components/common/dialogs/ConfirmDialog";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { confirm } from "../components/common/dialogs/confirmController";
 import toast from "react-hot-toast";
 
 import { AppLayout } from "../layouts/AppLayout";
 import { PageScroll } from "../components/common/PageScroll";
 
 import { JobsHeader } from "../components/jobs/JobsHeader";
-import { JobsToolbar } from "../components/jobs/JobsToolbar";
+import { JobsToolbar, type JobsQuery } from "../components/jobs/JobsToolbar";
 import { JobsTable } from "../components/jobs/JobsTable";
 import { JobsPagination } from "../components/jobs/JobsPagination";
 import { JobFormModal } from "../components/jobs/JobFormModal";
+import { SavedSearchesBar } from "../components/jobs/SavedSearchesBar";
+import type { SavedSearch } from "../types/savedSearch";
 
 import { fetchCurrentUser } from "../api/users";
 import {
@@ -21,6 +23,8 @@ import {
   type CreateJobPayload,
   type UpdateJobPayload,
 } from "../api/jobs";
+import { withOfflineCache } from "../api/offlineCache";
+import type { PaginatedResponse } from "../api/client";
 
 import type { Job } from "../types/job";
 import type { User } from "../types/user";
@@ -57,10 +61,45 @@ export function Jobs() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  // Whitelisted server-side filters (status / employmentType). Free-text search
+  // is applied client-side (`search`) since the backend filter whitelist is
+  // exact-match only and rejects Mongo operators (SEC-1).
   const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] =
     useState<"asc" | "desc">("desc");
+  const [offline, setOffline] = useState(false);
+  // Bumped to remount the toolbar with fresh state when a saved search is applied.
+  const [toolbarKey, setToolbarKey] = useState(0);
+
+  const handleQueryChange = useCallback((query: JobsQuery) => {
+    setPage(1);
+    setFilters(query.filters);
+    setSearch(query.search);
+    setSortBy(query.sortBy);
+    setSortOrder(query.sortOrder);
+  }, []);
+
+  const applySavedSearch = useCallback((saved: SavedSearch) => {
+    setPage(1);
+    setSearch("");
+    setFilters({ ...saved.filters });
+    setSortBy(saved.sortBy);
+    setSortOrder(saved.sortOrder);
+    setToolbarKey((k) => k + 1);
+  }, []);
+
+  // Client-side text filter over the loaded page (company / title).
+  const visibleJobs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter(
+      (j) =>
+        j.company.toLowerCase().includes(q) ||
+        j.jobTitle.toLowerCase().includes(q)
+    );
+  }, [jobs, search]);
 
   /* ============================================================
      Bootstrap user
@@ -77,19 +116,31 @@ export function Jobs() {
   ============================================================ */
 
   useEffect(() => {
-    setLoading(true);
+    let active = true;
 
-    fetchJobs(
-      page,
-      PAGE_SIZE,
-      sortBy,
-      sortOrder,
-      Object.keys(filters).length ? filters : undefined
-    ).then((res) => {
-      setJobs(res.items);
-      setTotalItems(res.meta.totalItems);
-      setLoading(false);
-    });
+    const filterArg = Object.keys(filters).length ? filters : undefined;
+    // Read-through offline cache (FEAT-9): keyed by the exact query so each
+    // page/sort/filter view falls back to its own last-known data when offline.
+    const cacheKey = `jobs:${page}:${sortBy}:${sortOrder}:${JSON.stringify(filters)}`;
+
+    withOfflineCache<PaginatedResponse<Job>>(cacheKey, () =>
+      fetchJobs(page, PAGE_SIZE, sortBy, sortOrder, filterArg)
+    )
+      .then(({ data, stale }) => {
+        if (!active) return;
+        setJobs(data.items);
+        setTotalItems(data.meta.totalItems);
+        setOffline(stale);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [page, filters, sortBy, sortOrder]);
 
   /* ============================================================
@@ -123,20 +174,39 @@ export function Jobs() {
               }}
             />
 
+            {offline && (
+              <div
+                role="status"
+                className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+              >
+                You appear to be offline — showing the last data we cached.
+              </div>
+            )}
+
             <JobsToolbar
-              filters={filters}
+              key={toolbarKey}
+              filters={{
+                search,
+                status: filters.status as string | undefined,
+                employmentType: filters.employmentType as string | undefined,
+              }}
               sortBy={sortBy}
               sortOrder={sortOrder}
-              onChange={({ filters, sortBy, sortOrder }) => {
-                setPage(1);
-                setFilters(filters);
-                setSortBy(sortBy);
-                setSortOrder(sortOrder);
+              onChange={handleQueryChange}
+            />
+
+            <SavedSearchesBar
+              filters={{
+                status: filters.status as string | undefined,
+                employmentType: filters.employmentType as string | undefined,
               }}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onApply={applySavedSearch}
             />
 
             <JobsTable
-              jobs={jobs}
+              jobs={visibleJobs}
               loading={loading}
               onEdit={async (job: Job) => {
                 let hydratedJob = job;

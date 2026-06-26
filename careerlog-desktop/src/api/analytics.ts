@@ -1,4 +1,6 @@
 import type {
+  AnalyticsInterval,
+  AnalyticsSummary,
   ApplicationsOverTime,
   CompanyFunnels,
   Funnel,
@@ -36,10 +38,11 @@ export function fetchFunnel() {
   return apiClient.get<Funnel>("/api/analytics/funnel");
 }
 
-/** Applications grouped by calendar month, ascending. */
-export function fetchApplicationsOverTime() {
+/** Applications grouped by period (week/month/quarter), ascending. */
+export function fetchApplicationsOverTime(interval?: AnalyticsInterval) {
+  const query = interval ? `?interval=${interval}` : "";
   return apiClient.get<ApplicationsOverTime>(
-    "/api/analytics/applications-over-time"
+    `/api/analytics/applications-over-time${query}`
   );
 }
 
@@ -51,4 +54,14 @@ export function fetchTimeToOffer() {
 /** Per-company status breakdown, busiest companies first. */
 export function fetchCompanyFunnels() {
   return apiClient.get<CompanyFunnels>("/api/analytics/by-company");
+}
+
+/* ============================================================
+   Combined summary (CLN-13)
+============================================================ */
+
+/** All headline analytics in one round-trip. */
+export function fetchAnalyticsSummary(interval?: AnalyticsInterval) {
+  const query = interval ? `?interval=${interval}` : "";
+  return apiClient.get<AnalyticsSummary>(`/api/analytics/summary${query}`);
 }

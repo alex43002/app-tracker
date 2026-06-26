@@ -18,6 +18,26 @@ def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
 
+# A throwaway hash used to equalize response timing on code paths that would
+# otherwise skip the (deliberately slow) Argon2 work — e.g. registering an
+# already-taken email or logging in as a non-existent user. Verifying against it
+# costs roughly the same as hashing/verifying a real password, so an attacker
+# can't distinguish "email exists" from "email is free" by latency (SEC-10).
+# Computed lazily so importing this module stays cheap.
+_DUMMY_HASH: str | None = None
+
+
+def equalize_password_timing(password: str) -> None:
+    """Spend ~one Argon2 verify so callers don't leak account existence by timing."""
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        _DUMMY_HASH = hash_password("careerlog-timing-equalizer")
+    try:
+        verify_password(password, _DUMMY_HASH)
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Refresh-token revocation (SEC-4)
 #

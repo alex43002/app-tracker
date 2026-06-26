@@ -52,3 +52,17 @@ export interface CompanyFunnel extends JobStatusCounts {
 export interface CompanyFunnels {
   companies: CompanyFunnel[];
 }
+
+/** Bucket granularity for applications-over-time (FEAT-13). */
+export type AnalyticsInterval = "week" | "month" | "quarter";
+
+/**
+ * All headline analytics in one payload (CLN-13). Matches backend
+ * `AnalyticsSummary` — one round-trip instead of four.
+ */
+export interface AnalyticsSummary {
+  funnel: Funnel;
+  applicationsOverTime: ApplicationsOverTime;
+  timeToOffer: TimeToOffer;
+  byCompany: CompanyFunnels;
+}

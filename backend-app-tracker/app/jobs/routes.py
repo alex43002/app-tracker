@@ -9,6 +9,8 @@ from app.common.errors import raise_error
 from app.jobs.schemas import (
     CreateJobRequest,
     CreateJobResponse,
+    JobResumes,
+    ResumeEntry,
     UpdateJobRequest,
 )
 from app.jobs import service
@@ -176,4 +178,49 @@ def delete_job(
 ):
     db = get_db()
     service.delete_job(db.jobs, id, current_user_id)
+    return success(data=None)
+
+
+# ───────────────
+# Multiple résumés per job (FEAT-10)
+# ───────────────
+
+@router.get("/{id}/resumes")
+def list_job_resumes(
+    id: str,
+    current_user_id: str = Depends(get_current_user),
+):
+    db = get_db()
+    result = service.list_job_resumes(db, id, current_user_id)
+    return success(data=JobResumes(**result).model_dump())
+
+
+@router.post("/{id}/resumes")
+async def add_job_resume(
+    id: str,
+    request: Request,
+    current_user_id: str = Depends(get_current_user),
+):
+    db = get_db()
+    form = await request.form()
+    resume: UploadFile | None = form.get("resume")
+    if not resume:
+        raise_error(
+            code="VALIDATION_ERROR",
+            message="A 'resume' file is required",
+            http_status=400,
+        )
+
+    entry = service.add_job_resume(db, id, current_user_id, resume)
+    return success(data=ResumeEntry(**entry).model_dump())
+
+
+@router.delete("/{id}/resumes/{resumeId}")
+def delete_job_resume(
+    id: str,
+    resumeId: str,
+    current_user_id: str = Depends(get_current_user),
+):
+    db = get_db()
+    service.delete_job_resume(db, id, current_user_id, resumeId)
     return success(data=None)

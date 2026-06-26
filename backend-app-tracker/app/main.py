@@ -20,6 +20,7 @@ from app.jobs.routes import router as jobs_router
 from app.alerts.routes import router as alerts_router
 from app.resumes.routes import router as resumes_router
 from app.analytics.routes import router as analytics_router
+from app.saved_searches.routes import router as saved_searches_router
 
 
 @asynccontextmanager
@@ -138,3 +139,6 @@ app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 app.include_router(resumes_router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(
+    saved_searches_router, prefix="/api/saved-searches", tags=["Saved Searches"]
+)
