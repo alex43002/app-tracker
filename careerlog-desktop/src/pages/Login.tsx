@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { login, signup } from "../api/auth";
 import { saveSession } from "../store/auth";
 import { ApiError } from "../api/client";
@@ -8,11 +8,17 @@ import {
   AuthLayout,
   AuthCard,
   AuthError,
+  AuthNotice,
   SignupFields,
 } from "../components/auth";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // One-off notice passed via navigation state (e.g. after a password reset).
+  const notice =
+    (location.state as { notice?: string } | null)?.notice ?? null;
 
   const [isSignup, setIsSignup] = useState(false);
 
@@ -68,6 +74,7 @@ export default function Login() {
             : "Sign in to continue tracking your progress."}
         </p>
 
+        {notice && !error && <AuthNotice message={notice} />}
         {error && <AuthError message={error} />}
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -124,6 +131,15 @@ export default function Login() {
             ? "Already have an account? Sign in"
             : "Need an account? Sign up"}
         </button>
+
+        {!isSignup && (
+          <Link
+            to="/reset-password"
+            className="mt-3 block w-full text-center text-sm text-gray-600 underline"
+          >
+            Forgot password?
+          </Link>
+        )}
       </AuthCard>
     </AuthLayout>
   );
