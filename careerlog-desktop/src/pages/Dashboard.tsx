@@ -4,8 +4,10 @@ import { PageScroll } from "../components/common/PageScroll";
 import { DashboardHeader } from "../components/dashboard/DashboardHeader";
 import { JobStatsGrid } from "../components/dashboard/JobStatsGrid";
 import { PipelineVisualization } from "../components/dashboard/PipelineVisualization";
+import { AnalyticsInsights } from "../components/dashboard/AnalyticsInsights";
 import { RecentJobsTable } from "../components/dashboard/RecentJobsTable";
 import { UpcomingAlertsList } from "../components/dashboard/UpcomingAlertsList";
+import { EmailVerificationBanner } from "../components/common/EmailVerificationBanner";
 
 import type { Job } from "../types/job";
 import type { Alert } from "../types/alert";
@@ -99,6 +101,8 @@ export function Dashboard() {
           "
         >
           <div className="flex flex-col gap-10">
+            {!user.emailVerified && <EmailVerificationBanner />}
+
             <DashboardHeader />
 
             {/* KPI Cards should now use analytics data, not full job list */}
@@ -106,6 +110,9 @@ export function Dashboard() {
 
             {/* Pipeline visualization still relies on actual jobs */}
             <PipelineVisualization stats={jobStats} isLoading={loadingStats}/>
+
+            {/* Richer analytics (FEAT-7-UI) */}
+            <AnalyticsInsights />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <RecentJobsTable jobs={jobs} />
