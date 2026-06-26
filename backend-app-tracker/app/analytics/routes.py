@@ -4,7 +4,13 @@ from app.database import get_db
 from app.common.auth import get_current_user
 from app.common.responses import success
 from app.analytics import service
-from app.analytics.schemas import JobStatusCounts
+from app.analytics.schemas import (
+    ApplicationsOverTime,
+    CompanyFunnels,
+    Funnel,
+    JobStatusCounts,
+    TimeToOffer,
+)
 
 router = APIRouter()
 
@@ -14,3 +20,31 @@ def get_job_status_counts(current_user_id: str = Depends(get_current_user)):
     db = get_db()
     result = service.get_job_status_counts(db.jobs, current_user_id)
     return success(data=JobStatusCounts(**result).model_dump())
+
+
+@router.get("/funnel")
+def get_funnel(current_user_id: str = Depends(get_current_user)):
+    db = get_db()
+    result = service.get_funnel(db.jobs, current_user_id)
+    return success(data=Funnel(**result).model_dump())
+
+
+@router.get("/applications-over-time")
+def get_applications_over_time(current_user_id: str = Depends(get_current_user)):
+    db = get_db()
+    result = service.get_applications_over_time(db.jobs, current_user_id)
+    return success(data=ApplicationsOverTime(**result).model_dump())
+
+
+@router.get("/time-to-offer")
+def get_time_to_offer(current_user_id: str = Depends(get_current_user)):
+    db = get_db()
+    result = service.get_time_to_offer(db.jobs, current_user_id)
+    return success(data=TimeToOffer(**result).model_dump())
+
+
+@router.get("/by-company")
+def get_company_funnels(current_user_id: str = Depends(get_current_user)):
+    db = get_db()
+    result = service.get_company_funnels(db.jobs, current_user_id)
+    return success(data=CompanyFunnels(**result).model_dump())
