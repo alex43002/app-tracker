@@ -1,0 +1,57 @@
+name: Release Desktop
+
+# Cuts a cross-platform release. Push a tag like `v0.1.4` (or run manually) and
+# electron-builder builds installers on each OS and publishes them to the
+# matching GitHub Release. Signing/notarization happen automatically when the
+# corresponding secrets are configured; without them, unsigned artifacts are
+# produced so the pipeline still works for testing.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: careerlog-desktop
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: careerlog-desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build, sign, and publish
+        run: npm run release
+        env:
+          # Publishing to GitHub Releases.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Code-signing certificate (per OS). Leave the secret unset to produce
+          # an unsigned build instead of failing.
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || (matrix.os == 'windows-latest' && secrets.WIN_CSC_LINK || '') }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || (matrix.os == 'windows-latest' && secrets.WIN_CSC_KEY_PASSWORD || '') }}
+
+          # Apple notarization (macOS only; ignored elsewhere).
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
