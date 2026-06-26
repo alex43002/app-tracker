@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str = "no-reply@careerlog.app"
 
+    # Optional Twilio provider for SMS alerts. When unset, `sms` alerts are
+    # logged via the console notifier instead of actually being sent.
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_from: str | None = None  # sender phone number, e.g. +15551234567
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
