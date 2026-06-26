@@ -30,7 +30,7 @@ This application **does not**:
 - **Electron** — Desktop runtime
 - **React + TypeScript** — UI layer
 - **Vite (stable)** — Frontend bundler (rolldown disabled)
-- **electron-builder** — Windows packaging
+- **electron-builder** — cross-platform packaging (Windows, macOS, Linux)
 - **Node.js** — Main process only
 
 ---
@@ -113,13 +113,59 @@ npm run build
 
 ---
 
-### 4. Package Windows Installer
+### 4. Package Installers Locally
 
 ```bash
 npm run dist
 ```
 
-The installer will be generated using `electron-builder`.
+`electron-builder` packages for the **current OS** and writes artifacts to
+`release-artifacts/`. Run it on Windows for `.exe` (NSIS), on macOS for `.dmg` +
+`.zip`, and on Linux for `.AppImage` + `.deb`.
+
+---
+
+## Building & Releasing
+
+### Targets
+
+| Platform | Targets | Notes |
+| --- | --- | --- |
+| Windows | `nsis` | Installer (`.exe`) |
+| macOS | `dmg`, `zip` | `zip` is required for auto-update |
+| Linux | `AppImage`, `deb` | |
+
+App icons live in [`assets/`](assets/README.md) — add a 1024×1024 `icon.png`
+before cutting a branded release (otherwise the default Electron icon is used).
+
+### Cutting a release (CI)
+
+Releases are built and published by the
+[`Release Desktop`](.github/workflows/release.yml) workflow, which runs
+`electron-builder` on macOS, Windows, and Linux runners and uploads the
+artifacts to the matching GitHub Release.
+
+1. Bump `version` in `package.json`.
+2. Tag and push: `git tag v0.1.4 && git push origin v0.1.4`
+   (or run the workflow manually via **workflow_dispatch**).
+
+Auto-update is wired via `electron-updater` against these GitHub Releases.
+
+### Code signing & notarization
+
+Signing happens automatically when the relevant secrets are configured; if
+they're absent the build still succeeds but produces **unsigned** artifacts.
+Configure these repository secrets:
+
+| Secret | Platform | Purpose |
+| --- | --- | --- |
+| `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD` | Windows | base64 `.pfx` cert + password |
+| `MAC_CSC_LINK` / `MAC_CSC_KEY_PASSWORD` | macOS | base64 `.p12` cert + password |
+| `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` | macOS | notarization (Apple notary service) |
+
+`GITHUB_TOKEN` (provided automatically by Actions) is used to publish the
+release. The macOS hardened-runtime entitlements live in
+`assets/entitlements.mac.plist`.
 
 ---
 

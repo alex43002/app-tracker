@@ -15,6 +15,7 @@
     "build:electron:ts": "npm run build:electron:main && npm run build:electron:preload",
     "build": "npm run build:electron:ts && npm run build:renderer && npm run build:electron",
     "dist": "npm run build",
+    "release": "npm run build:electron:ts && npm run build:renderer && electron-builder --publish always",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -26,14 +27,33 @@
       "electron-dist/**/*"
     ],
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "release-artifacts"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        "nsis"
+      ]
     },
     "mac": {
-      "target": "dmg",
-      "category": "public.app-category.productivity"
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "maintainer": "alex43002 <alexdejesuswork1@gmail.com>",
+      "synopsis": "Track your job applications, résumés, and follow-ups."
     },
     "publish": [
       {

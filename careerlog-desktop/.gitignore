@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# electron-builder output
+release-artifacts
+
 # Local env files (commit .env.example instead)
 .env
 .env.*

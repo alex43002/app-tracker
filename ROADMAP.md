@@ -14,10 +14,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
 > Current state: **backend 53 tests + ruff clean; desktop 34 tests + typecheck +
-> eslint clean.** The desktop UI for FEAT-6 (reset/verify + verification banner)
-> and FEAT-7 (analytics dashboard widgets) has shipped; remaining work is
-> cross-platform builds and P3 cleanups — all tracked under **§5 "Follow-ups from
-> recent work."**
+> eslint clean.** Desktop UI for FEAT-6/FEAT-7 has shipped and **cross-platform
+> builds (FEAT-8)** are wired (config + release workflow). Remaining work is P3
+> cleanups — tracked under **§5 "Follow-ups from recent work."**
 
 ---
 
@@ -81,6 +80,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | FEAT-5 (SMS) | Feature | **Twilio SMS notifier.** `TwilioSmsNotifier` delivers `sms` alerts via the Twilio Messages REST API (stdlib HTTP, injectable transport for tests). New `RoutingNotifier` dispatches each channel to its own provider so email (SMTP) and SMS (Twilio) configure independently; unconfigured channels fall back to console. `build_notifier` wires both. Config: `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM`. + tests. |
 | CLN-5 | Cleanup | **Response schemas no longer dead.** `CreateJobResponse` / `CreateAlertResponse` / `UpdateUserResponse` are now validated at the route (matching the analytics `Schema(**result).model_dump()` pattern); the `Alert` entity schema backs `_serialize_alert` (like `User`). Dropped the unused `Job` entity schema deliberately — round-tripping its `url` through `HttpUrl` would normalize the wire format clients depend on. |
 | FEAT-7 | Feature | **Richer analytics.** Four new auth-scoped endpoints alongside `status-counts`: `funnel` (counts + response/interview/offer conversion rates), `applications-over-time` (monthly buckets by `createdAt`), `time-to-offer` (avg/median days application→offer, using offer `updatedAt` as a proxy), and `by-company` (per-company status breakdown). Date-sensitive metrics compute in Python from a per-user fetch (mongomock-safe); all responses validated through pydantic models. Desktop: matching types + `fetchFunnel`/`fetchApplicationsOverTime`/`fetchTimeToOffer`/`fetchCompanyFunnels`. Backend (7) + desktop (4) tests; contract updated. |
+| FEAT-8 | Platform | **Cross-platform builds.** electron-builder now targets Windows (`nsis`), macOS (`dmg` + `zip` for auto-update, hardened runtime + entitlements + notarize-via-env), and Linux (`AppImage` + `deb`); output moved to `release-artifacts/`. New tag-driven `Release Desktop` GitHub Actions workflow builds on all three OS runners and publishes to GitHub Releases, with per-OS signing/notarization wired to secrets (unsigned-but-successful when absent). README "Building & Releasing" + `assets/` icon/entitlements docs added. |
+| FEAT-7-UI / FEAT-14 | Feature | **Desktop analytics widgets + email-verify banner.** `AnalyticsInsights` dashboard section renders conversion rates, applications-over-time chart, time-to-offer KPIs, and a per-company table (loading/empty/error states); `EmailVerificationBanner` prompts unverified users. + RTL component tests. |
+| FEAT-6-UI | Feature | **Desktop reset/verify screens.** `/reset-password` and `/verify-email` pages over the FEAT-6 client functions, "Forgot password?" link, enumeration-safe messaging; added React Testing Library + component tests. |
 | FEAT-6 | Feature | **Password reset & email verification.** Four new auth endpoints (`password-reset/request`+`confirm`, `verify-email/request`+`confirm`) backed by single-use, hashed, TTL'd tokens (`auth_tokens` collection) consumed atomically. Reset revokes all sessions (generation bump); request endpoints never reveal whether an email exists (enumeration-safe) and are rate-limited. Registration auto-sends a verification token; users now carry `emailVerified` (exposed on auth + user responses). Delivery reuses the `Notifier` (injectable `get_notifier`). Desktop: `User.emailVerified` + four API client functions. Backend (9) + desktop (4) tests; contract + Mongo schema docs updated. |
 
 ---
@@ -125,8 +127,10 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
   client). Dashboard widgets to surface these in the UI remain a follow-up.
 
 ### Product / platform
-- **FEAT-8 (P2): Cross-platform builds** — wire up the existing `mac` (dmg) target
-  plus Linux, with signing.
+- ✅ **FEAT-8 (P2): Cross-platform builds** — done (see §2b): Windows/macOS/Linux
+  electron-builder targets, signing/notarization scaffolding, and a tag-driven
+  GitHub Actions release workflow. _Prereq before a branded release: add a
+  1024×1024 `assets/icon.png` and configure the signing secrets._
 - **FEAT-9 (P3): Optional offline caching.**
 - **FEAT-10 (P3): Multiple résumés per job** + in-app preview.
 - **FEAT-11 (P3): Saved searches / advanced filtering UI** (now safe to build on the
@@ -168,8 +172,9 @@ lost._
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
-   notifier hardening (CLN-12), and promoting the downgraded lint warnings back to
-   errors (CLN-11).
+1. **Polish:** enumeration hardening (SEC-10), notifier hardening (CLN-12), and
+   promoting the downgraded lint warnings back to errors (CLN-11).
 2. **Data model depth:** FEAT-13 status history (accurate time-to-offer / funnel
    timing), then richer analytics/efficiency (CLN-13).
+3. **Release prep:** add a 1024×1024 `assets/icon.png` and configure signing
+   secrets, then cut the first cross-platform tagged release (FEAT-8).
