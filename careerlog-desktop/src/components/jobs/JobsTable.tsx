@@ -39,9 +39,10 @@ export function JobsTable({
   }
 
   return (
-    <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-      {/* Column customization (desktop table only). */}
-      <div className="hidden items-center justify-end border-b px-4 py-2 md:flex">
+    <div className="flex flex-col gap-3">
+      {/* Column customization (desktop only). Kept outside the table card so the
+          dropdown isn't clipped by the card's overflow. */}
+      <div className="hidden justify-end md:flex">
         <ColumnSettings
           prefs={prefs}
           labelOf={labelOf}
@@ -51,15 +52,15 @@ export function JobsTable({
         />
       </div>
 
-      {/* =======================
-         DESKTOP TABLE (SCROLLABLE)
+      <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        {/* =======================
+           DESKTOP TABLE (SCROLLABLE)
 
-         The table sizes to its visible columns (no fixed min-width), so hiding
-         columns makes the grid more compact and showing more lengthens it,
-         scrolling horizontally only when needed.
-      ======================= */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-auto">
+           The table fills the container width (w-full); cells use nowrap, so
+           when many columns are shown it overflows and scrolls horizontally.
+        ======================= */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
           <thead className="border-b bg-gray-50 text-left text-sm">
             <tr>
               {orderedVisible.map((col) => (
@@ -196,6 +197,7 @@ export function JobsTable({
             </div>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
