@@ -102,7 +102,7 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 | ID | Pri | Item |
 | --- | --- | --- |
 | CLN-8 | P3 | **Naming:** path param `id` vs document field `jobId` (external ref) is confusing. |
-| CLN-11 | P3 | **Address downgraded lint warnings.** `react-hooks/set-state-in-effect` (3) and `immutability` (2) + `react-refresh/only-export-components` (1) are now warnings — refactor the effects/dialog module to satisfy them, then promote back to errors. |
+| CLN-11 | P3 | **Address downgraded lint warnings (8 total).** `react-hooks/set-state-in-effect` (3), `react-hooks/immutability` (2), `react-hooks/exhaustive-deps` (2), and `react-refresh/only-export-components` (1) are warnings — refactor the effects/dialog modules to satisfy them, then promote back to errors. |
 
 ---
 
@@ -138,9 +138,9 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 ### Follow-ups from recent work (captured 2026-06-26)
 
-_Loose ends from the FEAT-5/6/7/12 deliveries — backend + desktop API clients
-shipped and tested, but these threads remain open. Captured here so they aren't
-lost._
+_Loose ends from the FEAT-5/6/7/12 deliveries. The desktop-UI follow-ups
+(FEAT-6-UI, FEAT-7-UI, FEAT-14) have since shipped; the remaining backend/data
+threads (FEAT-13, CLN-12, CLN-13) are still open._
 
 - ✅ **FEAT-6-UI (P2): Desktop reset/verify screens.** Done — `/reset-password`
   (request + confirm phases) and `/verify-email` (confirm + resend) pages on top
