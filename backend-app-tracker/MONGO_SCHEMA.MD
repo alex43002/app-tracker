@@ -57,7 +57,24 @@
 
   status: String,           // applied | interviewing | offer | rejected
 
-  resume: String,           // GridFS file id (string) or null — NOT inline binary
+  resume: String,           // legacy single GridFS file id (string) or null
+
+  // FEAT-10: multiple résumés per job. Each entry's bytes live in GridFS.
+  resumes: [
+    {
+      id: String,           // GridFS file id
+      filename: String,
+      contentType: String,
+      size: Number,         // bytes
+      uploadedAt: Date
+    }
+  ],
+
+  // FEAT-13: per-status timeline, appended whenever `status` changes. Seeded
+  // with the initial status at create time. Powers exact transition timing.
+  statusHistory: [
+    { status: String, at: Date }
+  ],
 
   location: String,
   employmentType: String,
@@ -69,7 +86,8 @@
 ```
 
 Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
-`metadata.userId` for ownership checks; the job document holds only the file id.
+`metadata.userId` for ownership checks; the job document holds only file ids
+(legacy `resume` plus the `resumes[]` metadata list).
 
 ### Indexes (intended)
 
@@ -162,6 +180,37 @@ tokens.
 ```js
 { tokenHash: 1 }  // unique
 { expiresAt: 1 }  // TTL (expireAfterSeconds: 0)
+```
+
+---
+
+## Saved Searches Collection
+
+**Collection name:** `saved_searches`
+
+```js
+{
+  _id: ObjectId,
+  userId: String,           // from JWT `sub`
+
+  name: String,
+  filters: Object,          // whitelisted job filters (e.g. { status, location })
+  sortBy: String,           // a sortable job field
+  sortOrder: String,        // "asc" | "desc"
+
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+`filters` only ever holds fields whitelisted by the jobs list endpoint — values
+are validated on write (no Mongo operators, no foreign fields), so a stored
+search is safe to replay against the hardened list query (FEAT-11 / SEC-1).
+
+### Indexes (intended)
+
+```js
+{ userId: 1 }
 ```
 
 ---

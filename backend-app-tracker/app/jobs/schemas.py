@@ -49,3 +49,17 @@ class CreateJobResponse(BaseModel):
     id: str
     createdAt: datetime
     updatedAt: datetime
+
+
+# ---- Multiple résumés per job (FEAT-10) ----
+
+class ResumeEntry(BaseModel):
+    id: str
+    filename: Optional[str] = None
+    contentType: Optional[str] = None
+    size: Optional[int] = None
+    uploadedAt: Optional[datetime] = None
+
+
+class JobResumes(BaseModel):
+    resumes: list[ResumeEntry]

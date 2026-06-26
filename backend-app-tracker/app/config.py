@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     twilio_auth_token: str | None = None
     twilio_from: str | None = None  # sender phone number, e.g. +15551234567
 
+    # Notifier delivery hardening (CLN-12). Real providers (SMTP/Twilio) are
+    # wrapped with bounded retries + exponential backoff; a final failure is
+    # logged as a dead letter instead of silently dropped. Set attempts to 1 to
+    # disable retrying.
+    notifier_max_attempts: int = 3
+    notifier_retry_backoff_seconds: float = 0.5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

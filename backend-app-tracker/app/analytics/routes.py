@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.database import get_db
 from app.common.auth import get_current_user
 from app.common.responses import success
 from app.analytics import service
 from app.analytics.schemas import (
+    AnalyticsSummary,
     ApplicationsOverTime,
     CompanyFunnels,
     Funnel,
@@ -30,9 +31,12 @@ def get_funnel(current_user_id: str = Depends(get_current_user)):
 
 
 @router.get("/applications-over-time")
-def get_applications_over_time(current_user_id: str = Depends(get_current_user)):
+def get_applications_over_time(
+    interval: str = Query(service.DEFAULT_INTERVAL),
+    current_user_id: str = Depends(get_current_user),
+):
     db = get_db()
-    result = service.get_applications_over_time(db.jobs, current_user_id)
+    result = service.get_applications_over_time(db.jobs, current_user_id, interval)
     return success(data=ApplicationsOverTime(**result).model_dump())
 
 
@@ -48,3 +52,15 @@ def get_company_funnels(current_user_id: str = Depends(get_current_user)):
     db = get_db()
     result = service.get_company_funnels(db.jobs, current_user_id)
     return success(data=CompanyFunnels(**result).model_dump())
+
+
+@router.get("/summary")
+def get_summary(
+    interval: str = Query(service.DEFAULT_INTERVAL),
+    current_user_id: str = Depends(get_current_user),
+):
+    """All headline analytics (funnel, over-time, time-to-offer, by-company) in
+    one response computed from a single per-user fetch (CLN-13)."""
+    db = get_db()
+    result = service.get_summary(db.jobs, current_user_id, interval)
+    return success(data=AnalyticsSummary(**result).model_dump())

@@ -14,6 +14,42 @@ from pymongo.collection import Collection
 from app.common.errors import raise_error
 
 
+def validate_client_filters(parsed: dict, allowed_fields: Iterable[str]) -> dict:
+    """Validate a parsed filter dict against a field whitelist.
+
+    Filters are accepted only for whitelisted fields, may not contain Mongo
+    operators (keys starting with ``$``), and may not use operator-object values.
+    Returns the cleaned filter dict (without any ``userId`` scope). Raises the
+    standard validation envelope on any violation.
+    """
+    allowed = set(allowed_fields)
+    clean: dict[str, Any] = {}
+
+    for key, value in parsed.items():
+        if not isinstance(key, str) or key.startswith("$"):
+            raise_error(
+                code="VALIDATION_ERROR",
+                message=f"Unsupported filter key: {key}",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        if key not in allowed:
+            raise_error(
+                code="VALIDATION_ERROR",
+                message=f"Filtering by '{key}' is not allowed",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Reject operator objects as values (e.g. {"$gt": ...}).
+        if isinstance(value, dict):
+            raise_error(
+                code="VALIDATION_ERROR",
+                message=f"Invalid filter value for '{key}'",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        clean[key] = value
+
+    return clean
+
+
 def parse_filters(
     raw_filters: str | None,
     user_id: str,
@@ -24,7 +60,6 @@ def parse_filters(
     Client filters are accepted only for whitelisted fields, may not contain Mongo
     operators (keys starting with ``$``), and can never override ``userId``.
     """
-    allowed = set(allowed_fields)
     query: dict[str, Any] = {}
 
     if raw_filters:
@@ -39,27 +74,7 @@ def parse_filters(
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        for key, value in parsed.items():
-            if not isinstance(key, str) or key.startswith("$"):
-                raise_error(
-                    code="VALIDATION_ERROR",
-                    message=f"Unsupported filter key: {key}",
-                    http_status=status.HTTP_400_BAD_REQUEST,
-                )
-            if key not in allowed:
-                raise_error(
-                    code="VALIDATION_ERROR",
-                    message=f"Filtering by '{key}' is not allowed",
-                    http_status=status.HTTP_400_BAD_REQUEST,
-                )
-            # Reject operator objects as values (e.g. {"$gt": ...}).
-            if isinstance(value, dict):
-                raise_error(
-                    code="VALIDATION_ERROR",
-                    message=f"Invalid filter value for '{key}'",
-                    http_status=status.HTTP_400_BAD_REQUEST,
-                )
-            query[key] = value
+        query = validate_client_filters(parsed, allowed_fields)
 
     # userId is forced last so it can never be overridden by client input.
     query["userId"] = user_id
