@@ -72,6 +72,58 @@ def test_sms_alert_uses_phone_number(client, db, auth_payload):
     assert notifier.sent[0][1] == "1234567890"
 
 
+def test_concurrent_worker_does_not_double_deliver(client, db, auth_payload):
+    """FEAT-12: an alert claimed by one worker isn't delivered by another.
+
+    The notifier re-enters ``process_due_alerts`` mid-send (standing in for a
+    second scheduler instance). Because the alert is claimed *before* delivery,
+    the re-entrant pass finds nothing due and delivers nothing.
+    """
+    jwt, _ = _register(client, auth_payload, "concurrent@example.com")
+    past = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+    _create_alert(client, jwt, past, message="only once")
+
+    reentrant_counts = []
+
+    class ReentrantNotifier(CollectingNotifier):
+        def send(self, channel, recipient, message):
+            # Simulate a second worker polling while we hold the claim.
+            reentrant_counts.append(
+                process_due_alerts(db, CollectingNotifier(), datetime.now(tz=timezone.utc))
+            )
+            super().send(channel, recipient, message)
+
+    notifier = ReentrantNotifier()
+    assert process_due_alerts(db, notifier, datetime.now(tz=timezone.utc)) == 1
+    assert len(notifier.sent) == 1
+    # The "other worker" saw the alert already claimed and delivered nothing.
+    assert reentrant_counts == [0]
+
+
+def test_failed_delivery_is_retried(client, db, auth_payload):
+    """FEAT-12: a claim is released when delivery fails, so it retries later."""
+    jwt, _ = _register(client, auth_payload, "retry@example.com")
+    past = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+    _create_alert(client, jwt, past, message="will fail first")
+
+    class FlakyNotifier:
+        def __init__(self):
+            self.calls = 0
+
+        def send(self, channel, recipient, message):
+            self.calls += 1
+            raise RuntimeError("smtp down")
+
+    flaky = FlakyNotifier()
+    assert process_due_alerts(db, flaky, datetime.now(tz=timezone.utc)) == 0
+    assert flaky.calls == 1
+
+    # The claim was released, so a healthy worker delivers it on the next pass.
+    notifier = CollectingNotifier()
+    assert process_due_alerts(db, notifier, datetime.now(tz=timezone.utc)) == 1
+    assert notifier.sent == [("email", "retry@example.com", "will fail first")]
+
+
 def test_rescheduling_allows_redelivery(client, db, auth_payload):
     """An alert rescheduled to a new (past) time after firing fires again."""
     jwt, _ = _register(client, auth_payload, "resched@example.com")

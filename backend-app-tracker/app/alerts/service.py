@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
+from pymongo import ReturnDocument
 from pymongo.collection import Collection
 from pymongo.database import Database
 from fastapi import status
@@ -142,10 +143,51 @@ def _is_due(alert: dict, now: datetime) -> bool:
     return last is None or last < scheduled
 
 
+def _claim_alert(collection: Collection, alert: dict, now: datetime) -> bool:
+    """Atomically claim a due alert for delivery (FEAT-12).
+
+    Stamps ``lastAlertAt`` only if the alert is still due *and* hasn't already
+    been claimed for the current schedule. The condition mirrors ``_is_due`` but
+    runs as a single ``findAndModify`` so that, with multiple scheduler
+    instances, exactly one worker wins the claim and delivers the alert. Returns
+    ``True`` if this caller won the claim.
+    """
+    scheduled = _to_naive_utc(alert.get("scheduledAlert"))
+    claimed = collection.find_one_and_update(
+        {
+            "_id": alert["_id"],
+            "scheduledAlert": {"$lte": now},
+            "$or": [
+                {"lastAlertAt": None},
+                {"lastAlertAt": {"$lt": scheduled}},
+            ],
+        },
+        {"$set": {"lastAlertAt": now}},
+        return_document=ReturnDocument.AFTER,
+    )
+    return claimed is not None
+
+
+def _release_alert(collection: Collection, alert: dict, now: datetime) -> None:
+    """Undo a claim so the alert can be retried on a later pass.
+
+    Only releases if we still own the claim (``lastAlertAt`` is the value we
+    stamped), restoring the previous ``lastAlertAt`` — never clobbering a claim
+    won by another worker in the meantime.
+    """
+    collection.update_one(
+        {"_id": alert["_id"], "lastAlertAt": now},
+        {"$set": {"lastAlertAt": _to_naive_utc(alert.get("lastAlertAt"))}},
+    )
+
+
 def process_due_alerts(db: Database, notifier: Notifier, now: datetime) -> int:
     """Deliver every due alert and stamp ``lastAlertAt``. Returns the count sent.
 
-    Designed to be idempotent per schedule and safe to call repeatedly.
+    Idempotent per schedule and safe to run from multiple instances: each alert
+    is claimed atomically before delivery (see ``_claim_alert``), so a given
+    schedule is delivered by exactly one worker. If delivery fails the claim is
+    released so it can be retried.
     """
     now = _to_naive_utc(now)
     sent = 0
@@ -153,11 +195,16 @@ def process_due_alerts(db: Database, notifier: Notifier, now: datetime) -> int:
         if not _is_due(alert, now):
             continue
 
+        # Claim before doing any work so a concurrent worker can't also deliver.
+        if not _claim_alert(db.alerts, alert, now):
+            continue
+
         try:
             user = db.users.find_one({"_id": ObjectId(alert["userId"])})
         except (InvalidId, TypeError):
             user = None
         if not user:
+            _release_alert(db.alerts, alert, now)
             continue
 
         channel = alert.get("smsOrEmail", EMAIL)
@@ -167,12 +214,9 @@ def process_due_alerts(db: Database, notifier: Notifier, now: datetime) -> int:
             notifier.send(channel, recipient, alert.get("message", ""))
         except Exception:
             logger.exception("Failed to deliver alert %s", alert.get("_id"))
+            _release_alert(db.alerts, alert, now)
             continue
 
-        db.alerts.update_one(
-            {"_id": alert["_id"]},
-            {"$set": {"lastAlertAt": now}},
-        )
         sent += 1
 
     return sent
