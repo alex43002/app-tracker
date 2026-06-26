@@ -43,8 +43,10 @@ export interface UseJobFormResult {
   setFieldTouched: (key: JobFormFieldKey) => void;
 
   touchAllFields: () => void;
-  
+
   validateForm: () => boolean;
+  /** Merge backend field-level validation errors into the form (FEAT-2 follow-up). */
+  setServerErrors: (errors: JobFormErrors) => void;
   resetForm: () => void;
 }
 

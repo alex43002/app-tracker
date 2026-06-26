@@ -15,7 +15,9 @@ interface JobFormModalProps {
   open: boolean;
   job: Job | null;
   onClose: () => void;
-  onSave: (payload: CreateJobPayload | UpdateJobPayload) => void;
+  onSave: (
+    payload: CreateJobPayload | UpdateJobPayload
+  ) => void | Promise<void>;
 }
 
 /* ============================================================
@@ -36,18 +38,22 @@ export function JobFormModal({
   ============================ */
 
   useEffect(() => {
+    // State transitions are deferred into rAF/timeout callbacks so the effect
+    // body itself never sets state synchronously (avoids cascading renders).
     if (open) {
-      setIsVisible(true);
-      requestAnimationFrame(() => {
-        setIsAnimating(true);
+      const raf = requestAnimationFrame(() => {
+        setIsVisible(true);
+        requestAnimationFrame(() => setIsAnimating(true));
       });
-    } else {
-      setIsAnimating(false);
-      const timeout = setTimeout(() => {
-        setIsVisible(false);
-      }, 300);
-      return () => clearTimeout(timeout);
+      return () => cancelAnimationFrame(raf);
     }
+
+    const raf = requestAnimationFrame(() => setIsAnimating(false));
+    const timeout = setTimeout(() => setIsVisible(false), 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+    };
   }, [open]);
 
   if (!isVisible) return null;
@@ -89,9 +95,10 @@ export function JobFormModal({
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           <JobForm
-            ref={formRef} 
+            key={job?.id ?? "new"}
+            ref={formRef}
             job={job}
-            onSave={(payload) => onSave(payload)}
+            onSave={onSave}
           />
         </div>
 

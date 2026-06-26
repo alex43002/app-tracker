@@ -29,13 +29,10 @@ export default defineConfig([
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      // The react-compiler-based rules in react-hooks v7 and the react-refresh
-      // preset flag several legitimate patterns (loading flags in effects,
-      // hoisted handlers, multi-export modules). Keep them visible as warnings
-      // rather than blocking CI.
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-refresh/only-export-components': 'warn',
+      // CLN-11: the effect/dialog modules were refactored to satisfy the
+      // react-compiler rules (key-remount for prop-derived state, deferred
+      // state updates in effects, a separate imperative-controller module), so
+      // these are promoted back to errors to block regressions in CI.
     },
   },
 ])

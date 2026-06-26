@@ -1,17 +1,36 @@
 import type { Job } from "../../../../types/job";
-import type { JobFormSavePayload } from "../types";
+import type { JobFormErrors, JobFormSavePayload } from "../types";
 import { forwardRef, useImperativeHandle } from "react";
+import toast from "react-hot-toast";
 
+import { ApiError } from "../../../../api/client";
 import { JOB_FORM_FIELDS, JOB_FORM_SECTIONS } from "../config/formFields";
 import { useJobForm } from "../hooks/useJobForm";
 import { diffJobPayload } from "../utils/diffJobPayload";
 import { normalizeJobPayload } from "../utils/normalizeJobPayload";
+
+// Form fields the backend can return validation details for.
+const FORM_FIELD_KEYS = new Set(JOB_FORM_FIELDS.map((f) => f.key));
+
+/** Map an ApiError's `details` onto the form's field keys (FEAT-2 follow-up). */
+function fieldErrorsFromApi(error: ApiError): JobFormErrors {
+  const mapped: JobFormErrors = {};
+  for (const detail of error.details ?? []) {
+    // Backend field paths line up with form keys (e.g. "salaryTarget").
+    const key = detail.field as keyof JobFormErrors;
+    if (FORM_FIELD_KEYS.has(key as never)) {
+      mapped[key] = detail.message;
+    }
+  }
+  return mapped;
+}
 
 import { JobFormSection } from "./JobFormSection";
 import { TextField } from "./TextField";
 import { SelectField } from "./SelectField";
 import { SalaryField } from "./SalaryField";
 import { ResumeField } from "./ResumeField";
+import { JobResumeManager } from "./JobResumeManager";
 
 export interface JobFormHandle {
   submit: () => void;
@@ -32,7 +51,7 @@ export interface JobFormHandle {
  */
 export const JobForm = forwardRef<JobFormHandle, {
   job: Job | null;
-  onSave: (payload: JobFormSavePayload) => void;
+  onSave: (payload: JobFormSavePayload) => void | Promise<void>;
 }>(function JobForm({ job, onSave }, ref) {
 
   const {
@@ -43,19 +62,35 @@ export const JobForm = forwardRef<JobFormHandle, {
     setFieldTouched,
     touchAllFields,
     validateForm,
+    setServerErrors,
   } = useJobForm({ job });
 
-  function handleSave() {
+  async function handleSave() {
     const isValid = validateForm();
     if (!isValid) {
         touchAllFields();
         return;
     }
 
-    if (job) {
-      onSave(diffJobPayload(job, values));
-    } else {
-      onSave(normalizeJobPayload(values));
+    const payload = job
+      ? diffJobPayload(job, values)
+      : normalizeJobPayload(values);
+
+    try {
+      await onSave(payload);
+    } catch (err) {
+      // Surface backend validation against the matching fields (FEAT-2
+      // follow-up); fall back to a toast for non-field errors.
+      if (err instanceof ApiError) {
+        const fieldErrors = fieldErrorsFromApi(err);
+        if (Object.keys(fieldErrors).length > 0) {
+          setServerErrors(fieldErrors);
+          return;
+        }
+      }
+      toast.error(
+        err instanceof ApiError ? err.displayMessage : "Failed to save job"
+      );
     }
   }
 
@@ -139,6 +174,13 @@ export const JobForm = forwardRef<JobFormHandle, {
           </JobFormSection>
         );
       })}
+
+      {/* Multiple résumés (FEAT-10) — available once the job exists. */}
+      {job && (
+        <JobFormSection title="Résumés">
+          <JobResumeManager jobId={job.id} />
+        </JobFormSection>
+      )}
     </div>
   );
 });
