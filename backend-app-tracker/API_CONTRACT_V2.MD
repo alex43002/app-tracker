@@ -513,6 +513,78 @@ Response (`data`):
 { "applied": 0, "interviewing": 0, "offer": 0, "rejected": 0, "total": 0 }
 ```
 
+All analytics endpoints require auth and are scoped to the caller (JWT `sub`).
+
+### Funnel
+
+```
+GET /api/analytics/funnel
+```
+
+Status counts plus headline conversion rates. Each rate is a `0..1` ratio.
+
+```json
+{
+  "applied": 4, "interviewing": 2, "offer": 1, "rejected": 3, "total": 10,
+  "responseRate": 0.6,
+  "interviewRate": 0.3,
+  "offerRate": 0.1
+}
+```
+
+- `responseRate` = jobs past the initial "applied" stage ÷ total.
+- `interviewRate` = (interviewing + offer) ÷ total.
+- `offerRate` = offer ÷ total. (Rates are `0.0` when `total` is 0.)
+
+### Applications Over Time
+
+```
+GET /api/analytics/applications-over-time
+```
+
+Applications grouped by calendar month (by `createdAt`), ascending.
+
+```json
+{
+  "interval": "month",
+  "points": [
+    { "period": "2026-05", "count": 1 },
+    { "period": "2026-06", "count": 2 }
+  ]
+}
+```
+
+### Time To Offer
+
+```
+GET /api/analytics/time-to-offer
+```
+
+Average / median **days** from application (`createdAt`) to offer. Since the
+schema has no per-status timestamps, an offer's `updatedAt` approximates when the
+offer landed. `averageDays` / `medianDays` are `null` when there are no offers.
+
+```json
+{ "offers": 2, "averageDays": 15.0, "medianDays": 15.0 }
+```
+
+### By Company
+
+```
+GET /api/analytics/by-company
+```
+
+Per-company status breakdown, busiest companies first.
+
+```json
+{
+  "companies": [
+    { "company": "BigCo", "applied": 1, "interviewing": 1, "offer": 1, "rejected": 0, "total": 3 },
+    { "company": "SmallCo", "applied": 0, "interviewing": 0, "offer": 0, "rejected": 1, "total": 1 }
+  ]
+}
+```
+
 ---
 
 ## Error Codes (v1, as implemented)

@@ -15,3 +15,40 @@ export interface JobStatusCounts {
   rejected: number;
   total: number;
 }
+
+/* ---- Richer analytics (FEAT-7) ---- */
+
+/**
+ * Status counts plus headline conversion rates. Each rate is a 0..1 ratio
+ * (multiply by 100 for a percentage). Matches backend `Funnel`.
+ */
+export interface Funnel extends JobStatusCounts {
+  responseRate: number;
+  interviewRate: number;
+  offerRate: number;
+}
+
+export interface TimePoint {
+  period: string; // "YYYY-MM"
+  count: number;
+}
+
+export interface ApplicationsOverTime {
+  interval: string; // currently always "month"
+  points: TimePoint[];
+}
+
+/** Days from application to offer. Null when there are no offers yet. */
+export interface TimeToOffer {
+  offers: number;
+  averageDays: number | null;
+  medianDays: number | null;
+}
+
+export interface CompanyFunnel extends JobStatusCounts {
+  company: string;
+}
+
+export interface CompanyFunnels {
+  companies: CompanyFunnel[];
+}
