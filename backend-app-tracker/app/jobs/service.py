@@ -11,6 +11,9 @@ from fastapi import status
 
 # Fields a client is allowed to filter / sort jobs by.
 JOB_FILTERABLE_FIELDS = ("status", "employmentType", "company", "location")
+# Of those, the free-text fields matched as case-insensitive substrings (FEAT-19)
+# rather than exact equality. status/employmentType stay exact (they're enums).
+JOB_TEXT_FILTER_FIELDS = ("company", "location")
 JOB_SORTABLE_FIELDS = ("createdAt", "updatedAt", "company", "jobTitle", "status")
 
 # Résumé upload constraints.
@@ -95,7 +98,9 @@ def list_jobs(
     sort_order: str,
     filters: str | None,
 ):
-    mongo_filters = parse_filters(filters, user_id, JOB_FILTERABLE_FIELDS)
+    mongo_filters = parse_filters(
+        filters, user_id, JOB_FILTERABLE_FIELDS, JOB_TEXT_FILTER_FIELDS
+    )
 
     return paginate(
         jobs,
