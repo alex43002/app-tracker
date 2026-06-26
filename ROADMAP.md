@@ -14,8 +14,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
 > Current state: **backend 53 tests + ruff clean; desktop 24 tests + typecheck +
-> eslint clean.** Remaining work is follow-on v2 features (cross-platform builds,
-> dashboard widgets for the new analytics) and P3 cleanups.
+> eslint clean.** Remaining work is desktop UI for the shipped backend flows
+> (reset/verify screens, analytics widgets), cross-platform builds, and P3
+> cleanups — all tracked under **§5 "Follow-ups from recent work."**
 
 ---
 
@@ -130,11 +131,46 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 - **FEAT-11 (P3): Saved searches / advanced filtering UI** (now safe to build on the
   hardened filter mechanism).
 
+### Follow-ups from recent work (captured 2026-06-26)
+
+_Loose ends from the FEAT-5/6/7/12 deliveries — backend + desktop API clients
+shipped and tested, but these threads remain open. Captured here so they aren't
+lost._
+
+- **FEAT-6-UI (P2): Desktop reset/verify screens.** Build the password-reset
+  (request + confirm) and email-verification (confirm) screens and routes on top
+  of the shipped client functions (`requestPasswordReset` / `confirmPasswordReset`
+  / `requestEmailVerification` / `confirmEmailVerification`). Add a "Forgot
+  password?" link on the login screen. Show a neutral "check your email" message
+  on request (the API is enumeration-safe and never confirms an email exists).
+- **FEAT-7-UI (P2): Desktop analytics dashboard widgets.** Surface the new
+  endpoints (`fetchFunnel` / `fetchApplicationsOverTime` / `fetchTimeToOffer` /
+  `fetchCompanyFunnels`): conversion-rate funnel, applications-over-time chart,
+  time-to-offer KPIs, and a per-company breakdown.
+- **FEAT-13 (P3): Accurate status-transition timing.** `time-to-offer` currently
+  approximates using a job's `updatedAt`. Add per-status timestamps (a status
+  history) so transition timing is exact; this also unlocks stage-by-stage funnel
+  timing and lets `applications-over-time` parametrize the interval
+  (week/month/quarter) instead of the hardcoded month.
+- **FEAT-14 (P3): Consume `emailVerified` in the desktop.** The backend records
+  and exposes it, but nothing uses it yet. Add a "verify your email" banner/CTA
+  (with resend) and optionally gate sensitive actions until verified.
+- **CLN-12 (P3): Notifier delivery hardening.** `TwilioSmsNotifier` /
+  `SmtpEmailNotifier` have no retry/backoff and don't track delivery status —
+  failures are only logged. Consider retry + dead-letter logging for request-time
+  emails (password reset / verification) where a silent drop is user-visible.
+- **CLN-13 (P3): Analytics read efficiency.** Each analytics endpoint does a full
+  per-user `find`. Fine at current scale; if job counts grow, add a combined
+  `/summary` endpoint or move the date metrics to server-side aggregation.
+
 ---
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Desktop UI follow-ups:** reset/verify screens (FEAT-6) and dashboard widgets
-   for the new analytics (FEAT-7), both thin layers over the shipped client functions.
+1. **Desktop UI follow-ups:** reset/verify screens (**FEAT-6-UI**) and analytics
+   dashboard widgets (**FEAT-7-UI**) — thin layers over the shipped client functions.
 2. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
-   and promoting the downgraded lint warnings back to errors (CLN-11).
+   notifier hardening (CLN-12), and promoting the downgraded lint warnings back to
+   errors (CLN-11).
+3. **Data model depth:** FEAT-13 status history (accurate timing) and FEAT-14
+   email-verification UX, then richer analytics/efficiency (CLN-13).
