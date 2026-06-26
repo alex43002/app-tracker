@@ -8,6 +8,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from fastapi import status
 
+from app.alerts.schemas import Alert
 from app.common.errors import raise_error
 from app.common.query import parse_filters, paginate
 from app.notifications.notifier import EMAIL, Notifier
@@ -20,16 +21,16 @@ ALERT_SORTABLE_FIELDS = ("createdAt", "updatedAt", "scheduledAlert")
 
 
 def _serialize_alert(alert: dict) -> dict:
-    return {
-        "id": str(alert["_id"]),
-        "userId": alert["userId"],
-        "scheduledAlert": alert["scheduledAlert"],
-        "smsOrEmail": alert["smsOrEmail"],
-        "message": alert["message"],
-        "lastAlertAt": alert.get("lastAlertAt"),
-        "createdAt": alert["createdAt"],
-        "updatedAt": alert["updatedAt"],
-    }
+    return Alert(
+        id=str(alert["_id"]),
+        userId=alert["userId"],
+        scheduledAlert=alert["scheduledAlert"],
+        smsOrEmail=alert["smsOrEmail"],
+        message=alert["message"],
+        lastAlertAt=alert.get("lastAlertAt"),
+        createdAt=alert["createdAt"],
+        updatedAt=alert["updatedAt"],
+    ).model_dump()
 
 
 def create_alert(alerts: Collection, payload, user_id: str):

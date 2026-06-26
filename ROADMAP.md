@@ -1,20 +1,21 @@
 # CareerLog — Product Roadmap
 
-_Last updated: 2026-06-25_
+_Last updated: 2026-06-26_
 
 This roadmap is grounded in an audit of the backend (`backend-app-tracker/`) and
 desktop client (`careerlog-desktop/`). It captures **what the product does today**,
 then the prioritized work ahead. Items are tagged by area and rough priority
 (**P0** critical → **P3** nice-to-have) and status (✅ done · 🟡 partial · ⬜ open).
 
-> **Status note:** Remediation passes on 2026-06-25 closed **all P0–P1** and most
-> P2 items, including the full access/refresh **token-rotation** flow (SEC-4) across
-> backend + desktop. The backend has a `mongomock`-backed harness (runs with **no
-> external Mongo**) gated by `ruff`; the desktop client has a `vitest` harness and
-> its own CI. **All P0–P2 items are complete, plus the v2 headline (alert
-> delivery).** Current state: **backend 29 tests + ruff clean; desktop 16 tests +
-> typecheck + eslint clean.** Remaining work is follow-on v2 features (SMS provider,
-> multi-instance scheduler, analytics) and P3 cleanups.
+> **Status note:** Remediation passes through 2026-06-26 closed **all P0–P2**
+> items, including the full access/refresh **token-rotation** flow (SEC-4), the v2
+> alert-delivery headline, **multi-instance scheduler safety (FEAT-12)**, the
+> **Twilio SMS provider (FEAT-5 follow-up)**, and response-model cleanup (CLN-5).
+> The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
+> gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
+> Current state: **backend 37 tests + ruff clean; desktop 16 tests + typecheck +
+> eslint clean.** Remaining work is follow-on v2 features (password reset/email
+> verification, richer analytics, cross-platform builds) and P3 cleanups.
 
 ---
 
@@ -69,6 +70,17 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 
 ---
 
+## 2b. ✅ Completed (2026-06-26)
+
+| ID | Area | What changed |
+| --- | --- | --- |
+| DX | Cleanup | **Fail fast on bad config.** Backend `load_settings()` renders a pydantic `ValidationError` as a friendly checklist (missing/invalid env vars + hints) and exits(1) instead of dumping a traceback. Desktop throws a clear error when `VITE_API_BASE_URL` is unset (was silently hitting `undefined/api/...`); added `.env.example` + gitignored local `.env`. + tests updated. |
+| FEAT-12 | Feature | **Multi-instance scheduler safety.** `process_due_alerts` now claims each due alert with a single `findAndModify` (stamps `lastAlertAt` only if still due/unclaimed) *before* delivery, so with multiple scheduler instances exactly one worker delivers a given schedule. Failed delivery releases the claim for retry. + concurrency/retry tests. |
+| FEAT-5 (SMS) | Feature | **Twilio SMS notifier.** `TwilioSmsNotifier` delivers `sms` alerts via the Twilio Messages REST API (stdlib HTTP, injectable transport for tests). New `RoutingNotifier` dispatches each channel to its own provider so email (SMTP) and SMS (Twilio) configure independently; unconfigured channels fall back to console. `build_notifier` wires both. Config: `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM`. + tests. |
+| CLN-5 | Cleanup | **Response schemas no longer dead.** `CreateJobResponse` / `CreateAlertResponse` / `UpdateUserResponse` are now validated at the route (matching the analytics `Schema(**result).model_dump()` pattern); the `Alert` entity schema backs `_serialize_alert` (like `User`). Dropped the unused `Job` entity schema deliberately — round-tripping its `url` through `HttpUrl` would normalize the wire format clients depend on. |
+
+---
+
 ## 3. ⬜ Remaining Security Hardening
 
 _All P0–P2 security items are complete._ Remaining hardening is lower priority:
@@ -83,7 +95,6 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 | ID | Pri | Item |
 | --- | --- | --- |
-| CLN-5 | P2 | **Response models mostly unused.** Analytics validates via `JobStatusCounts`, but jobs/alerts/users handlers still return raw dicts. Wire `response_model` (envelope-aware) or drop the dead schemas. Note: validating list items through `Job` would coerce `url`→`HttpUrl` and may alter serialized output, so do it deliberately. |
 | CLN-8 | P3 | **Naming:** path param `id` vs document field `jobId` (external ref) is confusing. |
 | CLN-11 | P3 | **Address downgraded lint warnings.** `react-hooks/set-state-in-effect` (3) and `immutability` (2) + `react-refresh/only-export-components` (1) are now warnings — refactor the effects/dialog module to satisfy them, then promote back to errors. |
 
@@ -97,12 +108,11 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
   client-side validation for server errors.
 
 ### v2
-- **FEAT-5 follow-up (P2): SMS provider.** Email delivery (SMTP) is implemented;
-  add a real SMS provider (e.g. Twilio) behind the existing `Notifier` interface.
-- **FEAT-12 (P2): Scheduler robustness for multi-instance.** The in-process loop is
-  fine for a single worker; for horizontal scaling, move to a shared scheduler/lock
-  (APScheduler with a jobstore, or a leader-election / `findAndModify` claim) so an
-  alert isn't delivered by multiple workers.
+- ✅ **FEAT-5 follow-up (P2): SMS provider.** Done — `TwilioSmsNotifier` behind the
+  `Notifier` interface, routed per-channel (see §2b).
+- ✅ **FEAT-12 (P2): Scheduler robustness for multi-instance.** Done — per-alert
+  atomic `findAndModify` claim before delivery (see §2b). A shared scheduler
+  (APScheduler jobstore) remains optional if the poll loop itself needs deduping.
 - **FEAT-6 (P2): Password reset & email verification** flows (can reuse the notifier).
 - **FEAT-7 (P2): Richer analytics** — response rate, time-to-offer, applications over
   time, per-company funnels.
@@ -119,8 +129,7 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Harden alert delivery for scale (FEAT-12)** and add the SMS provider (FEAT-5
-   follow-up) — the scheduler now works for a single worker.
-2. **Tighten contracts:** CLN-5 response models (carefully — see note).
-3. **Platform & polish:** FEAT-8 builds, remaining analytics, enumeration hardening,
+1. **Auth flows:** FEAT-6 password reset & email verification (reuses the notifier).
+2. **Richer analytics (FEAT-7)** — response rate, time-to-offer, applications over time.
+3. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
    and promoting the downgraded lint warnings back to errors (CLN-11).

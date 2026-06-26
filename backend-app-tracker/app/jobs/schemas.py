@@ -3,31 +3,10 @@ from typing import Optional
 from datetime import datetime
 
 
-# =====================
-# Core Job Schema
-# =====================
-
-class Job(BaseModel):
-    id: str
-    userId: str
-
-    jobId: Optional[str] = None
-    url: HttpUrl
-
-    jobTitle: str
-    company: str
-
-    salaryTarget: float
-    salaryRange: Optional[str] = None
-
-    status: str
-    resume: Optional[str] = None  # GridFS file id
-    location: str
-    employmentType: str
-    notes: Optional[str] = None
-
-    createdAt: datetime
-    updatedAt: datetime
+# Note: there is intentionally no serialized "Job" response model. Jobs store
+# `url` as a plain string; round-tripping it through a pydantic `HttpUrl` would
+# normalize it (e.g. append a trailing slash) and silently change the wire
+# format clients already depend on. The service serializes jobs directly.
 
 
 # =====================
