@@ -13,9 +13,9 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > **Twilio SMS provider (FEAT-5 follow-up)**, and response-model cleanup (CLN-5).
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
-> Current state: **backend 37 tests + ruff clean; desktop 16 tests + typecheck +
-> eslint clean.** Remaining work is follow-on v2 features (password reset/email
-> verification, richer analytics, cross-platform builds) and P3 cleanups.
+> Current state: **backend 46 tests + ruff clean; desktop 20 tests + typecheck +
+> eslint clean.** Remaining work is follow-on v2 features (richer analytics,
+> cross-platform builds) and P3 cleanups.
 
 ---
 
@@ -78,6 +78,7 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 | FEAT-12 | Feature | **Multi-instance scheduler safety.** `process_due_alerts` now claims each due alert with a single `findAndModify` (stamps `lastAlertAt` only if still due/unclaimed) *before* delivery, so with multiple scheduler instances exactly one worker delivers a given schedule. Failed delivery releases the claim for retry. + concurrency/retry tests. |
 | FEAT-5 (SMS) | Feature | **Twilio SMS notifier.** `TwilioSmsNotifier` delivers `sms` alerts via the Twilio Messages REST API (stdlib HTTP, injectable transport for tests). New `RoutingNotifier` dispatches each channel to its own provider so email (SMTP) and SMS (Twilio) configure independently; unconfigured channels fall back to console. `build_notifier` wires both. Config: `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM`. + tests. |
 | CLN-5 | Cleanup | **Response schemas no longer dead.** `CreateJobResponse` / `CreateAlertResponse` / `UpdateUserResponse` are now validated at the route (matching the analytics `Schema(**result).model_dump()` pattern); the `Alert` entity schema backs `_serialize_alert` (like `User`). Dropped the unused `Job` entity schema deliberately — round-tripping its `url` through `HttpUrl` would normalize the wire format clients depend on. |
+| FEAT-6 | Feature | **Password reset & email verification.** Four new auth endpoints (`password-reset/request`+`confirm`, `verify-email/request`+`confirm`) backed by single-use, hashed, TTL'd tokens (`auth_tokens` collection) consumed atomically. Reset revokes all sessions (generation bump); request endpoints never reveal whether an email exists (enumeration-safe) and are rate-limited. Registration auto-sends a verification token; users now carry `emailVerified` (exposed on auth + user responses). Delivery reuses the `Notifier` (injectable `get_notifier`). Desktop: `User.emailVerified` + four API client functions. Backend (9) + desktop (4) tests; contract + Mongo schema docs updated. |
 
 ---
 
@@ -113,7 +114,9 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 - ✅ **FEAT-12 (P2): Scheduler robustness for multi-instance.** Done — per-alert
   atomic `findAndModify` claim before delivery (see §2b). A shared scheduler
   (APScheduler jobstore) remains optional if the poll loop itself needs deduping.
-- **FEAT-6 (P2): Password reset & email verification** flows (can reuse the notifier).
+- ✅ **FEAT-6 (P2): Password reset & email verification** flows — done (see §2b).
+  Backend + desktop API client shipped; dedicated desktop UI screens (reset/verify
+  forms) remain as a thin follow-up on top of the new client functions.
 - **FEAT-7 (P2): Richer analytics** — response rate, time-to-offer, applications over
   time, per-company funnels.
 
@@ -129,7 +132,7 @@ _All P0–P2 security items are complete._ Remaining hardening is lower priority
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Auth flows:** FEAT-6 password reset & email verification (reuses the notifier).
-2. **Richer analytics (FEAT-7)** — response rate, time-to-offer, applications over time.
+1. **Richer analytics (FEAT-7)** — response rate, time-to-offer, applications over time.
+2. **Desktop reset/verify UI** — thin screens over the FEAT-6 client functions.
 3. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
    and promoting the downgraded lint warnings back to errors (CLN-11).

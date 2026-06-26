@@ -14,6 +14,7 @@ class User(BaseModel):
     firstName: str
     lastName: str
     pfp: Optional[str] = None  # GridFS file id, or null
+    emailVerified: bool = False
     createdAt: datetime
     updatedAt: datetime
 

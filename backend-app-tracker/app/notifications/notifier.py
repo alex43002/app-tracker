@@ -148,3 +148,23 @@ def build_notifier(settings) -> Notifier:
     if not routes:
         return console
     return RoutingNotifier(routes, fallback=console)
+
+
+# A process-wide notifier for request-time delivery (e.g. password-reset and
+# verification emails). Built lazily from settings; ``set_notifier`` lets tests
+# swap in a collecting/fake notifier.
+_notifier: Notifier | None = None
+
+
+def get_notifier() -> Notifier:
+    global _notifier
+    if _notifier is None:
+        from app.config import settings
+
+        _notifier = build_notifier(settings)
+    return _notifier
+
+
+def set_notifier(notifier: Notifier | None) -> None:
+    global _notifier
+    _notifier = notifier

@@ -40,3 +40,8 @@ def ensure_indexes(db: Database) -> None:
     # Revoked refresh tokens — TTL purges entries once expired.
     db.revoked_tokens.create_index("jti", unique=True)
     db.revoked_tokens.create_index("expiresAt", expireAfterSeconds=0)
+
+    # Single-use auth tokens (password reset / email verification) — looked up by
+    # hash, TTL purges entries once expired.
+    db.auth_tokens.create_index("tokenHash", unique=True)
+    db.auth_tokens.create_index("expiresAt", expireAfterSeconds=0)

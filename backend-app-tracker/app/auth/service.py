@@ -1,5 +1,8 @@
-from datetime import datetime, timezone
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
 
+from bson import ObjectId
 from passlib.context import CryptContext
 
 # Argon2 is stable, modern, and Windows-safe
@@ -54,3 +57,80 @@ def is_refresh_generation_stale(user: dict, generation: int) -> bool:
 
 def exp_to_datetime(exp: int) -> datetime:
     return datetime.fromtimestamp(exp, tz=timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# Single-use auth tokens — password reset & email verification (FEAT-6)
+#
+# Tokens are random and opaque; only their SHA-256 hash is stored, so a leak of
+# the `auth_tokens` collection does not expose usable tokens. Each token is
+# single-use (claimed atomically) and expires; a TTL index purges stale rows.
+# ---------------------------------------------------------------------------
+
+PASSWORD_RESET = "password_reset"
+EMAIL_VERIFY = "email_verify"
+
+
+def _hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def issue_auth_token(db, user_id, token_type: str, ttl: timedelta) -> str:
+    """Create a single-use token of ``token_type`` and return the raw value.
+
+    Only the hash is persisted. Any earlier unused tokens of the same type for
+    this user are invalidated so only the most recent one works.
+    """
+    user_id = str(user_id)
+    now = datetime.now(tz=timezone.utc)
+
+    db.auth_tokens.delete_many({"userId": user_id, "type": token_type, "usedAt": None})
+
+    raw = secrets.token_urlsafe(32)
+    db.auth_tokens.insert_one(
+        {
+            "tokenHash": _hash_token(raw),
+            "userId": user_id,
+            "type": token_type,
+            "expiresAt": now + ttl,
+            "createdAt": now,
+            "usedAt": None,
+        }
+    )
+    return raw
+
+
+def consume_auth_token(db, raw: str, token_type: str) -> str | None:
+    """Atomically claim a valid, unexpired, unused token. Returns its userId."""
+    now = datetime.now(tz=timezone.utc)
+    doc = db.auth_tokens.find_one_and_update(
+        {
+            "tokenHash": _hash_token(raw),
+            "type": token_type,
+            "usedAt": None,
+            "expiresAt": {"$gt": now},
+        },
+        {"$set": {"usedAt": now}},
+    )
+    return doc["userId"] if doc else None
+
+
+def set_password(db, user_id: str, new_password: str) -> None:
+    """Set a new password hash and revoke every existing session (generation bump)."""
+    db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "passwordHash": hash_password(new_password),
+                "updatedAt": datetime.now(tz=timezone.utc),
+            },
+            "$inc": {"tokenGeneration": 1},
+        },
+    )
+
+
+def mark_email_verified(db, user_id: str) -> None:
+    db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"emailVerified": True, "updatedAt": datetime.now(tz=timezone.utc)}},
+    )

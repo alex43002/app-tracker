@@ -34,6 +34,7 @@ def _serialize_user(doc: dict) -> dict:
         firstName=doc["firstName"],
         lastName=doc["lastName"],
         pfp=doc.get("pfp"),
+        emailVerified=doc.get("emailVerified", False),
         createdAt=doc["createdAt"],
         updatedAt=doc["updatedAt"],
     ).model_dump()

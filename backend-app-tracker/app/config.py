@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     jwt_expiry_hours: int = 2  # access-token lifetime
     refresh_token_expiry_days: int = 7  # refresh-token lifetime
 
+    # Single-use auth tokens (FEAT-6: password reset & email verification).
+    password_reset_token_expiry_minutes: int = 60
+    email_verification_token_expiry_hours: int = 48
+
     @field_validator("jwt_secret")
     @classmethod
     def _validate_jwt_secret(cls, value: str) -> str:
