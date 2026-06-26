@@ -13,10 +13,10 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > **Twilio SMS provider (FEAT-5 follow-up)**, and response-model cleanup (CLN-5).
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
-> Current state: **backend 53 tests + ruff clean; desktop 24 tests + typecheck +
-> eslint clean.** Remaining work is desktop UI for the shipped backend flows
-> (reset/verify screens, analytics widgets), cross-platform builds, and P3
-> cleanups — all tracked under **§5 "Follow-ups from recent work."**
+> Current state: **backend 53 tests + ruff clean; desktop 30 tests + typecheck +
+> eslint clean.** The FEAT-6 reset/verify desktop UI has shipped; remaining work
+> is the analytics dashboard widgets, cross-platform builds, and P3 cleanups —
+> all tracked under **§5 "Follow-ups from recent work."**
 
 ---
 
@@ -137,12 +137,11 @@ _Loose ends from the FEAT-5/6/7/12 deliveries — backend + desktop API clients
 shipped and tested, but these threads remain open. Captured here so they aren't
 lost._
 
-- **FEAT-6-UI (P2): Desktop reset/verify screens.** Build the password-reset
-  (request + confirm) and email-verification (confirm) screens and routes on top
-  of the shipped client functions (`requestPasswordReset` / `confirmPasswordReset`
-  / `requestEmailVerification` / `confirmEmailVerification`). Add a "Forgot
-  password?" link on the login screen. Show a neutral "check your email" message
-  on request (the API is enumeration-safe and never confirms an email exists).
+- ✅ **FEAT-6-UI (P2): Desktop reset/verify screens.** Done — `/reset-password`
+  (request + confirm phases) and `/verify-email` (confirm + resend) pages on top
+  of the shipped client functions, a "Forgot password?" link on login, and a
+  neutral enumeration-safe message on request. Added React Testing Library + a
+  vitest setup file with component tests for both pages.
 - **FEAT-7-UI (P2): Desktop analytics dashboard widgets.** Surface the new
   endpoints (`fetchFunnel` / `fetchApplicationsOverTime` / `fetchTimeToOffer` /
   `fetchCompanyFunnels`): conversion-rate funnel, applications-over-time chart,
