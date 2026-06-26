@@ -13,10 +13,11 @@ then the prioritized work ahead. Items are tagged by area and rough priority
 > **Twilio SMS provider (FEAT-5 follow-up)**, and response-model cleanup (CLN-5).
 > The backend has a `mongomock`-backed harness (runs with **no external Mongo**)
 > gated by `ruff`; the desktop client has a `vitest` harness and its own CI.
-> Current state: **backend 53 tests + ruff clean; desktop 30 tests + typecheck +
-> eslint clean.** The FEAT-6 reset/verify desktop UI has shipped; remaining work
-> is the analytics dashboard widgets, cross-platform builds, and P3 cleanups —
-> all tracked under **§5 "Follow-ups from recent work."**
+> Current state: **backend 53 tests + ruff clean; desktop 34 tests + typecheck +
+> eslint clean.** The desktop UI for FEAT-6 (reset/verify + verification banner)
+> and FEAT-7 (analytics dashboard widgets) has shipped; remaining work is
+> cross-platform builds and P3 cleanups — all tracked under **§5 "Follow-ups from
+> recent work."**
 
 ---
 
@@ -142,18 +143,19 @@ lost._
   of the shipped client functions, a "Forgot password?" link on login, and a
   neutral enumeration-safe message on request. Added React Testing Library + a
   vitest setup file with component tests for both pages.
-- **FEAT-7-UI (P2): Desktop analytics dashboard widgets.** Surface the new
-  endpoints (`fetchFunnel` / `fetchApplicationsOverTime` / `fetchTimeToOffer` /
-  `fetchCompanyFunnels`): conversion-rate funnel, applications-over-time chart,
-  time-to-offer KPIs, and a per-company breakdown.
+- ✅ **FEAT-7-UI (P2): Desktop analytics dashboard widgets.** Done — an
+  `AnalyticsInsights` dashboard section fetches all four endpoints and renders
+  conversion-rate cards, an applications-over-time bar chart, time-to-offer KPIs,
+  and a per-company breakdown (loading / empty / error states + tests).
 - **FEAT-13 (P3): Accurate status-transition timing.** `time-to-offer` currently
   approximates using a job's `updatedAt`. Add per-status timestamps (a status
   history) so transition timing is exact; this also unlocks stage-by-stage funnel
   timing and lets `applications-over-time` parametrize the interval
   (week/month/quarter) instead of the hardcoded month.
-- **FEAT-14 (P3): Consume `emailVerified` in the desktop.** The backend records
-  and exposes it, but nothing uses it yet. Add a "verify your email" banner/CTA
-  (with resend) and optionally gate sensitive actions until verified.
+- ✅ **FEAT-14 (P3): Consume `emailVerified` in the desktop.** Done — the
+  dashboard shows an `EmailVerificationBanner` (with a link to `/verify-email`)
+  when the current user isn't verified. Gating sensitive actions on verification
+  remains optional/future.
 - **CLN-12 (P3): Notifier delivery hardening.** `TwilioSmsNotifier` /
   `SmtpEmailNotifier` have no retry/backoff and don't track delivery status —
   failures are only logged. Consider retry + dead-letter logging for request-time
@@ -166,10 +168,8 @@ lost._
 
 ## 6. Suggested Sequencing (remaining)
 
-1. **Desktop UI follow-ups:** reset/verify screens (**FEAT-6-UI**) and analytics
-   dashboard widgets (**FEAT-7-UI**) — thin layers over the shipped client functions.
-2. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
+1. **Platform & polish:** FEAT-8 cross-platform builds, enumeration hardening (SEC-10),
    notifier hardening (CLN-12), and promoting the downgraded lint warnings back to
    errors (CLN-11).
-3. **Data model depth:** FEAT-13 status history (accurate timing) and FEAT-14
-   email-verification UX, then richer analytics/efficiency (CLN-13).
+2. **Data model depth:** FEAT-13 status history (accurate time-to-offer / funnel
+   timing), then richer analytics/efficiency (CLN-13).
