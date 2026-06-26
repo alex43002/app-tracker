@@ -5,11 +5,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.database import get_db, ensure_indexes
 from app.common.responses import failure
+from app.common.ratelimit import limiter
+from app.alerts import runner as alert_runner
 
 from app.auth.routes import router as auth_router
 from app.users.routes import router as users_router
@@ -23,7 +26,11 @@ from app.analytics.routes import router as analytics_router
 async def lifespan(app: FastAPI):
     # Ensure the documented indexes exist before serving traffic.
     ensure_indexes(get_db())
-    yield
+    alert_runner.start(app)
+    try:
+        yield
+    finally:
+        await alert_runner.stop(app)
 
 
 app = FastAPI(
@@ -33,6 +40,22 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Rate limiting (SEC-3) — the limiter is attached to app state; endpoints opt in
+# via @limiter.limit(...).
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content=failure(
+            code="RATE_LIMITED",
+            message="Too many requests — please try again later",
+        ),
+    )
+
 
 # CORS — restricted to the configured desktop/dev origins (see Settings).
 app.add_middleware(

@@ -13,7 +13,7 @@
 - **Authenticate** — register, log in, and refresh a session.
 - **Manage job applications** — create, view, update, and delete jobs, each with a title, company, URL, location, employment type, salary target/range, status, and an optional uploaded résumé.
 - **Track the pipeline** — jobs move through statuses (`applied`, `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts and a pipeline visualization.
-- **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a message and time. In v1, alerts are **configuration-only** — they are stored but not actually delivered.
+- **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a message and time. A background scheduler delivers due alerts via a pluggable notifier (console by default, SMTP email when configured).
 - **Attach résumés** — upload one résumé per job; files are stored server-side in MongoDB GridFS and downloaded on demand.
 
 ### Non-goals (v1)
@@ -87,9 +87,19 @@ Create a `.env` file in `backend-app-tracker/`:
 ```env
 MONGODB_URI=mongodb://localhost:27017/jobtracker
 MONGODB_DB_NAME=jobtracker
-JWT_SECRET=replace-with-a-strong-secret
+JWT_SECRET=replace-with-a-strong-secret-min-16-chars
 JWT_ALGORITHM=HS256
 JWT_EXPIRY_HOURS=2
+
+# Alert delivery (optional). When SMTP is unset, due alerts are logged via the
+# console notifier. Set ALERTS_ENABLED=false to disable the scheduler.
+ALERTS_ENABLED=true
+ALERTS_POLL_SECONDS=60
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=apikey
+# SMTP_PASSWORD=secret
+# SMTP_FROM=no-reply@careerlog.app
 ```
 
 Run the API:

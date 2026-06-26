@@ -13,7 +13,7 @@ class User(BaseModel):
     phoneNumber: str
     firstName: str
     lastName: str
-    pfp: str
+    pfp: Optional[str] = None  # GridFS file id, or null
     createdAt: datetime
     updatedAt: datetime
 
@@ -26,7 +26,6 @@ class UpdateUserRequest(BaseModel):
     phoneNumber: Optional[str] = None
     firstName: Optional[str] = None
     lastName: Optional[str] = None
-    pfp: Optional[str] = None
 
 
 # =====================

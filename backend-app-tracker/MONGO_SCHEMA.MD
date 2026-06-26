@@ -18,7 +18,9 @@
   firstName: String,
   lastName: String,
 
-  pfp: String,              // base64-encoded string (stored inline)
+  pfp: String,              // GridFS file id (or null) — image stored in GridFS
+
+  tokenGeneration: Number,  // refresh-token family generation (bumped on reuse)
 
   createdAt: Date,
   updatedAt: Date
@@ -94,7 +96,7 @@ Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
   smsOrEmail: String,       // "sms" | "email"
   message: String,
 
-  lastAlertAt: Date,        // nullable; always null in v1 (alerts never fire)
+  lastAlertAt: Date,        // nullable; set when the scheduler delivers the alert
 
   createdAt: Date,
   updatedAt: Date
@@ -110,6 +112,30 @@ Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
 
 ---
 
+## Revoked Tokens Collection
+
+**Collection name:** `revoked_tokens`
+
+Tracks refresh-token `jti`s that have been rotated (used at `/api/auth/refresh`) or
+logged out, so they cannot be replayed.
+
+```js
+{
+  _id: ObjectId,
+  jti: String,              // unique; the refresh token's id
+  expiresAt: Date           // when the token would have expired anyway
+}
+```
+
+### Indexes
+
+```js
+{ jti: 1 }        // unique
+{ expiresAt: 1 }  // TTL (expireAfterSeconds: 0) — purges entries after expiry
+```
+
+---
+
 ## Global Rules (LOCKED)
 
 * `_id` is the MongoDB authority
@@ -117,7 +143,8 @@ Résumé files are stored in **GridFS** (`fs.files` / `fs.chunks`) with
 * `userId` is **never trusted from the request body** — always from JWT `sub`
 * Ownership enforced via JWT `sub`
 * All timestamps stored as `Date` (UTC)
-* Résumé binaries live in GridFS, not inline; `pfp` is stored inline as base64
+* Binary assets (résumés and profile pictures) live in GridFS; the document holds
+  only the file id
 
 > The indexes above are created on application startup by
 > `app.database.ensure_indexes()` (called from the FastAPI lifespan handler).

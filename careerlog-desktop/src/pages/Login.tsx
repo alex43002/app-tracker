@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login, signup } from "../api/auth";
-import { saveAuthToken } from "../store/auth";
+import { saveSession } from "../store/auth";
 import { ApiError } from "../api/client";
 
 import {
@@ -39,15 +39,14 @@ export default function Login() {
             firstName,
             lastName,
             phoneNumber,
-            pfp: "",
           })
         : await login({ email, password });
 
-      saveAuthToken(session.jwt, session.expiresAt);
+      saveSession(session);
       navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(err.displayMessage);
       } else {
         setError("Authentication failed");
       }

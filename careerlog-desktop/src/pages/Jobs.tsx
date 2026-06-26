@@ -42,7 +42,7 @@ async function handleDelete(jobId: string) {
   try {
     await deleteJob(jobId);
     toast.success("Job deleted");
-  } catch (err) {
+  } catch {
     toast.error("Failed to delete job");
   }
 }

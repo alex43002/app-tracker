@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearAuthToken } from "../../store/auth";
+import { clearAuthToken, getRefreshToken } from "../../store/auth";
+import { logout } from "../../api/auth";
 
 export default function LogoutButton() {
   const navigate = useNavigate();
@@ -10,6 +11,13 @@ export default function LogoutButton() {
     if (isLoading) return;
 
     setIsLoading(true);
+
+    // Best-effort server-side revocation of the refresh token, then clear
+    // local state regardless of the result.
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      logout(refreshToken).catch(() => {});
+    }
     clearAuthToken();
 
     setTimeout(() => {

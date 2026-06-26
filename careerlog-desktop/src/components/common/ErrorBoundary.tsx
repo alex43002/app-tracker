@@ -54,7 +54,11 @@ function persistCrashReport(report: CrashReport) {
     localStorage.setItem("last_crash", JSON.stringify(report));
 
     // Optional: forward to Electron main process for file logging or analytics.
-    (window as any).electron?.crashReport?.(report);
+    (
+      window as unknown as {
+        electron?: { crashReport?: (r: CrashReport) => void };
+      }
+    ).electron?.crashReport?.(report);
   } catch {
     // Swallow all errors to prevent logging failures from crashing the UI.
   }

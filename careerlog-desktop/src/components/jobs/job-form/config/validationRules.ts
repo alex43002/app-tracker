@@ -4,7 +4,7 @@ import type { JobFormFieldKey } from "./formFields";
  * Validation rule definition for a single field.
  * Return a string to indicate an error, or null if valid.
  */
-export type ValidationRule<T = any> = (value: T) => string | null;
+export type ValidationRule<T = unknown> = (value: T) => string | null;
 
 /**
  * Centralized validation rules for the Job form.
@@ -15,26 +15,21 @@ export type ValidationRule<T = any> = (value: T) => string | null;
  * - No UI logic
  * - No side effects
  */
+const requiredText = (label: string): ValidationRule => (value) =>
+  typeof value === "string" && value.trim() ? null : `${label} is required`;
+
 export const VALIDATION_RULES: Partial<
   Record<JobFormFieldKey, ValidationRule>
 > = {
-  company: (value: string) =>
-    !value || !value.trim() ? "Company is required" : null,
+  company: requiredText("Company"),
+  jobTitle: requiredText("Job title"),
+  url: requiredText("Job URL"),
+  location: requiredText("Location"),
 
-  jobTitle: (value: string) =>
-    !value || !value.trim() ? "Job title is required" : null,
+  salaryTarget: (value) =>
+    typeof value === "number" && value > 0
+      ? null
+      : "Salary target must be greater than 0",
 
-  url: (value: string) =>
-    !value || !value.trim() ? "Job URL is required" : null,
-
-  location: (value: string) =>
-    !value || !value.trim() ? "Location is required" : null,
-
-  salaryTarget: (value: number) =>
-    typeof value !== "number" || value <= 0
-      ? "Salary target must be greater than 0"
-      : null,
-
-  resume: (value: File | null) =>
-    value ? null : "Resume is required",
+  resume: (value) => (value ? null : "Resume is required"),
 };

@@ -19,9 +19,15 @@ http://127.0.0.1:8000
 Authorization: Bearer <JWT>
 ```
 
-The token (HS256) is valid for `JWT_EXPIRY_HOURS` (default **2h**) and carries
-`sub` (user id), `email`, issuer `job-tracker-api`, audience `desktop-client`,
-and `scope: "user"`.
+Two HS256 token types are issued (distinguished by a `type` claim):
+
+- **access** — sent as the `Bearer` token on every request. Lifetime
+  `JWT_EXPIRY_HOURS` (default **2h**). Carries `sub`, `email`, `type: "access"`,
+  issuer `job-tracker-api`, audience `desktop-client`, `scope: "user"`.
+- **refresh** — long-lived (default **7d**, `REFRESH_TOKEN_EXPIRY_DAYS`), carries a
+  unique `jti`, and is exchanged at `/api/auth/refresh` for a new pair. Refresh
+  tokens **rotate** (the presented one is revoked) and can be revoked via
+  `/api/auth/logout`. Only an access token is accepted on protected routes.
 
 ---
 
@@ -89,10 +95,12 @@ Request:
   "password": "plaintext (min 8 chars)",
   "phoneNumber": "1234567890",
   "firstName": "Test",
-  "lastName": "User",
-  "pfp": "base64-string"
+  "lastName": "User"
 }
 ```
+
+> Profile pictures are **not** part of registration — `pfp` starts `null` and is
+> uploaded separately via `PUT /api/users/{id}/pfp` (see Users).
 
 Response (`data`): the new user **plus** an issued session token.
 
@@ -104,12 +112,14 @@ Response (`data`): the new user **plus** an issued session token.
     "phoneNumber": "1234567890",
     "firstName": "Test",
     "lastName": "User",
-    "pfp": "base64-string",
+    "pfp": null,
     "createdAt": "ISO-8601",
     "updatedAt": "ISO-8601"
   },
-  "jwt": "JWT",
-  "expiresAt": "ISO-8601"
+  "jwt": "ACCESS_JWT",
+  "expiresAt": "ISO-8601",
+  "refreshToken": "REFRESH_JWT",
+  "refreshExpiresAt": "ISO-8601"
 }
 ```
 
@@ -127,7 +137,8 @@ Request:
 { "email": "test@example.com", "password": "plaintext" }
 ```
 
-Response (`data`): identical shape to Register — `{ user, jwt, expiresAt }`.
+Response (`data`): identical shape to Register —
+`{ user, jwt, expiresAt, refreshToken, refreshExpiresAt }`.
 
 Errors: `AUTH_INVALID_CREDENTIALS` (401).
 
@@ -137,21 +148,47 @@ Errors: `AUTH_INVALID_CREDENTIALS` (401).
 POST /api/auth/refresh
 ```
 
-Re-issues a token from an existing valid one.
+Exchanges a **refresh** token for a new access + refresh pair, **rotating** it (the
+presented refresh token is revoked and cannot be reused).
 
 Request:
 
 ```json
-{ "jwt": "current-valid-JWT" }
+{ "refreshToken": "current-valid-REFRESH_JWT" }
 ```
 
 Response (`data`):
 
 ```json
-{ "jwt": "new-JWT", "expiresAt": "ISO-8601" }
+{
+  "jwt": "new-ACCESS_JWT",
+  "expiresAt": "ISO-8601",
+  "refreshToken": "new-REFRESH_JWT",
+  "refreshExpiresAt": "ISO-8601"
+}
 ```
 
-Errors: `AUTH_TOKEN_INVALID` (401) if the supplied token is invalid/expired.
+Errors: `AUTH_TOKEN_INVALID` (401) if the token is invalid/expired, is not a
+refresh token, has already been rotated/revoked, or its user no longer exists.
+**Replaying an already-rotated refresh token is treated as theft**: the user's
+entire refresh-token family is revoked (every session must re-authenticate).
+
+### Logout
+
+```
+POST /api/auth/logout
+```
+
+Revokes a refresh token so it can no longer be used to refresh. Idempotent and
+best-effort (always returns success).
+
+Request:
+
+```json
+{ "refreshToken": "REFRESH_JWT" }
+```
+
+Response (`data`): `null`.
 
 ---
 
@@ -175,11 +212,14 @@ Response (`data`):
   "phoneNumber": "string",
   "firstName": "string",
   "lastName": "string",
-  "pfp": "string",
+  "pfp": "GridFS file id, or null",
   "createdAt": "ISO-8601",
   "updatedAt": "ISO-8601"
 }
 ```
+
+`pfp` is a GridFS file id (or `null`); fetch the image bytes from
+`GET /api/users/{id}/pfp`.
 
 ### Get User by Id
 
@@ -199,11 +239,28 @@ PUT /api/users/{id}
 Request (partial; at least one field required):
 
 ```json
-{ "phoneNumber": "...", "firstName": "...", "lastName": "...", "pfp": "..." }
+{ "phoneNumber": "...", "firstName": "...", "lastName": "..." }
 ```
 
 Response (`data`): `{ "updatedAt": "ISO-8601" }`. Empty payload →
-`VALIDATION_ERROR` (400).
+`VALIDATION_ERROR` (400). (Profile pictures are managed via the `pfp` endpoints
+below, not this route.)
+
+### Profile Picture
+
+Stored in GridFS, like résumés; self-ownership enforced.
+
+```
+PUT    /api/users/{id}/pfp     # multipart, field `pfp` (image)
+GET    /api/users/{id}/pfp     # returns the raw image bytes (inline)
+DELETE /api/users/{id}/pfp     # removes the picture
+```
+
+- Allowed types: `png`, `jpeg`, `webp`, `gif`; max **2MB** — otherwise
+  `VALIDATION_ERROR` (400/413).
+- `PUT` response (`data`): `{ "pfp": "GridFS-id", "updatedAt": "ISO-8601" }`
+  (replaces and deletes any previous picture).
+- `GET` returns `RESOURCE_NOT_FOUND` (404) when no picture is set.
 
 > Note: `email` is **not** updatable via this endpoint.
 
@@ -299,7 +356,10 @@ Errors: `INVALID_RESUME_ID` (400), `RESUME_NOT_FOUND` (404), `FORBIDDEN` (403).
 
 ## Alerts
 
-Alerts are **configuration records only** in v1 — stored but never delivered.
+Alerts are follow-up reminders. A background scheduler delivers each alert once its
+`scheduledAlert` time passes (via the configured notifier — console by default, or
+SMTP email when configured) and stamps `lastAlertAt`. Rescheduling an alert to a new
+time lets it fire again. Delivery can be turned off with `ALERTS_ENABLED=false`.
 
 ### Create Alert
 
@@ -399,10 +459,10 @@ Response (`data`):
 
 ---
 
-## v1 Non-Goals (the frontend must not assume these exist)
+## Non-Goals (the frontend must not assume these exist)
 
-- Alerts actually send email/SMS
-- Background jobs / schedulers
 - Real-time updates, WebSockets, push notifications
+- SMS delivery to a real provider (email via SMTP is supported; SMS currently
+  logs via the console notifier until a provider like Twilio is added)
 
-These are **v2** features — see [ROADMAP.md](../ROADMAP.md).
+See [ROADMAP.md](../ROADMAP.md) for what's planned next.
