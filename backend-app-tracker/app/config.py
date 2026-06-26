@@ -1,4 +1,6 @@
-from pydantic import field_validator
+import sys
+
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Obvious placeholder secrets that must never be used to sign real tokens.
@@ -22,6 +24,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 2  # access-token lifetime
     refresh_token_expiry_days: int = 7  # refresh-token lifetime
+
+    # Single-use auth tokens (FEAT-6: password reset & email verification).
+    password_reset_token_expiry_minutes: int = 60
+    email_verification_token_expiry_hours: int = 48
 
     @field_validator("jwt_secret")
     @classmethod
@@ -53,6 +59,12 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str = "no-reply@careerlog.app"
 
+    # Optional Twilio provider for SMS alerts. When unset, `sms` alerts are
+    # logged via the console notifier instead of actually being sent.
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_from: str | None = None  # sender phone number, e.g. +15551234567
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -64,4 +76,44 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
 
-settings = Settings()
+# Human-readable hints for the required settings, keyed by field name. Used to
+# turn a pydantic ValidationError into actionable startup guidance.
+_FIELD_HINTS = {
+    "mongodb_uri": "MongoDB connection string, e.g. mongodb://localhost:27017",
+    "jwt_secret": f"random secret of at least {_MIN_SECRET_LENGTH} characters used to sign auth tokens",
+}
+
+
+def _format_config_error(exc: ValidationError) -> str:
+    """Render a ValidationError as a short, friendly checklist of what to fix."""
+    lines = [
+        "Configuration error: the backend can't start because some required",
+        "environment variables are missing or invalid.",
+        "",
+        "Please set the following in a .env file (see README \"Environment Variables\"):",
+        "",
+    ]
+    for err in exc.errors():
+        field = str(err["loc"][0]) if err.get("loc") else "(unknown)"
+        env_name = field.upper()
+        if err.get("type") == "missing":
+            reason = "required but not set"
+        else:
+            reason = err.get("msg", "invalid value")
+        hint = _FIELD_HINTS.get(field)
+        line = f"  - {env_name}: {reason}"
+        if hint:
+            line += f"\n      ({hint})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def load_settings() -> "Settings":
+    try:
+        return Settings()
+    except ValidationError as exc:
+        print(_format_config_error(exc), file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+settings = load_settings()

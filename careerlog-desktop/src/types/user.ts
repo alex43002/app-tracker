@@ -9,6 +9,7 @@ export interface User {
   lastName: string;
   phoneNumber: string;
   pfp: string | null;
+  emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 }

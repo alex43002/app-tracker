@@ -4,7 +4,7 @@ from app.database import get_db
 from app.common.auth import get_current_user
 from app.common.responses import success
 from app.common.errors import raise_error
-from app.users.schemas import UpdateUserRequest
+from app.users.schemas import UpdateUserRequest, UpdateUserResponse
 from app.users import service
 
 router = APIRouter()
@@ -40,7 +40,8 @@ def update_user(
 ):
     _require_self(id, current_user_id)
     db = get_db()
-    return success(data=service.update_user(db.users, id, payload))
+    result = service.update_user(db.users, id, payload)
+    return success(data=UpdateUserResponse(**result).model_dump())
 
 
 @router.delete("/{id}")

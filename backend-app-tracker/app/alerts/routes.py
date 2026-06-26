@@ -5,6 +5,7 @@ from app.common.auth import get_current_user
 from app.common.responses import success
 from app.alerts.schemas import (
     CreateAlertRequest,
+    CreateAlertResponse,
     UpdateAlertRequest,
 )
 from app.alerts import service
@@ -19,7 +20,7 @@ def create_alert(
 ):
     db = get_db()
     result = service.create_alert(db.alerts, payload, current_user_id)
-    return success(data=result)
+    return success(data=CreateAlertResponse(**result).model_dump())
 
 
 @router.get("/")

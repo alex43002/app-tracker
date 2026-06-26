@@ -113,6 +113,7 @@ Response (`data`): the new user **plus** an issued session token.
     "firstName": "Test",
     "lastName": "User",
     "pfp": null,
+    "emailVerified": false,
     "createdAt": "ISO-8601",
     "updatedAt": "ISO-8601"
   },
@@ -190,6 +191,79 @@ Request:
 
 Response (`data`): `null`.
 
+### Request Password Reset
+
+```
+POST /api/auth/password-reset/request
+```
+
+Emails a single-use reset token to the address if it belongs to an account.
+**Always** returns success and `data: null` — the response never reveals whether
+the email is registered (avoids account enumeration). Rate-limited.
+
+Request:
+
+```json
+{ "email": "test@example.com" }
+```
+
+Response (`data`): `null`.
+
+### Confirm Password Reset
+
+```
+POST /api/auth/password-reset/confirm
+```
+
+Consumes the single-use token and sets a new password. Setting a new password
+**revokes every existing session** for the account (all refresh tokens are
+invalidated). Rate-limited.
+
+Request:
+
+```json
+{ "token": "RESET_TOKEN", "newPassword": "plaintext (min 8 chars)" }
+```
+
+Response (`data`): `null`. Errors: `AUTH_TOKEN_INVALID` (400) if the token is
+invalid, already used, or expired.
+
+### Request Email Verification
+
+```
+POST /api/auth/verify-email/request
+```
+
+Re-sends a verification token. Registration already sends one automatically;
+this resends it. Always returns success (no enumeration); already-verified
+accounts are skipped silently. Rate-limited.
+
+Request:
+
+```json
+{ "email": "test@example.com" }
+```
+
+Response (`data`): `null`.
+
+### Confirm Email Verification
+
+```
+POST /api/auth/verify-email/confirm
+```
+
+Consumes the single-use token and marks the account's email verified
+(`emailVerified: true`). Rate-limited.
+
+Request:
+
+```json
+{ "token": "VERIFICATION_TOKEN" }
+```
+
+Response (`data`): `null`. Errors: `AUTH_TOKEN_INVALID` (400) if the token is
+invalid, already used, or expired.
+
 ---
 
 ## Users
@@ -213,13 +287,15 @@ Response (`data`):
   "firstName": "string",
   "lastName": "string",
   "pfp": "GridFS file id, or null",
+  "emailVerified": false,
   "createdAt": "ISO-8601",
   "updatedAt": "ISO-8601"
 }
 ```
 
 `pfp` is a GridFS file id (or `null`); fetch the image bytes from
-`GET /api/users/{id}/pfp`.
+`GET /api/users/{id}/pfp`. `emailVerified` reflects whether the account has
+confirmed its email (see `POST /api/auth/verify-email/*`).
 
 ### Get User by Id
 

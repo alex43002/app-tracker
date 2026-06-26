@@ -18,6 +18,16 @@ import { clearAuthToken, getRefreshToken, saveSession } from "../store/auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+if (!API_BASE_URL) {
+  // Without this, requests resolve to `undefined/api/...` against the dev
+  // server. Surface a clear, actionable message instead of a silent 404.
+  throw new Error(
+    "VITE_API_BASE_URL is not set. Create a .env file in careerlog-desktop " +
+      "(see .env.example), e.g. VITE_API_BASE_URL=http://127.0.0.1:8000, then " +
+      "restart the dev server.",
+  );
+}
+
 /* ============================================================
    Auth Token Handling
 ============================================================ */

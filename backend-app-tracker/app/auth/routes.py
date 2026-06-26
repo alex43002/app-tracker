@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -15,16 +15,41 @@ from app.common.auth import (
     decode_jwt,
 )
 from app.common.ratelimit import limiter
+from app.notifications.notifier import EMAIL, get_notifier
 from app.auth.schemas import (
     RegisterRequest,
     LoginRequest,
     RefreshRequest,
     LogoutRequest,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+    EmailVerificationRequest,
+    EmailVerificationConfirm,
 )
 from app.auth import service
-from app.auth.service import hash_password, verify_password
+from app.auth.service import (
+    EMAIL_VERIFY,
+    PASSWORD_RESET,
+    hash_password,
+    verify_password,
+)
 
 router = APIRouter()
+
+
+def _send_email_verification(db, user: dict) -> None:
+    """Issue an email-verification token and deliver it (best-effort)."""
+    raw = service.issue_auth_token(
+        db,
+        user["_id"],
+        EMAIL_VERIFY,
+        timedelta(hours=settings.email_verification_token_expiry_hours),
+    )
+    get_notifier().send(
+        EMAIL,
+        user["email"],
+        f"Confirm your CareerLog email with this code: {raw}",
+    )
 
 
 def _issue_session(user_id: str, email: str, generation: int = 0) -> dict:
@@ -64,6 +89,7 @@ def register(request: Request, payload: RegisterRequest):
         "firstName": payload.firstName,
         "lastName": payload.lastName,
         "pfp": None,
+        "emailVerified": False,
         "tokenGeneration": 0,
         "createdAt": now,
         "updatedAt": now,
@@ -71,6 +97,8 @@ def register(request: Request, payload: RegisterRequest):
 
     result = users.insert_one(user_doc)
     user_id = str(result.inserted_id)
+
+    _send_email_verification(db, {"_id": result.inserted_id, "email": payload.email})
 
     return success(
         data={
@@ -81,6 +109,7 @@ def register(request: Request, payload: RegisterRequest):
                 "firstName": payload.firstName,
                 "lastName": payload.lastName,
                 "pfp": None,
+                "emailVerified": False,
                 "createdAt": now,
                 "updatedAt": now,
             },
@@ -121,6 +150,7 @@ def login(request: Request, payload: LoginRequest):
                 "firstName": user["firstName"],
                 "lastName": user["lastName"],
                 "pfp": user["pfp"],
+                "emailVerified": user.get("emailVerified", False),
                 "createdAt": user["createdAt"],
                 "updatedAt": user["updatedAt"],
             },
@@ -195,4 +225,81 @@ def logout(payload: LogoutRequest):
     except Exception:
         pass
 
+    return success(data=None)
+
+
+# ---------------------------------------------------------------------------
+# Password reset (FEAT-6)
+# ---------------------------------------------------------------------------
+
+@router.post("/password-reset/request")
+@limiter.limit(settings.auth_rate_limit)
+def request_password_reset(request: Request, payload: PasswordResetRequest):
+    """Email a single-use reset token. Always succeeds — the response never
+    reveals whether the email is registered (avoids account enumeration)."""
+    db = get_db()
+    user = db.users.find_one({"email": payload.email})
+    if user:
+        raw = service.issue_auth_token(
+            db,
+            user["_id"],
+            PASSWORD_RESET,
+            timedelta(minutes=settings.password_reset_token_expiry_minutes),
+        )
+        get_notifier().send(
+            EMAIL,
+            user["email"],
+            f"Reset your CareerLog password with this code: {raw}",
+        )
+
+    return success(data=None)
+
+
+@router.post("/password-reset/confirm")
+@limiter.limit(settings.auth_rate_limit)
+def confirm_password_reset(request: Request, payload: PasswordResetConfirm):
+    db = get_db()
+    user_id = service.consume_auth_token(db, payload.token, PASSWORD_RESET)
+    if not user_id:
+        raise_error(
+            code="AUTH_TOKEN_INVALID",
+            message="Password reset token is invalid or has expired",
+            http_status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Setting a new password revokes every existing session for the account.
+    service.set_password(db, user_id, payload.newPassword)
+    return success(data=None)
+
+
+# ---------------------------------------------------------------------------
+# Email verification (FEAT-6)
+# ---------------------------------------------------------------------------
+
+@router.post("/verify-email/request")
+@limiter.limit(settings.auth_rate_limit)
+def request_email_verification(request: Request, payload: EmailVerificationRequest):
+    """Re-send a verification token. Always succeeds (no enumeration); skips
+    accounts that are already verified."""
+    db = get_db()
+    user = db.users.find_one({"email": payload.email})
+    if user and not user.get("emailVerified", False):
+        _send_email_verification(db, user)
+
+    return success(data=None)
+
+
+@router.post("/verify-email/confirm")
+@limiter.limit(settings.auth_rate_limit)
+def confirm_email_verification(request: Request, payload: EmailVerificationConfirm):
+    db = get_db()
+    user_id = service.consume_auth_token(db, payload.token, EMAIL_VERIFY)
+    if not user_id:
+        raise_error(
+            code="AUTH_TOKEN_INVALID",
+            message="Verification token is invalid or has expired",
+            http_status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    service.mark_email_verified(db, user_id)
     return success(data=None)

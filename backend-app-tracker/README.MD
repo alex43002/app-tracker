@@ -48,10 +48,30 @@ pip install -r requirements.txt
 Create a `.env` file:
 
 ```env
+# Required
 MONGODB_URI=mongodb://localhost:27017/jobtracker
-JWT_SECRET=your-secret-key
+JWT_SECRET=your-secret-key          # >= 16 chars, not a known placeholder
 JWT_EXPIRY_HOURS=2
+
+# Optional — alert delivery (defaults log to the console)
+ALERTS_ENABLED=true
+ALERTS_POLL_SECONDS=60
+
+# Optional — email alerts via SMTP
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASSWORD=...
+SMTP_FROM=no-reply@careerlog.app
+
+# Optional — SMS alerts via Twilio (all three required to enable SMS)
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_FROM=+15551234567
 ```
+
+If a required variable is missing or invalid the app prints an actionable
+checklist and exits instead of starting with a broken config.
 
 ---
 

@@ -29,6 +29,23 @@ class LogoutRequest(BaseModel):
     refreshToken: str
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    newPassword: str = Field(min_length=8)
+
+
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str
+
+
 # =====================
 # Response Schemas
 # =====================
@@ -40,6 +57,7 @@ class UserAuthResponse(BaseModel):
     firstName: str
     lastName: str
     pfp: Optional[str] = None
+    emailVerified: bool = False
     createdAt: datetime
     updatedAt: datetime
 

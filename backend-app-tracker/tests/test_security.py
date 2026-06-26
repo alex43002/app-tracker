@@ -10,7 +10,7 @@ def test_jwt_secret_rejects_weak_value(monkeypatch):
 
     import app.config as config
 
-    with pytest.raises(Exception):
+    with pytest.raises(SystemExit):
         importlib.reload(config)
 
     # Restore a valid module state for any later imports.
@@ -25,7 +25,7 @@ def test_jwt_secret_rejects_short_value(monkeypatch):
 
     import app.config as config
 
-    with pytest.raises(Exception):
+    with pytest.raises(SystemExit):
         importlib.reload(config)
 
     monkeypatch.setenv("JWT_SECRET", "test-secret-do-not-use-in-prod")

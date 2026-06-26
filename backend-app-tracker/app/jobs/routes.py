@@ -8,6 +8,7 @@ from app.common.responses import success
 from app.common.errors import raise_error
 from app.jobs.schemas import (
     CreateJobRequest,
+    CreateJobResponse,
     UpdateJobRequest,
 )
 from app.jobs import service
@@ -67,7 +68,7 @@ async def create_job(
         payload = CreateJobRequest(**await request.json())
 
     result = service.create_job(db.jobs, payload, current_user_id)
-    return success(data=result)
+    return success(data=CreateJobResponse(**result).model_dump())
 
 
 @router.get("/")

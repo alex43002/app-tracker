@@ -20,6 +20,7 @@
 
   pfp: String,              // GridFS file id (or null) — image stored in GridFS
 
+  emailVerified: Boolean,   // set true via /api/auth/verify-email/confirm
   tokenGeneration: Number,  // refresh-token family generation (bumped on reuse)
 
   createdAt: Date,
@@ -132,6 +133,35 @@ logged out, so they cannot be replayed.
 ```js
 { jti: 1 }        // unique
 { expiresAt: 1 }  // TTL (expireAfterSeconds: 0) — purges entries after expiry
+```
+
+---
+
+## Auth Tokens Collection
+
+**Collection name:** `auth_tokens`
+
+Single-use tokens for password reset and email verification (FEAT-6). Only the
+SHA-256 **hash** of the token is stored, so a collection leak exposes no usable
+tokens.
+
+```js
+{
+  _id: ObjectId,
+  tokenHash: String,        // unique; sha256(rawToken)
+  userId: String,
+  type: String,             // "password_reset" | "email_verify"
+  expiresAt: Date,          // TTL purges after expiry
+  createdAt: Date,
+  usedAt: Date              // null until claimed (single-use)
+}
+```
+
+### Indexes
+
+```js
+{ tokenHash: 1 }  // unique
+{ expiresAt: 1 }  // TTL (expireAfterSeconds: 0)
 ```
 
 ---

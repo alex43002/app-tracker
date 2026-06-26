@@ -53,3 +53,32 @@ export function refreshSession(refreshToken: string) {
 export function logout(refreshToken: string) {
   return apiClient.post<null>("/api/auth/logout", { refreshToken });
 }
+
+/* ============================================================
+   Password reset & email verification (FEAT-6)
+============================================================ */
+
+/**
+ * Request a password-reset email. Always resolves (the API never reveals
+ * whether the address is registered), so callers should show a neutral
+ * "check your email" message regardless.
+ */
+export function requestPasswordReset(email: string) {
+  return apiClient.post<null>("/api/auth/password-reset/request", { email });
+}
+
+export function confirmPasswordReset(token: string, newPassword: string) {
+  return apiClient.post<null>("/api/auth/password-reset/confirm", {
+    token,
+    newPassword,
+  });
+}
+
+/** Re-send the email-verification message. Always resolves (no enumeration). */
+export function requestEmailVerification(email: string) {
+  return apiClient.post<null>("/api/auth/verify-email/request", { email });
+}
+
+export function confirmEmailVerification(token: string) {
+  return apiClient.post<null>("/api/auth/verify-email/confirm", { token });
+}
