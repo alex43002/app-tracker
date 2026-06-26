@@ -1,4 +1,6 @@
-from pydantic import field_validator
+import sys
+
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Obvious placeholder secrets that must never be used to sign real tokens.
@@ -64,4 +66,44 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
 
-settings = Settings()
+# Human-readable hints for the required settings, keyed by field name. Used to
+# turn a pydantic ValidationError into actionable startup guidance.
+_FIELD_HINTS = {
+    "mongodb_uri": "MongoDB connection string, e.g. mongodb://localhost:27017",
+    "jwt_secret": f"random secret of at least {_MIN_SECRET_LENGTH} characters used to sign auth tokens",
+}
+
+
+def _format_config_error(exc: ValidationError) -> str:
+    """Render a ValidationError as a short, friendly checklist of what to fix."""
+    lines = [
+        "Configuration error: the backend can't start because some required",
+        "environment variables are missing or invalid.",
+        "",
+        "Please set the following in a .env file (see README \"Environment Variables\"):",
+        "",
+    ]
+    for err in exc.errors():
+        field = str(err["loc"][0]) if err.get("loc") else "(unknown)"
+        env_name = field.upper()
+        if err.get("type") == "missing":
+            reason = "required but not set"
+        else:
+            reason = err.get("msg", "invalid value")
+        hint = _FIELD_HINTS.get(field)
+        line = f"  - {env_name}: {reason}"
+        if hint:
+            line += f"\n      ({hint})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def load_settings() -> "Settings":
+    try:
+        return Settings()
+    except ValidationError as exc:
+        print(_format_config_error(exc), file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+settings = load_settings()
