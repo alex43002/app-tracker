@@ -1,37 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { JOB_COLUMNS, type JobColumn } from "./jobColumns";
+import { ALL_COLUMNS, type JobColumn } from "./jobColumns";
 
 /**
  * Jobs table layout preference (FEAT-18): column order + visibility, persisted
  * locally. This is deliberately separate from Saved Searches (which persist
  * filters/sort): a saved search is *what* you're looking at, a column layout is
  * *how* it's displayed. Stored in localStorage so it survives reloads without a
- * backend round-trip.
+ * backend round-trip. Every column is toggleable, including Actions.
  */
-const STORAGE_KEY = "careerlog:jobColumns:v1";
+const STORAGE_KEY = "careerlog:jobColumns:v2";
 
 export interface ColumnPref {
   key: string;
   visible: boolean;
 }
 
-const DEFAULT_PREFS: ColumnPref[] = JOB_COLUMNS.map((c) => ({
+const DEFAULT_PREFS: ColumnPref[] = ALL_COLUMNS.map((c) => ({
   key: c.key,
-  visible: true,
+  visible: c.defaultVisible ?? true,
 }));
 
 /**
  * Reconcile a stored preference with the current column set: keep the stored
  * order/visibility for columns that still exist, drop unknown keys, and append
- * any newly-added columns (visible) so upgrades don't hide new data.
+ * any newly-added columns (at their default visibility) so upgrades don't hide
+ * new data or lose the ability to re-enable a column.
  */
 function reconcile(stored: ColumnPref[]): ColumnPref[] {
-  const known = new Set(JOB_COLUMNS.map((c) => c.key));
+  const known = new Map(ALL_COLUMNS.map((c) => [c.key, c]));
   const kept = stored.filter((p) => known.has(p.key));
   const seen = new Set(kept.map((p) => p.key));
-  const appended = JOB_COLUMNS.filter((c) => !seen.has(c.key)).map((c) => ({
+  const appended = ALL_COLUMNS.filter((c) => !seen.has(c.key)).map((c) => ({
     key: c.key,
-    visible: true,
+    visible: c.defaultVisible ?? true,
   }));
   return [...kept, ...appended];
 }
@@ -65,7 +66,7 @@ export function useColumnPreferences() {
   }, [prefs]);
 
   const byKey = useMemo(
-    () => new Map(JOB_COLUMNS.map((c) => [c.key, c])),
+    () => new Map(ALL_COLUMNS.map((c) => [c.key, c])),
     []
   );
 

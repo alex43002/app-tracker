@@ -2,6 +2,7 @@ import type { Job } from "../../types/job";
 import { StatusBadge } from "./StatusBadge";
 import { ColumnSettings } from "./ColumnSettings";
 import { useColumnPreferences } from "./useColumnPreferences";
+import { ACTIONS_COLUMN_KEY } from "./jobColumns";
 
 interface JobsTableProps {
   jobs: Job[];
@@ -52,17 +53,23 @@ export function JobsTable({
 
       {/* =======================
          DESKTOP TABLE (SCROLLABLE)
+
+         The table sizes to its visible columns (no fixed min-width), so hiding
+         columns makes the grid more compact and showing more lengthens it,
+         scrolling horizontally only when needed.
       ======================= */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-[1000px] w-full">
+        <table className="w-auto">
           <thead className="border-b bg-gray-50 text-left text-sm">
             <tr>
               {orderedVisible.map((col) => (
-                <th key={col.key} className="px-5 py-3">
+                <th
+                  key={col.key}
+                  className={`px-5 py-3 ${col.headerClassName ?? ""}`}
+                >
                   {col.label}
                 </th>
               ))}
-              <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
 
@@ -74,24 +81,26 @@ export function JobsTable({
                     key={col.key}
                     className={`px-5 py-3.5 ${col.cellClassName ?? ""}`}
                   >
-                    {col.render(job)}
+                    {col.key === ACTIONS_COLUMN_KEY ? (
+                      <>
+                        <button
+                          onClick={() => onEdit(job)}
+                          className="mr-4 text-sm text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(job.id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      col.render?.(job)
+                    )}
                   </td>
                 ))}
-
-                <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                  <button
-                    onClick={() => onEdit(job)}
-                    className="mr-4 text-sm text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => onDelete(job.id)}
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
