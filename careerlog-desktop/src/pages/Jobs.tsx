@@ -13,7 +13,7 @@ import { JobFormModal } from "../components/jobs/JobFormModal";
 import { SavedSearchesBar } from "../components/jobs/SavedSearchesBar";
 import type { SavedSearch } from "../types/savedSearch";
 
-import { fetchCurrentUser } from "../api/users";
+import { useCurrentUser } from "../store/userContext";
 import {
   fetchJobs,
   createJob,
@@ -27,7 +27,6 @@ import { withOfflineCache } from "../api/offlineCache";
 import type { PaginatedResponse } from "../api/client";
 
 import type { Job } from "../types/job";
-import type { User } from "../types/user";
 
 const PAGE_SIZE = 25;
 
@@ -52,7 +51,7 @@ async function handleDelete(jobId: string) {
 }
 
 export function Jobs() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useCurrentUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [page, setPage] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
@@ -100,16 +99,6 @@ export function Jobs() {
         j.jobTitle.toLowerCase().includes(q)
     );
   }, [jobs, search]);
-
-  /* ============================================================
-     Bootstrap user
-  ============================================================ */
-
-  useEffect(() => {
-    fetchCurrentUser().then((u: User) => {
-      setUser(u);
-    });
-  }, []);
 
   /* ============================================================
      Fetch jobs
@@ -162,7 +151,7 @@ export function Jobs() {
   ============================================================ */
 
   return (
-    <AppLayout user={user}>
+    <AppLayout>
       <PageScroll>
         {/* Page container: fixes edge crowding + ultra-wide layouts */}
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -189,6 +178,8 @@ export function Jobs() {
                 search,
                 status: filters.status as string | undefined,
                 employmentType: filters.employmentType as string | undefined,
+                company: filters.company as string | undefined,
+                location: filters.location as string | undefined,
               }}
               sortBy={sortBy}
               sortOrder={sortOrder}
@@ -199,6 +190,8 @@ export function Jobs() {
               filters={{
                 status: filters.status as string | undefined,
                 employmentType: filters.employmentType as string | undefined,
+                company: filters.company as string | undefined,
+                location: filters.location as string | undefined,
               }}
               sortBy={sortBy}
               sortOrder={sortOrder}

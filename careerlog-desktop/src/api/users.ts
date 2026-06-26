@@ -20,16 +20,23 @@ export function uploadProfilePicture(userId: string, file: File) {
 /**
  * Fetch a user's profile picture and return an object URL for it (or null).
  * The caller is responsible for revoking the URL when done.
+ *
+ * `version` (e.g. the current pfp id or `updatedAt`) is appended as a query
+ * param so a freshly uploaded picture isn't masked by a cached response for the
+ * otherwise-stable `/pfp` URL (BUG-14).
  */
 export async function fetchProfilePicture(
-  userId: string
+  userId: string,
+  version?: string | null
 ): Promise<string | null> {
   const token = localStorage.getItem("careerlog_token");
+  const query = version ? `?v=${encodeURIComponent(version)}` : "";
 
   const response = await fetch(
-    `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}/pfp`,
+    `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}/pfp${query}`,
     {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      cache: "no-store",
     }
   );
 

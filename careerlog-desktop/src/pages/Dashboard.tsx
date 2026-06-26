@@ -11,25 +11,15 @@ import { EmailVerificationBanner } from "../components/common/EmailVerificationB
 
 import type { Job } from "../types/job";
 import type { Alert } from "../types/alert";
-import type { User } from "../types/user";
 import type { JobStatusCounts } from "../types/analytics";
 
-import { fetchCurrentUser } from "../api/users";
+import { useCurrentUser } from "../store/userContext";
 import { fetchJobs } from "../api/jobs";
+import { fetchAlerts } from "../api/alerts";
 import { fetchJobStatusCounts } from "../api/analytics";
 
-/* TEMP: alerts still mocked */
-const alerts: Alert[] = Array.from({ length: 5 }).map((_, i) => ({
-  id: `${i}`,
-  scheduledAlert: new Date(
-    Date.now() + i * 86400000
-  ).toISOString(),
-  smsOrEmail: i % 2 === 0 ? "email" : "sms",
-  message: "Follow up with recruiter",
-}));
-
 export function Dashboard() {
-  const [user, setUser] = useState<User>();
+  const { user } = useCurrentUser();
 
   // Table + pipeline data (still uses jobs endpoint)
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -39,14 +29,8 @@ export function Dashboard() {
   const [jobStats, setJobStats] = useState<JobStatusCounts | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
-  /* ============================================================
-     Fetch Current User
-  ============================================================ */
-  useEffect(() => {
-    fetchCurrentUser().then((u) => {
-      setUser(u);
-    });
-  }, []);
+  // Upcoming alerts (soonest first). Non-blocking — failures just show empty.
+  const [alerts, setAlerts] = useState<Alert[]>([]);
 
   /* ============================================================
      Fetch Jobs (for table + pipeline only)
@@ -67,11 +51,21 @@ export function Dashboard() {
   useEffect(() => {
     fetchJobStatusCounts()
       .then((res) => {
-        console.log(res);
         setJobStats(res);
       })
       .finally(() => {
         setLoadingStats(false);
+      });
+  }, []);
+
+  /* ============================================================
+     Fetch Upcoming Alerts (soonest first)
+  ============================================================ */
+  useEffect(() => {
+    fetchAlerts(1, 5, "scheduledAlert", "asc")
+      .then((res) => setAlerts(res.items))
+      .catch(() => {
+        // Non-critical widget; leave the list empty on failure.
       });
   }, []);
 
@@ -91,7 +85,7 @@ export function Dashboard() {
   }
 
   return (
-    <AppLayout user={user}>
+    <AppLayout>
       <PageScroll>
         <section
           className="

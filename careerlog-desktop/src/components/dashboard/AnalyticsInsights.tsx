@@ -156,26 +156,46 @@ function TimeToOfferCard({ tto }: { tto: TimeToOffer }) {
   );
 }
 
+/** "YYYY-MM" → "Mon" (e.g. "2026-06" → "Jun"). Falls back to the raw period. */
+function monthLabel(period: string): string {
+  const [year, month] = period.split("-").map(Number);
+  if (!year || !month) return period;
+  return new Date(year, month - 1, 1).toLocaleString(undefined, {
+    month: "short",
+  });
+}
+
 function ApplicationsOverTimeChart({ data }: { data: ApplicationsOverTime }) {
   const max = data.points.reduce((m, p) => Math.max(m, p.count), 0) || 1;
+  const total = data.points.reduce((sum, p) => sum + p.count, 0);
   return (
     <Card title="Applications over time">
-      {data.points.length === 0 ? (
-        <p className="text-sm text-gray-500">No applications yet.</p>
+      <p className="-mt-2 mb-3 text-xs text-gray-500">
+        Applications submitted per month
+      </p>
+      {data.points.length === 0 || total === 0 ? (
+        <p className="text-sm text-gray-500">
+          No applications submitted yet — this chart fills in as you log jobs.
+        </p>
       ) : (
-        <div className="flex h-32 items-end gap-2">
+        <div className="flex h-32 items-end gap-2 border-b border-gray-200">
           {data.points.map((p) => (
             <div
               key={p.period}
               className="flex flex-1 flex-col items-center justify-end gap-1"
-              title={`${p.period}: ${p.count}`}
+              title={`${p.period}: ${p.count} application${p.count === 1 ? "" : "s"}`}
             >
+              <span className="text-[10px] font-medium text-gray-600">
+                {p.count}
+              </span>
               <div
                 className="w-full rounded-t bg-blue-400"
-                style={{ height: `${(p.count / max) * 100}%` }}
+                style={{ height: `${Math.max((p.count / max) * 100, p.count > 0 ? 4 : 0)}%` }}
                 data-testid="bar"
               />
-              <span className="text-[10px] text-gray-500">{p.period.slice(5)}</span>
+              <span className="text-[10px] text-gray-500">
+                {monthLabel(p.period)}
+              </span>
             </div>
           ))}
         </div>
