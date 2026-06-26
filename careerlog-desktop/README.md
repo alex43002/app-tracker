@@ -1,127 +1,131 @@
-# CareerLog Desktop — Electron Frontend
+# CareerLog — Desktop Client
 
-CareerLog Desktop is a **Windows-first Electron application** that allows users to log in and manage their job applications using the CareerLog REST API (v1).  
-This repository contains the **frontend desktop client only**. All data persistence and business logic live in the backend.
+This folder (`careerlog-desktop/`) is the **frontend desktop application** for
+CareerLog. It's a **Windows-first Electron app** built with **React +
+TypeScript** that talks to the CareerLog REST API in
+[`../backend-app-tracker/`](../backend-app-tracker). This repo contains the
+**client only** — all data persistence and business logic live in the backend.
 
-The frontend is intentionally lightweight, typed, and stable to support rapid iteration and future store distribution.
+## What this application does
 
----
+CareerLog Desktop lets a user:
 
-## What This Application Does
+- Authenticate with the CareerLog backend (login / signup, password reset,
+  email verification)
+- View, create, update, and delete job applications (with notes and status)
+- Attach and preview **multiple résumés** per job
+- Filter, sort, and save **named searches** of their job list
+- See an analytics dashboard (funnel, applications over time, time-to-offer,
+  per-company breakdown)
+- Configure follow-up alerts (configuration only — delivery happens server-side)
+- View last-cached data when briefly offline (read-only)
 
-CareerLog Desktop allows a user to:
-
-- Authenticate with the CareerLog backend
-- View, create, update, and delete job applications
-- Track job application status and notes
-- Configure follow-up alerts (configuration only)
-- Manage their local session securely
-
-This application **does not**:
-- Store authoritative data locally
-- Send emails or SMS
-- Execute background jobs
-- Perform backend logic
-
----
-
-## Tech Stack
-
-- **Electron** — Desktop runtime
-- **React + TypeScript** — UI layer
-- **Vite (stable)** — Frontend bundler (rolldown disabled)
-- **electron-builder** — cross-platform packaging (Windows, macOS, Linux)
-- **Node.js** — Main process only
+It **does not** store authoritative data locally, send email/SMS, or run
+background jobs — those are backend responsibilities.
 
 ---
 
-## Repository Structure
+## Requirements
 
+- **Node.js 20+** (LTS recommended) and **npm** (bundled with Node)
+- A running **CareerLog backend** (see [`../backend-app-tracker/`](../backend-app-tracker)).
+  Defaults to `http://127.0.0.1:8000`.
+
+---
+
+## Running it locally
+
+### 1. Install dependencies
+
+```bash
+cd careerlog-desktop
+npm install
 ```
 
-careerlog-desktop/
-│
-├── electron/
-│   ├── main.ts            # Electron main process
-│   └── preload.ts         # Secure IPC bridge
-│
-├── src/
-│   ├── api/               # Typed API client
-│   │   ├── client.ts
-│   │   ├── auth.ts
-│   │   ├── jobs.ts
-│   │   └── alerts.ts
-│   │
-│   ├── pages/             # Screen-level pages
-│   │   ├── Login.tsx
-│   │   ├── Dashboard.tsx
-│   │   ├── Jobs.tsx
-│   │   └── Alerts.tsx
-│   │
-│   ├── components/        # Reusable UI components
-│   ├── layouts/           # Application layouts
-│   ├── hooks/             # Custom React hooks
-│   ├── store/             # Client-side state
-│   ├── types/             # API and domain types
-│   └── utils/             # Shared helpers
-│
-├── public/
-├── electron-builder.yml
-├── vite.config.ts
-├── package.json
-└── README.md
+### 2. Configure the backend URL
 
-````
+The client needs to know where the API is. Copy the example env file and adjust
+if needed (it must not have a trailing slash):
 
----
-
-## Prerequisites
-
-- **Node.js 18+**
-- **npm** (bundled with Node)
-
----
-
-## Getting Started
-
-### 1. Install Dependencies
 ```bash
-npm install
-````
+cp .env.example .env
+```
 
----
+```env
+# .env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
 
-### 2. Run in Development Mode
+> If `VITE_API_BASE_URL` is unset the app throws a clear error at startup rather
+> than silently making requests to `undefined/api/...`.
+
+### 3. Run in development mode
+
+Make sure the backend is running first, then:
 
 ```bash
 npm run dev
 ```
 
-This starts:
+This starts the Vite dev server, the Electron main process, and hot reload for
+UI changes.
 
-* Vite dev server for React
-* Electron main process
-* Hot reload for UI changes
+### 4. Run the tests / checks
+
+```bash
+npm run test                        # vitest (48 tests)
+npx tsc -p tsconfig.app.json --noEmit   # typecheck
+npx eslint .                        # lint (0 warnings)
+```
+
+### 5. Build / package locally
+
+```bash
+npm run build       # compile renderer + electron, then run electron-builder
+npm run dist        # package installers for the current OS → release-artifacts/
+```
+
+`electron-builder` packages for the **current OS** only: run it on Windows for
+`.exe` (NSIS), macOS for `.dmg` + `.zip`, and Linux for `.AppImage` + `.deb`.
 
 ---
 
-### 3. Build for Production
+## Tech stack
 
-```bash
-npm run build
-```
+- **Electron** — desktop runtime (hardened: no Node APIs in the renderer; all
+  privileged access via `electron/preload.ts`)
+- **React + TypeScript** — UI layer
+- **Vite** — bundler / dev server
+- **Tailwind CSS** — styling
+- **Vitest + Testing Library** — tests
+- **electron-builder** — cross-platform packaging (config lives in `package.json` → `build`)
 
 ---
 
-### 4. Package Installers Locally
+## Repository structure
 
-```bash
-npm run dist
 ```
-
-`electron-builder` packages for the **current OS** and writes artifacts to
-`release-artifacts/`. Run it on Windows for `.exe` (NSIS), on macOS for `.dmg` +
-`.zip`, and on Linux for `.AppImage` + `.deb`.
+careerlog-desktop/
+├── electron/
+│   ├── main.ts            # Electron main process
+│   └── preload.ts         # Secure IPC bridge
+├── src/
+│   ├── api/               # Typed API client (client, auth, jobs, alerts,
+│   │                      #   analytics, savedSearches, offlineCache)
+│   ├── pages/             # Screen-level pages (Login, Dashboard, Jobs, Alerts,
+│   │                      #   ResetPassword, VerifyEmail)
+│   ├── components/        # Reusable UI (dashboard, jobs, job-form, auth, common)
+│   ├── layouts/           # Application layouts
+│   ├── store/             # Client-side auth/session state
+│   ├── types/             # API and domain types
+│   └── test/              # Vitest setup
+├── assets/                # App icon + macOS entitlements (see assets/README.md)
+├── public/
+├── vite.config.ts
+├── vitest.config.ts
+├── package.json           # scripts + electron-builder `build` config
+└── README.md
+```
 
 ---
 
@@ -169,59 +173,19 @@ release. The macOS hardened-runtime entitlements live in
 
 ---
 
-## Backend Dependency
+## Security model
 
-This application **requires** the CareerLog REST API (v1) to be running.
-
-Default local backend:
-
-```
-http://127.0.0.1:8000
-```
-
-The frontend assumes:
-
-* JWT-based authentication
-* Stable response envelopes
-* Pagination on all list endpoints
-* Alerts are configuration-only in v1
-
----
-
-## Security Model
-
-* No Node APIs exposed to the renderer
-* All privileged access goes through `preload.ts`
-* JWT stored client-side (session scoped)
-* No secrets embedded in the frontend
-
----
-
-## Design Constraints (Intentional)
-
-* Windows-first support
-* No real-time updates
-* No offline mode in v1
-* No backend assumptions beyond the contract
-* Stability prioritized over experimental tooling
+- No Node APIs exposed to the renderer; privileged access goes through `preload.ts`
+- JWT access/refresh tokens stored client-side (session scoped); silent refresh on 401
+- Any cached offline data is cleared on logout so it can't leak across accounts
+- No secrets embedded in the frontend
 
 ---
 
 ## Versioning
 
-This repository targets **CareerLog API v1**.
-
-Breaking frontend changes must align with backend versioning.
-
----
-
-## Roadmap (High Level)
-
-* UI polish and accessibility
-* Installer branding
-* Auto-update support
-* Optional offline caching (future)
-* v2 backend feature adoption
+This client targets **CareerLog API v1/v2**. Breaking frontend changes must align
+with backend versioning. See [`../backend-app-tracker/API_CONTRACT_V2.MD`](../backend-app-tracker/API_CONTRACT_V2.MD).
 
 ---
 
