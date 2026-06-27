@@ -264,7 +264,10 @@ async function request<T>(
       }
 
       clearAuthToken();
-      window.location.href = "/login";
+      // The app uses HashRouter, so routes live under `#/`. Navigating to the
+      // hash route lets the router show the login screen without a full reload
+      // to a non-existent `/login` path.
+      window.location.hash = "#/login";
     }
 
     throw new ApiError(

@@ -5,6 +5,7 @@ import {
   withOfflineCache,
   writeCache,
 } from "./offlineCache";
+import { ApiError } from "./client";
 
 afterEach(() => {
   localStorage.clear();
@@ -34,6 +35,17 @@ describe("offline cache (FEAT-9)", () => {
     await expect(
       withOfflineCache("missing", () => Promise.reject(new Error("offline")))
     ).rejects.toThrow("offline");
+  });
+
+  it("does NOT serve stale cache on an ApiError (e.g. 401) — auth failures must not be masked", async () => {
+    writeCache("jobs", { items: [42] });
+    const authError = new ApiError(
+      { code: "AUTH_TOKEN_INVALID", message: "expired" },
+      401
+    );
+    await expect(
+      withOfflineCache("jobs", () => Promise.reject(authError))
+    ).rejects.toBe(authError);
   });
 
   it("clearOfflineCache removes only cache-prefixed keys", () => {
