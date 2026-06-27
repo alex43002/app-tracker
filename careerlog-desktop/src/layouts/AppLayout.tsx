@@ -2,15 +2,8 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { UserMenu } from "../components/common/UserMenu";
-import type { User } from "../types/user";
 
-export function AppLayout({
-  children,
-  user,
-}: {
-  children: ReactNode;
-  user?: User;
-}) {
+export function AppLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -122,7 +115,7 @@ export function AppLayout({
           </div>
 
           {/* Right */}
-          {user && <UserMenu {...user} />}
+          <UserMenu />
         </header>
 
         {/* Scroll Container */}

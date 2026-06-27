@@ -10,6 +10,8 @@
    called on logout to avoid leaking it across accounts.
 ============================================================ */
 
+import { ApiError } from "./client";
+
 const PREFIX = "careerlog_cache:";
 
 export function readCache<T>(key: string): T | null {
@@ -51,6 +53,13 @@ export interface CachedResult<T> {
 /**
  * Run `fetcher`; on success cache and return fresh data. On failure, fall back
  * to the cached value (marked `stale`) if one exists, otherwise rethrow.
+ *
+ * The fallback applies only to genuine connectivity failures. An `ApiError`
+ * means the backend responded with an error envelope (e.g. a 401 after the
+ * session/refresh truly expired, a 404, or a 5xx); serving stale cache there
+ * would mask a dead session — showing data while unauthorized — or a real
+ * error, so those are rethrown and handled by the client (which clears auth and
+ * redirects to login on 401).
  */
 export async function withOfflineCache<T>(
   key: string,
@@ -61,6 +70,8 @@ export async function withOfflineCache<T>(
     writeCache(key, data);
     return { data, stale: false };
   } catch (err) {
+    if (err instanceof ApiError) throw err;
+
     const cached = readCache<T>(key);
     if (cached !== null) {
       return { data: cached, stale: true };

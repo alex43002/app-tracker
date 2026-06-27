@@ -15,6 +15,14 @@ export function RecentJobsTable({ jobs }: { jobs: Job[] }) {
         </div>
       ) : (
         <table className="w-full text-sm">
+          <thead className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500">
+            <tr>
+              <th className="px-5 py-2">Company</th>
+              <th className="px-5 py-2">Title</th>
+              <th className="px-5 py-2">Status</th>
+            </tr>
+          </thead>
+
           <tbody className="divide-y">
             {recent.map((job) => (
               <tr

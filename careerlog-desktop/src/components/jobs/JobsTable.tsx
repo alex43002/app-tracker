@@ -1,4 +1,8 @@
 import type { Job } from "../../types/job";
+import { StatusBadge } from "./StatusBadge";
+import { ColumnSettings } from "./ColumnSettings";
+import { useColumnPreferences } from "./useColumnPreferences";
+import { ACTIONS_COLUMN_KEY } from "./jobColumns";
 
 interface JobsTableProps {
   jobs: Job[];
@@ -13,6 +17,11 @@ export function JobsTable({
   onEdit,
   onDelete,
 }: JobsTableProps) {
+  // Layout preference (column order + visibility) — persisted, distinct from
+  // saved searches (FEAT-18). Hooks run before any early return.
+  const { prefs, orderedVisible, toggle, move, reset, labelOf } =
+    useColumnPreferences();
+
   if (loading) {
     return (
       <div className="rounded-md border bg-white p-6 text-sm text-gray-500 shadow-sm">
@@ -30,105 +39,69 @@ export function JobsTable({
   }
 
   return (
-    <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-      {/* =======================
-         DESKTOP TABLE (SCROLLABLE)
-      ======================= */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-[1000px] w-full">
+    <div className="flex flex-col gap-3">
+      {/* Column customization (desktop only). Kept outside the table card so the
+          dropdown isn't clipped by the card's overflow. */}
+      <div className="hidden justify-end md:flex">
+        <ColumnSettings
+          prefs={prefs}
+          labelOf={labelOf}
+          toggle={toggle}
+          move={move}
+          reset={reset}
+        />
+      </div>
+
+      <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        {/* =======================
+           DESKTOP TABLE (SCROLLABLE)
+
+           The table fills the container width (w-full); cells use nowrap, so
+           when many columns are shown it overflows and scrolls horizontally.
+        ======================= */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
           <thead className="border-b bg-gray-50 text-left text-sm">
             <tr>
-              <th className="px-5 py-3">Company</th>
-              <th className="px-5 py-3">Title</th>
-              <th className="px-5 py-3">Location</th>
-              <th className="px-5 py-3">Type</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Salary</th>
-              <th className="px-5 py-3">Updated</th>
-              <th className="px-5 py-3 text-right">
-                Actions
-              </th>
+              {orderedVisible.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-5 py-3 ${col.headerClassName ?? ""}`}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
           </thead>
 
           <tbody className="divide-y text-sm">
             {jobs.map((job) => (
-              <tr
-                key={job.id}
-                className="hover:bg-gray-50"
-              >
-                <td className="px-5 py-3.5 font-medium whitespace-nowrap">
-                  {job.company}
-                </td>
-
-                <td className="px-5 py-3.5">
-                  <div className="flex flex-col">
-                    <span className="whitespace-nowrap">
-                      {job.jobTitle}
-                    </span>
-                    {job.jobId && (
-                      <span className="text-xs text-gray-500">
-                        {job.jobId}
-                      </span>
-                    )}
-                  </div>
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  {job.location}
-                </td>
-
-                <td className="px-5 py-3.5 capitalize whitespace-nowrap">
-                  {job.employmentType.replace(
-                    "-",
-                    " "
-                  )}
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  <StatusBadge
-                    status={job.status}
-                  />
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span>
-                      $
-                      {job.salaryTarget.toLocaleString()}
-                    </span>
-                    {job.salaryRange && (
-                      <span className="text-xs text-gray-500">
-                        {job.salaryRange}
-                      </span>
-                    )}
-                  </div>
-                </td>
-
-                <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
-                  {new Date(
-                    job.updatedAt
-                  ).toLocaleDateString()}
-                </td>
-
-                <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                  <button
-                    onClick={() =>
-                      onEdit(job)
-                    }
-                    className="mr-4 text-sm text-blue-600 hover:underline"
+              <tr key={job.id} className="hover:bg-gray-50">
+                {orderedVisible.map((col) => (
+                  <td
+                    key={col.key}
+                    className={`px-5 py-3.5 ${col.cellClassName ?? ""}`}
                   >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() =>
-                      onDelete(job.id)
-                    }
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </td>
+                    {col.key === ACTIONS_COLUMN_KEY ? (
+                      <>
+                        <button
+                          onClick={() => onEdit(job)}
+                          className="mr-4 text-sm text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(job.id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      col.render?.(job)
+                    )}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -224,34 +197,8 @@ export function JobsTable({
             </div>
           </div>
         ))}
+        </div>
       </div>
     </div>
-  );
-}
-
-/* ============================================================
-   Status Badge
-============================================================ */
-
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
-  const color =
-    status === "offer"
-      ? "bg-green-100 text-green-800"
-      : status === "interviewing"
-      ? "bg-blue-100 text-blue-800"
-      : status === "rejected"
-      ? "bg-red-100 text-red-800"
-      : "bg-gray-100 text-gray-800";
-
-  return (
-    <span
-      className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${color}`}
-    >
-      {status}
-    </span>
   );
 }

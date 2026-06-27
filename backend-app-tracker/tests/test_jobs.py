@@ -89,6 +89,23 @@ def test_create_job_with_notes_persists(client, auth_token):
     assert match and match[0]["notes"] == "Referred by Sam"
 
 
+def test_company_filter_matches_case_insensitive_substring(client, auth_token):
+    """FEAT-19: company/location filters match partial, case-insensitive text."""
+    headers = {"Authorization": f"Bearer {auth_token['jwt']}"}
+
+    _make_job(client, headers, jobTitle="At Acme", company="Acme Robotics")
+    _make_job(client, headers, jobTitle="At Globex", company="Globex Inc")
+
+    listed = client.get(
+        '/api/jobs?pageSize=100&filters={"company":"acme"}',
+        headers=headers,
+    ).json()["data"]["items"]
+
+    companies = {j["company"] for j in listed}
+    assert "Acme Robotics" in companies
+    assert "Globex Inc" not in companies
+
+
 def test_resume_upload_valid_type(client, auth_token):
     """SEC-7: a valid PDF résumé is accepted via multipart."""
     headers = {"Authorization": f"Bearer {auth_token['jwt']}"}

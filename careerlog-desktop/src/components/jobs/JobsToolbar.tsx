@@ -4,6 +4,8 @@ export type JobFilters = {
   search?: string;
   status?: string;
   employmentType?: string;
+  company?: string;
+  location?: string;
 };
 
 /** What the toolbar emits: whitelisted server filters + a client-side search. */
@@ -33,22 +35,22 @@ export function JobsToolbar({
   const [searchInput, setSearchInput] = useState(filters.search ?? "");
   const [status, setStatus] = useState(filters.status);
   const [employmentType, setEmploymentType] = useState(filters.employmentType);
+  const [company, setCompany] = useState(filters.company ?? "");
+  const [location, setLocation] = useState(filters.location ?? "");
 
   /* ============================================================
      Debounce → emit whitelisted server filters + client-side search.
-     Note: only fields the backend whitelists (status, employmentType)
-     go into `filters`; free-text search is applied client-side so we
-     never send rejected Mongo operators (SEC-1).
+     Note: only fields the backend whitelists (status, employmentType,
+     company, location) go into `filters`; free-text search is applied
+     client-side so we never send rejected Mongo operators (SEC-1).
+     company/location are matched server-side as case-insensitive
+     substrings (FEAT-19).
   ============================================================ */
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const serverFilters: Record<string, unknown> = {};
-      if (status) serverFilters.status = status;
-      if (employmentType) serverFilters.employmentType = employmentType;
-
       onChange({
-        filters: serverFilters,
+        filters: serverFiltersFrom(status, employmentType, company, location),
         search: searchInput.trim(),
         sortBy,
         sortOrder,
@@ -56,7 +58,16 @@ export function JobsToolbar({
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [searchInput, status, employmentType, sortBy, sortOrder, onChange]);
+  }, [
+    searchInput,
+    status,
+    employmentType,
+    company,
+    location,
+    sortBy,
+    sortOrder,
+    onChange,
+  ]);
 
   /* ============================================================
      UI
@@ -65,7 +76,7 @@ export function JobsToolbar({
   return (
     <div className="rounded-md border bg-white p-5">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <input
             placeholder="Search company or title"
             value={searchInput}
@@ -96,6 +107,20 @@ export function JobsToolbar({
             <option value="contract">Contract</option>
             <option value="internship">Internship</option>
           </select>
+
+          <input
+            placeholder="Company"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            className="rounded-md border px-3 py-2 text-sm"
+          />
+
+          <input
+            placeholder="Location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="rounded-md border px-3 py-2 text-sm"
+          />
         </div>
 
         <div className="flex items-center gap-2 md:border-l md:pl-6">
@@ -103,7 +128,12 @@ export function JobsToolbar({
             value={sortBy}
             onChange={(e) =>
               onChange({
-                filters: serverFiltersFrom(status, employmentType),
+                filters: serverFiltersFrom(
+                  status,
+                  employmentType,
+                  company,
+                  location
+                ),
                 search: searchInput.trim(),
                 sortBy: e.target.value,
                 sortOrder,
@@ -121,7 +151,12 @@ export function JobsToolbar({
           <button
             onClick={() =>
               onChange({
-                filters: serverFiltersFrom(status, employmentType),
+                filters: serverFiltersFrom(
+                  status,
+                  employmentType,
+                  company,
+                  location
+                ),
                 search: searchInput.trim(),
                 sortBy,
                 sortOrder: sortOrder === "asc" ? "desc" : "asc",
@@ -139,10 +174,14 @@ export function JobsToolbar({
 
 function serverFiltersFrom(
   status?: string,
-  employmentType?: string
+  employmentType?: string,
+  company?: string,
+  location?: string
 ): Record<string, unknown> {
   const f: Record<string, unknown> = {};
   if (status) f.status = status;
   if (employmentType) f.employmentType = employmentType;
+  if (company && company.trim()) f.company = company.trim();
+  if (location && location.trim()) f.location = location.trim();
   return f;
 }

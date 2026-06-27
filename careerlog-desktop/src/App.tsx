@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import type { ReactNode } from "react";
 import { Alerts } from "./pages/Alerts";
 import { Dashboard } from "./pages/Dashboard";
 import { Jobs } from "./pages/Jobs";
@@ -6,6 +7,16 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import { AuthGuard } from "./components/common/AuthGuard";
+import { UserProvider } from "./store/UserProvider";
+
+/** Auth-gated route wrapper that also provides the shared current-user store. */
+function Protected({ children }: { children: ReactNode }) {
+  return (
+    <AuthGuard>
+      <UserProvider>{children}</UserProvider>
+    </AuthGuard>
+  );
+}
 
 function App() {
   return (
@@ -18,27 +29,27 @@ function App() {
         <Route
           path="/"
           element={
-            <AuthGuard>
+            <Protected>
               <Dashboard />
-            </AuthGuard>
+            </Protected>
           }
         />
 
         <Route
           path="/jobs"
           element={
-            <AuthGuard>
+            <Protected>
               <Jobs />
-            </AuthGuard>
+            </Protected>
           }
         />
 
         <Route
           path="/alerts"
           element={
-            <AuthGuard>
+            <Protected>
               <Alerts />
-            </AuthGuard>
+            </Protected>
           }
         />
 

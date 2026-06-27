@@ -1,73 +1,176 @@
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+
 import { AppLayout } from "../layouts/AppLayout";
-
-type Alert = {
-  id: string;
-  scheduledAt: string;
-  channel: "email" | "sms";
-  message: string;
-};
-
-const MOCK_ALERTS: Alert[] = Array.from({ length: 18 }).map((_, i) => ({
-  id: `${i}`,
-  scheduledAt: `2026-01-${(i % 28) + 1} 10:00 AM`,
-  channel: i % 2 === 0 ? "email" : "sms",
-  message: "Follow up with recruiter"
-}));
+import { confirm } from "../components/common/dialogs/confirmController";
+import { AlertFormModal } from "../components/alerts/AlertFormModal";
+import {
+  fetchAlerts,
+  deleteAlert,
+  createAlert,
+  updateAlert,
+} from "../api/alerts";
+import type {
+  Alert,
+  CreateAlertPayload,
+  UpdateAlertPayload,
+} from "../types/alert";
 
 export function Alerts() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Alert | null>(null);
+
+  // Initial load. setState happens only in async callbacks (never synchronously
+  // in the effect body) so it doesn't trigger cascading renders.
+  useEffect(() => {
+    let active = true;
+    fetchAlerts(1, 100, "scheduledAlert", "asc")
+      .then((res) => {
+        if (active) setAlerts(res.items);
+      })
+      .catch(() => toast.error("Failed to load alerts"))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleDelete(alert: Alert) {
+    const ok = await confirm({
+      title: "Delete this alert?",
+      description: "This reminder will be permanently removed.",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    });
+    if (!ok) return;
+
+    try {
+      await deleteAlert(alert.id);
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+      toast.success("Alert deleted");
+    } catch {
+      toast.error("Failed to delete alert");
+    }
+  }
+
+  async function handleSave(payload: CreateAlertPayload) {
+    try {
+      if (editing) {
+        const { updatedAt } = await updateAlert(
+          editing.id,
+          payload as UpdateAlertPayload
+        );
+        setAlerts((prev) =>
+          prev.map((a) =>
+            a.id === editing.id ? { ...a, ...payload, updatedAt } : a
+          )
+        );
+        toast.success("Alert updated");
+      } else {
+        const created = await createAlert(payload);
+        setAlerts((prev) => [
+          ...prev,
+          { id: created.id, ...payload, lastAlertAt: null },
+        ]);
+        toast.success("Alert created");
+      }
+      setModalOpen(false);
+      setEditing(null);
+    } catch {
+      toast.error("Failed to save alert");
+    }
+  }
+
   return (
     <AppLayout>
-      <div className="flex h-full flex-col gap-4">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Alerts</h1>
-          <button className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <button
+            onClick={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
             + Add Alert
           </button>
         </div>
 
-        {/* v1 Notice */}
-        <div className="rounded border border-yellow-200 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
-          Alerts are configuration records only in v1. They do not send emails or SMS.
-        </div>
+        <p className="rounded border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600">
+          Alerts are reminders the server delivers when they come due. Whether a
+          reminder arrives by email or SMS depends on your server's notification
+          configuration.
+        </p>
 
         {/* Alerts List */}
         <div className="flex-1 overflow-auto rounded border">
-          <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-gray-50">
-              <tr className="border-b">
-                <th className="px-4 py-2 text-left font-medium">
-                  Scheduled
-                </th>
-                <th className="px-4 py-2 text-left font-medium">
-                  Channel
-                </th>
-                <th className="px-4 py-2 text-left font-medium">
-                  Message
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {MOCK_ALERTS.map((alert) => (
-                <tr
-                  key={alert.id}
-                  className="cursor-pointer border-b hover:bg-gray-50"
-                >
-                  <td className="px-4 py-3">
-                    {alert.scheduledAt}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ChannelBadge channel={alert.channel} />
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {alert.message}
-                  </td>
+          {loading ? (
+            <div className="p-6 text-sm text-gray-500">Loading alerts…</div>
+          ) : alerts.length === 0 ? (
+            <div className="p-6 text-sm text-gray-500">
+              No alerts yet. Use “Add Alert” to schedule a reminder.
+            </div>
+          ) : (
+            <table className="w-full border-collapse text-sm">
+              <thead className="sticky top-0 bg-gray-50">
+                <tr className="border-b">
+                  <th className="px-4 py-2 text-left font-medium">Scheduled</th>
+                  <th className="px-4 py-2 text-left font-medium">Channel</th>
+                  <th className="px-4 py-2 text-left font-medium">Message</th>
+                  <th className="px-4 py-2 text-right font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {alerts.map((alert) => (
+                  <tr key={alert.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {new Date(alert.scheduledAlert).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ChannelBadge channel={alert.smsOrEmail} />
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{alert.message}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          setEditing(alert);
+                          setModalOpen(true);
+                        }}
+                        className="mr-4 text-sm text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(alert)}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
+
+        <AlertFormModal
+          open={modalOpen}
+          alert={editing}
+          onClose={() => {
+            setModalOpen(false);
+            setEditing(null);
+          }}
+          onSave={handleSave}
+        />
       </div>
     </AppLayout>
   );

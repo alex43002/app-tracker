@@ -59,9 +59,12 @@ function createWindow() {
         responseHeaders: {
           ...details.responseHeaders,
           "Content-Security-Policy": [
+            // `blob:` is required by img-src so object URLs (e.g. the profile
+            // picture, fetched as a blob and shown via URL.createObjectURL) can
+            // render; without an explicit img-src they fall back to default-src.
             isDev
-              ? "default-src 'self' http://localhost:5173 'unsafe-eval' 'unsafe-inline'; connect-src *;"
-              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https:;"
+              ? "default-src 'self' http://localhost:5173 'unsafe-eval' 'unsafe-inline'; img-src 'self' http://localhost:5173 data: blob:; connect-src *;"
+              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https:;"
           ],
         },
       });
