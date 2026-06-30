@@ -66,6 +66,46 @@ def experience_level(title: str | None, description: str | None = None) -> str |
     return None
 
 
+# --------------------------- work arrangement ------------------------------
+
+# The location string is the strongest signal, so it's matched with broad terms.
+_LOC_REMOTE_RE = re.compile(r"\bremote\b")
+_LOC_HYBRID_RE = re.compile(r"\bhybrid\b")
+_LOC_ONSITE_RE = re.compile(r"\b(on[\s-]?site|in[\s-]?office|in[\s-]?person)\b")
+# In free text we only trust unambiguous phrases (a description can mention
+# "remote teams" without the role being remote).
+_DESC_REMOTE_RE = re.compile(
+    r"(fully remote|remote[\s-]first|100% remote|work from home|\bwfh\b|"
+    r"remote (?:role|position|opportunity))"
+)
+_DESC_HYBRID_RE = re.compile(
+    r"hybrid (?:role|position|schedule|work|model|setup|arrangement)"
+)
+
+
+def work_arrangement(location: str | None, description: str | None = None) -> str | None:
+    """Best-effort work arrangement: remote|hybrid|onsite, or None if unclear.
+
+    Location wins (it's the authoritative field); a description is only
+    consulted for unambiguous phrases. Hybrid is checked before remote because a
+    "remote/hybrid" role is really hybrid.
+    """
+    loc = _norm(location)
+    if _LOC_HYBRID_RE.search(loc):
+        return "hybrid"
+    if _LOC_REMOTE_RE.search(loc):
+        return "remote"
+    if _LOC_ONSITE_RE.search(loc):
+        return "onsite"
+
+    d = _norm(description)
+    if _DESC_HYBRID_RE.search(d):
+        return "hybrid"
+    if _DESC_REMOTE_RE.search(d):
+        return "remote"
+    return None
+
+
 # --------------------------- degree requirement ----------------------------
 
 _DEGREE_RE = re.compile(
@@ -166,6 +206,7 @@ def enrich(posting: dict) -> dict:
     description = posting.get("description")
     return {
         "experienceLevel": experience_level(posting.get("title"), description),
+        "workArrangement": work_arrangement(posting.get("location"), description),
         "requiresDegree": requires_degree(description),
         "sponsorshipAvailable": sponsorship_available(description),
         "clearanceRequired": clearance_required(description),

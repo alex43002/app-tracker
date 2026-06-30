@@ -51,7 +51,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       Add a user-friendly way to locate/select the correct board token (e.g. a
       searchable company picker, "paste a careers URL and we extract the token"
       helper, and inline guidance/examples).
-- [ ] **FEAT-24 — Location filtering.** Let users narrow discovered jobs by
+- [x] **FEAT-24 — Location filtering.** Let users narrow discovered jobs by
       city, state, remote status, or region.
 - [ ] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
       platforms beyond Greenhouse/Lever to improve discovery coverage across

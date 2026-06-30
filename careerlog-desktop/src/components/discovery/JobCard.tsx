@@ -119,6 +119,11 @@ export function JobCard({
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         {salary && <Pill tone="good">{salary}</Pill>}
         {job.employmentType && <Pill>{job.employmentType}</Pill>}
+        {job.workArrangement && (
+          <Pill tone={job.workArrangement === "remote" ? "good" : "neutral"}>
+            {job.workArrangement}
+          </Pill>
+        )}
         {job.experienceLevel && <Pill tone="info">{job.experienceLevel}</Pill>}
         {job.requiresDegree && <Pill>degree</Pill>}
         {job.sponsorshipAvailable === true && <Pill tone="good">sponsors visa</Pill>}

@@ -26,6 +26,7 @@ export interface DiscoveredJob {
 
   // Derived at ingest (FEAT-22 enrichment).
   experienceLevel: string | null;
+  workArrangement: string | null; // remote | hybrid | onsite (FEAT-24)
   requiresDegree: boolean;
   sponsorshipAvailable: boolean | null;
   clearanceRequired: boolean;
@@ -59,6 +60,7 @@ export interface DiscoveryFilters {
   q?: string;
   company?: string;
   location?: string;
+  workArrangement?: string;
   employmentType?: string;
   source?: string;
   salaryMin?: number;
