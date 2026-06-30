@@ -48,3 +48,15 @@ class CompanyDirectoryEntry(BaseModel):
 
 class CompanyDirectory(BaseModel):
     companies: list[CompanyDirectoryEntry]
+
+
+class LocationFacet(BaseModel):
+    """A location present in discovered postings and how many use it (FEAT-30)."""
+
+    value: str
+    count: int
+
+
+class LocationFacets(BaseModel):
+    locations: list[LocationFacet]
+    noLocationCount: int
