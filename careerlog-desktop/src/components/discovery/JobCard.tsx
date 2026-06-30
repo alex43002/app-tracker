@@ -63,9 +63,11 @@ function Pill({
 export function JobCard({
   job,
   fit,
+  onHideCompany,
 }: {
   job: DiscoveredJob;
   fit?: number | null;
+  onHideCompany?: (company: string) => void;
 }) {
   const salary = formatSalary(job.salaryMin, job.salaryMax);
   const fresh = freshnessLabel(job.postedAt);
@@ -85,6 +87,15 @@ export function JobCard({
           <p className="text-sm text-gray-700">
             {job.company}
             {job.location ? ` · ${job.location}` : ""}
+            {onHideCompany && (
+              <button
+                onClick={() => onHideCompany(job.company)}
+                className="ml-2 text-xs text-gray-400 hover:text-red-600 hover:underline"
+                title={`Hide ${job.company} from discovery`}
+              >
+                hide
+              </button>
+            )}
           </p>
         </div>
         {typeof fit === "number" && (
@@ -110,6 +121,9 @@ export function JobCard({
         {job.employmentType && <Pill>{job.employmentType}</Pill>}
         {job.experienceLevel && <Pill tone="info">{job.experienceLevel}</Pill>}
         {job.requiresDegree && <Pill>degree</Pill>}
+        {job.sponsorshipAvailable === true && <Pill tone="good">sponsors visa</Pill>}
+        {job.sponsorshipAvailable === false && <Pill tone="warn">no sponsorship</Pill>}
+        {job.clearanceRequired && <Pill tone="warn">clearance</Pill>}
         <Pill tone={fresh.stale ? "warn" : "neutral"}>{fresh.text}</Pill>
         {job.duplicateCount && job.duplicateCount > 1 && (
           <Pill tone="info">

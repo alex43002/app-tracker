@@ -6,6 +6,7 @@ from app.common.responses import success
 from app.discovery import service
 from app.discovery.connectors import SUPPORTED_SOURCES
 from app.discovery.schemas import IngestRequest, IngestResponse, SupportedSources
+from app.preferences import service as preferences_service
 
 router = APIRouter()
 
@@ -44,16 +45,30 @@ def list_jobs(
     salaryMin: int | None = Query(None, ge=0),
     experienceLevel: str | None = Query(None),
     requiresDegree: bool | None = Query(None),
+    sponsorshipAvailable: bool | None = Query(None),
+    clearanceRequired: bool | None = Query(None),
     maxAgeDays: int | None = Query(None, ge=0),
     minQuality: int | None = Query(None, ge=0, le=100),
+    applyPreferences: bool = Query(False),
+    preferredOnly: bool = Query(False),
     current_user_id: str = Depends(get_current_user),
 ):
     """Search/filter the normalized, aggregated postings.
 
     Duplicates across boards/sources are merged into one listing by default
     (``collapse=true``); pass ``collapse=false`` for the raw per-posting rows.
+    With ``applyPreferences=true`` the caller's hidden companies / job types are
+    excluded (and ``preferredOnly=true`` restricts to their preferred employers).
     """
     db = get_db()
+
+    preferred = hidden = hidden_types = None
+    if applyPreferences or preferredOnly:
+        prefs = preferences_service.get_preferences(db, current_user_id)
+        preferred = prefs["preferredCompanies"]
+        hidden = prefs["hiddenCompanies"]
+        hidden_types = prefs["hiddenEmploymentTypes"]
+
     result = service.list_jobs(
         db,
         page=page,
@@ -69,7 +84,13 @@ def list_jobs(
         salary_min=salaryMin,
         experience_level=experienceLevel,
         requires_degree=requiresDegree,
+        sponsorship_available=sponsorshipAvailable,
+        clearance_required=clearanceRequired,
         max_age_days=maxAgeDays,
         min_quality=minQuality,
+        preferred_companies=preferred,
+        hidden_companies=hidden,
+        hidden_employment_types=hidden_types,
+        preferred_only=preferredOnly,
     )
     return success(data=result)

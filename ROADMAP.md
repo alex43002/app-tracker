@@ -56,16 +56,17 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
       preferred title, salary, location, and work arrangement.
 - [x] Job posting quality checks that flag unclear, misleading, underpaid, or
       potentially low-quality opportunities.
-- [~] Eligibility filters that help users identify jobs matching their degree
-      status, work authorization, and experience level. _(FEAT-22 ships degree
-      status + experience level; work-authorization/sponsorship detection is
-      still TODO.)_
-- [ ] Side-by-side comparison view to evaluate multiple jobs by compensation,
-      fit, location, requirements, and application status.
+- [x] Eligibility filters that help users identify jobs matching their degree
+      status, work authorization, and experience level. _(FEAT-22: degree
+      status, experience level, and work-authorization/sponsorship + clearance.)_
+- [x] Side-by-side comparison view to evaluate multiple jobs by compensation,
+      fit, location, requirements, and application status. _(FEAT-22: Compare
+      tab over tracked jobs.)_
 - [x] Posting freshness tracking to help users avoid stale, repeatedly reposted,
       or low-signal listings.
-- [ ] Company preference controls to prioritize target employers and hide
-      companies or job types users want to avoid.
+- [x] Company preference controls to prioritize target employers and hide
+      companies or job types users want to avoid. _(FEAT-22: per-user
+      preferred/hidden companies + hidden job types, applied in Discover.)_
 
 ### Interview & research prep
 

@@ -789,10 +789,15 @@ Paginated (same envelope as other list endpoints). Filters:
 - `salaryMin` — postings whose `salaryMax` ≥ value
 - `experienceLevel` — `entry|mid|senior|lead` (eligibility)
 - `requiresDegree` — `true|false` (eligibility)
+- `sponsorshipAvailable` — `true|false` (work-authorization eligibility)
+- `clearanceRequired` — `true|false` (eligibility)
 - `maxAgeDays` — only postings with `postedAt` within N days (freshness)
 - `minQuality` — `qualityScore` ≥ value (0–100; hides low-quality listings)
 - `collapse` (default `true`) — merge duplicate postings of the same role across
   boards/sources into one listing; `false` returns raw per-posting rows.
+- `applyPreferences` (default `false`) — exclude the caller's hidden companies /
+  job types (see Preferences). `preferredOnly` (default `false`) restricts to the
+  caller's preferred employers.
 
 `sortBy` ∈ `postedAt|ingestedAt|company|title|salaryMax`. Each item:
 
@@ -816,6 +821,8 @@ Paginated (same envelope as other list endpoints). Filters:
 
   "experienceLevel": "senior | null",
   "requiresDegree": true,
+  "sponsorshipAvailable": true,
+  "clearanceRequired": false,
   "qualityFlags": ["no_salary", "thin_description", "no_location", "underpaid", "spammy_title"],
   "qualityScore": 100,
 
@@ -829,6 +836,32 @@ Paginated (same envelope as other list endpoints). Filters:
 
 `duplicateCount`/`sources` are present only when `collapse=true` (the default).
 `qualityFlags` is the subset of the listed flags that apply.
+`sponsorshipAvailable` is `true|false|null` (null = the posting doesn't say).
+
+---
+
+## Preferences (FEAT-22)
+
+Per-user company preferences, applied to discovery when the caller opts in
+(`applyPreferences` / `preferredOnly`). All endpoints require auth.
+
+```
+GET /api/preferences            # current preferences (defaults to empty lists)
+PUT /api/preferences            # partial update — only provided lists are replaced
+```
+
+Shape (both request and response `data`):
+
+```json
+{
+  "preferredCompanies": ["Stripe"],
+  "hiddenCompanies": ["BadCo"],
+  "hiddenEmploymentTypes": ["contract"]
+}
+```
+
+List values are trimmed and de-duped case-insensitively on write. A `PUT` with a
+subset of fields leaves the omitted lists unchanged.
 
 ---
 

@@ -75,6 +75,37 @@ def test_underpaid_flag():
     assert "underpaid" in flags
 
 
+@pytest.mark.parametrize(
+    "description,expected",
+    [
+        ("We offer visa sponsorship for this role", True),
+        ("H-1B sponsorship available", True),
+        ("No sponsorship available for this position", False),
+        ("Must be authorized to work in the US", False),
+        ("Great team, competitive pay", None),
+    ],
+)
+def test_sponsorship_available(description, expected):
+    assert enrich.sponsorship_available(description) is expected
+
+
+def test_sponsorship_no_wins_over_yes():
+    text = "We normally offer visa sponsorship, but no sponsorship for this role"
+    assert enrich.sponsorship_available(text) is False
+
+
+@pytest.mark.parametrize(
+    "description,expected",
+    [
+        ("Active security clearance required", True),
+        ("Must be a US citizen", True),
+        ("Open to all applicants", False),
+    ],
+)
+def test_clearance_required(description, expected):
+    assert enrich.clearance_required(description) is expected
+
+
 def test_dedupe_key_is_stable_and_company_aware():
     a = enrich.dedupe_key("Acme Inc", "Backend Engineer", "Remote, US")
     b = enrich.dedupe_key("acme   inc", "backend  engineer", "remote, us")

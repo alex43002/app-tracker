@@ -51,6 +51,9 @@ def ensure_indexes(db: Database) -> None:
     db.discovered_jobs.create_index("company")
     db.discovered_jobs.create_index("employmentType")
 
+    # Per-user company preferences (FEAT-22) — one document per user.
+    db.user_preferences.create_index("userId", unique=True)
+
     # Revoked refresh tokens — TTL purges entries once expired.
     db.revoked_tokens.create_index("jti", unique=True)
     db.revoked_tokens.create_index("expiresAt", expireAfterSeconds=0)

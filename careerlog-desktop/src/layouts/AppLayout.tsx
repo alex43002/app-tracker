@@ -46,6 +46,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             { to: "/", label: "Dashboard", end: true },
             { to: "/jobs", label: "Jobs" },
             { to: "/discover", label: "Discover" },
+            { to: "/compare", label: "Compare" },
             { to: "/match", label: "Match" },
             { to: "/alerts", label: "Alerts" },
           ].map(({ to, label, end }) => (
