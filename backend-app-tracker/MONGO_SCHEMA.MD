@@ -215,6 +215,47 @@ search is safe to replay against the hardened list query (FEAT-11 / SEC-1).
 
 ---
 
+## Discovered Jobs Collection (FEAT-22)
+
+**Collection name:** `discovered_jobs`
+
+Shared (not per-user) public postings aggregated from supported ATS systems and
+normalized into one shape. Deduped per source by `(source, boardToken, sourceId)`.
+
+```js
+{
+  _id: ObjectId,
+  source: String,           // "greenhouse" | "lever"
+  boardToken: String,       // company board slug (from the careers URL)
+  sourceId: String,         // ATS posting id (unique per board, not globally)
+  company: String,          // display name (defaults to boardToken)
+
+  title: String,
+  location: String | null,
+  employmentType: String | null,  // canonical: full-time|part-time|contract|internship|temporary
+  url: String,
+  description: String,      // plain text, ≤5000 chars
+
+  salaryMin: Number | null, // best-effort parse from the posting text
+  salaryMax: Number | null,
+
+  postedAt: Date | null,    // from the ATS (updated_at / createdAt)
+  ingestedAt: Date,         // first time we stored it ($setOnInsert)
+  updatedAt: Date           // last upsert
+}
+```
+
+### Indexes (intended)
+
+```js
+{ source: 1, boardToken: 1, sourceId: 1 }  // unique — dedupe key
+{ postedAt: -1 }
+{ company: 1 }
+{ employmentType: 1 }
+```
+
+---
+
 ## Global Rules (LOCKED)
 
 * `_id` is the MongoDB authority

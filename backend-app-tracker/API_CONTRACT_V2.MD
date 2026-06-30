@@ -737,6 +737,77 @@ ownership/lookup errors (`RESOURCE_OWNERSHIP_VIOLATION`, `RESUME_NOT_FOUND`,
 
 ---
 
+## Discovery (FEAT-22)
+
+Aggregated, normalized public job postings collected from supported ATS systems
+(Greenhouse, Lever). Postings are **shared** (not per-user) and deduped per
+source by `(source, boardToken, sourceId)`. All endpoints require auth. Only
+public ATS JSON APIs are used — no HTML scraping, nothing behind a login.
+
+### Supported Sources
+
+```
+GET /api/discovery/sources      # { "sources": ["greenhouse", "lever"] }
+```
+
+### Ingest a Board
+
+```
+POST /api/discovery/ingest
+```
+
+Fetches a company's public board and upserts its postings. `boardToken` is the
+slug from the company's careers URL (e.g. `acme` in
+`boards.greenhouse.io/acme`). Request:
+
+```json
+{ "source": "greenhouse", "boardToken": "acme", "companyName": "Acme Inc" }
+```
+
+Response (`data`):
+
+```json
+{ "source": "greenhouse", "company": "Acme Inc", "fetched": 12, "inserted": 10, "updated": 2 }
+```
+
+Errors: `UNSUPPORTED_SOURCE` (400), `DISCOVERY_FETCH_FAILED` (400, unknown board
+/ ATS unreachable / bad token).
+
+### Search Postings
+
+```
+GET /api/discovery/jobs?page=1&pageSize=25&sortBy=postedAt&sortOrder=desc
+    &q=&company=&location=&employmentType=&source=&salaryMin=
+```
+
+Paginated (same envelope as other list endpoints). Filters: `q` (title
+substring), `company`/`location` (substring), `employmentType` (exact, canonical
+`full-time|part-time|contract|internship|temporary`), `source` (exact),
+`salaryMin` (postings whose `salaryMax` ≥ value). `sortBy` ∈
+`postedAt|ingestedAt|company|title|salaryMax`. Each item:
+
+```json
+{
+  "id": "…",
+  "source": "greenhouse",
+  "sourceId": "111",
+  "boardToken": "acme",
+  "company": "Acme Inc",
+  "title": "Backend Engineer",
+  "location": "Remote, US",
+  "employmentType": "full-time",
+  "url": "https://boards.greenhouse.io/acme/jobs/111",
+  "description": "…(≤5000 chars, plain text)…",
+  "salaryMin": 120000,
+  "salaryMax": 150000,
+  "postedAt": "ISO-8601 | null",
+  "ingestedAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
+}
+```
+
+---
+
 ## Error Codes (v1, as implemented)
 
 | Code | HTTP | Meaning |
@@ -752,6 +823,8 @@ ownership/lookup errors (`RESOURCE_OWNERSHIP_VIOLATION`, `RESUME_NOT_FOUND`,
 | `RESUME_UNREADABLE` | 422 | Could not extract text from the résumé file (matching) |
 | `JOB_FETCH_FAILED` | 400 | Job-posting URL could not be fetched safely/successfully |
 | `JOB_FETCH_EMPTY` | 422 | No readable job text found at the URL |
+| `UNSUPPORTED_SOURCE` | 400 | Discovery ingest requested for an unsupported ATS |
+| `DISCOVERY_FETCH_FAILED` | 400 | ATS board could not be fetched (unknown board / unreachable / bad token) |
 | `VALIDATION_ERROR` | 400 / 413 / 422 | Empty update, bad/forbidden filters, request validation failure, or oversized/invalid résumé |
 
 > Request-validation failures (missing required field, bad `EmailStr`/`HttpUrl`)

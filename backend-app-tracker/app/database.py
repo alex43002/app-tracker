@@ -40,6 +40,17 @@ def ensure_indexes(db: Database) -> None:
     # Saved searches (FEAT-11) — listed per user.
     db.saved_searches.create_index("userId")
 
+    # Discovered jobs (FEAT-22) — shared, public postings deduped per ATS by
+    # (source, sourceId); indexed for the common filters/sorts.
+    # Posting ids are unique per board, not globally, so the dedupe key includes
+    # the board token.
+    db.discovered_jobs.create_index(
+        [("source", 1), ("boardToken", 1), ("sourceId", 1)], unique=True
+    )
+    db.discovered_jobs.create_index([("postedAt", -1)])
+    db.discovered_jobs.create_index("company")
+    db.discovered_jobs.create_index("employmentType")
+
     # Revoked refresh tokens — TTL purges entries once expired.
     db.revoked_tokens.create_index("jti", unique=True)
     db.revoked_tokens.create_index("expiresAt", expireAfterSeconds=0)
