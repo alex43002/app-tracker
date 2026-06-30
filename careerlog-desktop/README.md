@@ -17,11 +17,19 @@ CareerLog Desktop lets a user:
 - Filter, sort, and save **named searches** of their job list
 - See an analytics dashboard (funnel, applications over time, time-to-offer,
   per-company breakdown)
+- **Match tab** — score a résumé against a job posting (pasted text or a scraped
+  URL) with an explainable fit score and gap analysis
+- **Discover tab** — browse aggregated public ATS postings; filter by salary,
+  location, type, eligibility, freshness, and quality; manage company
+  preferences (hide/prefer); save searches as alerts; and rank results by
+  résumé fit
+- **Compare tab** — evaluate multiple tracked jobs side by side
 - Configure follow-up alerts (configuration only — delivery happens server-side)
 - View last-cached data when briefly offline (read-only)
 
-It **does not** store authoritative data locally, send email/SMS, or run
-background jobs — those are backend responsibilities.
+It **does not** store authoritative data locally, send email/SMS, run background
+jobs, or use generative AI — those are backend responsibilities (and matching
+uses classic NLP, not AI).
 
 ---
 
@@ -73,7 +81,7 @@ UI changes.
 ### 4. Run the tests / checks
 
 ```bash
-npm run test                        # vitest (48 tests)
+npm run test                        # vitest
 npx tsc -p tsconfig.app.json --noEmit   # typecheck
 npx eslint .                        # lint (0 warnings)
 ```
@@ -111,10 +119,12 @@ careerlog-desktop/
 │   └── preload.ts         # Secure IPC bridge
 ├── src/
 │   ├── api/               # Typed API client (client, auth, jobs, alerts,
-│   │                      #   analytics, savedSearches, offlineCache)
+│   │                      #   analytics, savedSearches, match, discovery,
+│   │                      #   preferences, jobAlerts, offlineCache)
 │   ├── pages/             # Screen-level pages (Login, Dashboard, Jobs, Alerts,
-│   │                      #   ResetPassword, VerifyEmail)
-│   ├── components/        # Reusable UI (dashboard, jobs, job-form, auth, common)
+│   │                      #   Match, Discovery, Compare, ResetPassword, VerifyEmail)
+│   ├── components/        # Reusable UI (dashboard, jobs, job-form, match,
+│   │                      #   discovery, auth, common)
 │   ├── layouts/           # Application layouts
 │   ├── store/             # Client-side auth/session state
 │   ├── types/             # API and domain types

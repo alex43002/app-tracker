@@ -11,15 +11,20 @@
 ## What CareerLog Does
 
 - **Authenticate** — register, log in, and refresh a session.
-- **Manage job applications** — create, view, update, and delete jobs, each with a title, company, URL, location, employment type, salary target/range, status, and an optional uploaded résumé.
-- **Track the pipeline** — jobs move through statuses (`applied`, `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts and a pipeline visualization.
-- **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a message and time. A background scheduler delivers due alerts via a pluggable notifier (console by default, SMTP email when configured).
-- **Attach résumés** — upload one résumé per job; files are stored server-side in MongoDB GridFS and downloaded on demand.
+- **Manage job applications** — create, view, update, and delete jobs, each with a title, company, URL, location, employment type, salary target/range, status, free-text notes, and **multiple uploaded résumés** per job (stored server-side in MongoDB GridFS).
+- **Track the pipeline** — jobs move through statuses (`applied`, `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts, a pipeline visualization, and analytics (funnel, applications over time, time-to-offer, per-company).
+- **Score résumé ↔ job fit (Match tab)** — extract skills/keywords from a résumé and a job posting (pasted text or a scraped URL) and produce an explainable 0–100 match score with **gap analysis** — matched vs. missing skills/keywords. Uses classic NLP (a curated skills taxonomy + frequency-based keyword extraction); **no generative AI**.
+- **Discover & aggregate jobs (Discover tab)** — ingest public postings from supported ATS systems (Greenhouse, Lever), normalized into one searchable feed. Filter by salary, location, employment type, company, source, **eligibility** (experience level, degree, visa sponsorship, clearance), **freshness**, and **quality** (flags unclear/underpaid/low-signal listings); merge **duplicates** across boards; and **rank by résumé fit** (reusing the Match engine).
+- **Company preferences** — prioritize target employers and hide companies / job types you want to avoid.
+- **Saved searches & job alerts** — save a discovery search and get notified when new matching postings are ingested.
+- **Compare jobs side by side (Compare tab)** — evaluate multiple tracked jobs on compensation, location, requirements, and application status.
+- **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a message and time. A background scheduler delivers due alerts via a pluggable notifier (console by default, SMTP email when configured; Twilio SMS when configured).
 
-### Non-goals (v1)
-- No local authoritative data storage / offline mode on the client.
+### Non-goals
+- No local authoritative data storage / offline mode on the client (read-only last-cached view only).
 - No real-time updates or push.
-- No actual SMS/email delivery or scheduled background execution.
+- **No generative AI** — résumé matching and discovery enrichment use classic NLP/heuristics by design.
+- SMS delivery requires a configured provider (Twilio); without one, `sms` alerts log via the console notifier.
 - No business logic in the frontend beyond the API contract.
 
 ---

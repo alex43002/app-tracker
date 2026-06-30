@@ -16,6 +16,16 @@ owns all data persistence and business logic; the desktop client in
 - **Analytics** — status counts, funnel + conversion rates, applications over
   time, time-to-offer, per-company breakdown, and a combined summary endpoint.
 - **Saved searches** — named, reusable job-list queries.
+- **Matching** (FEAT-21) — extract skills/keywords from a résumé and a job
+  description (pasted or scraped from a URL) and score the fit with gap analysis.
+  Classic NLP only (**no generative AI**); URL scraping is SSRF-guarded.
+- **Discovery** (FEAT-22) — aggregate public ATS postings (Greenhouse, Lever)
+  into a normalized, deduped store with eligibility/quality/freshness enrichment
+  and filtered search.
+- **Preferences** (FEAT-22) — per-user preferred/hidden companies + hidden job
+  types, applied to discovery.
+- **Job alerts** (FEAT-22) — saved discovery searches that notify on newly
+  ingested matches (driven by the same background scheduler).
 
 The authoritative API and data contracts live in
 [`API_CONTRACT_V2.MD`](API_CONTRACT_V2.MD) and [`MONGO_SCHEMA.MD`](MONGO_SCHEMA.MD).
@@ -98,7 +108,7 @@ The API is served at `http://localhost:8000`, with interactive docs at
 ### 5. Run the tests
 
 ```bash
-pytest          # 73 tests, offline (mongomock — no MongoDB needed)
+pytest          # offline suite (mongomock — no MongoDB needed)
 ruff check .    # lint
 ```
 
@@ -180,6 +190,10 @@ backend-app-tracker/
 │   ├── alerts/            # alert CRUD + background scheduler (runner.py)
 │   ├── analytics/         # funnel, over-time, time-to-offer, by-company, summary
 │   ├── saved_searches/    # named, reusable job-list queries
+│   ├── matching/          # résumé↔job extraction, keywords, scoring, URL scrape (FEAT-21)
+│   ├── discovery/         # ATS connectors, normalize, enrich, dedupe, search (FEAT-22)
+│   ├── preferences/       # per-user preferred/hidden companies & job types (FEAT-22)
+│   ├── job_alerts/        # saved discovery searches + new-match notifications (FEAT-22)
 │   ├── notifications/     # pluggable notifier (console / SMTP / Twilio + retry)
 │   └── common/            # auth deps, query/filter helpers, errors, rate limit
 ├── tests/                 # pytest suite (mongomock-backed, runs offline)
