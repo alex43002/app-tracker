@@ -52,8 +52,9 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
       résumé-fit ranking that reuses FEAT-21.)_
 - [x] Duplicate detection that merges repeated postings across different job
       boards and ATS sources into one clean listing.
-- [ ] Saved searches and job alerts that notify users when new roles match their
-      preferred title, salary, location, and work arrangement.
+- [x] Saved searches and job alerts that notify users when new roles match their
+      preferred title, salary, location, and work arrangement. _(FEAT-22: saved
+      discovery searches + background notifications on newly-ingested matches.)_
 - [x] Job posting quality checks that flag unclear, misleading, underpaid, or
       potentially low-quality opportunities.
 - [x] Eligibility filters that help users identify jobs matching their degree

@@ -865,6 +865,44 @@ subset of fields leaves the omitted lists unchanged.
 
 ---
 
+## Job Alerts (FEAT-22)
+
+Saved discovery searches that notify the owner when **new** matching postings are
+ingested. `criteria` is a subset of the discovery filter keys (validated against
+that allowlist; unknown keys are dropped). The background scheduler (shared with
+reminders) notifies via the configured notifier; "new" means ingested since the
+alert was last checked. All endpoints require auth.
+
+```
+POST   /api/job-alerts            # { name, criteria?, notify? }
+GET    /api/job-alerts            # { items: [ JobAlert ] }
+PUT    /api/job-alerts/{id}       # partial update (name / criteria / notify)
+DELETE /api/job-alerts/{id}
+POST   /api/job-alerts/{id}/check # re-run now → { newMatches, total }
+```
+
+A `JobAlert`:
+
+```json
+{
+  "id": "…",
+  "name": "Remote senior Python",
+  "criteria": { "q": "python", "location": "Remote", "experienceLevel": "senior" },
+  "notify": true,
+  "lastCheckedAt": "ISO-8601 | null",
+  "lastNotifiedAt": "ISO-8601 | null",
+  "lastMatchCount": 3,
+  "createdAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
+}
+```
+
+`POST /{id}/check` re-runs the search immediately, returns `newMatches` (since
+last check) and `total`, advances `lastCheckedAt`, and notifies when `notify` is
+set and there are new matches.
+
+---
+
 ## Error Codes (v1, as implemented)
 
 | Code | HTTP | Meaning |

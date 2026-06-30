@@ -54,6 +54,11 @@ def ensure_indexes(db: Database) -> None:
     # Per-user company preferences (FEAT-22) — one document per user.
     db.user_preferences.create_index("userId", unique=True)
 
+    # Saved discovery searches / job alerts (FEAT-22) — listed per user, and the
+    # scheduler scans notify-enabled ones.
+    db.job_alerts.create_index("userId")
+    db.job_alerts.create_index("notify")
+
     # Revoked refresh tokens — TTL purges entries once expired.
     db.revoked_tokens.create_index("jti", unique=True)
     db.revoked_tokens.create_index("expiresAt", expireAfterSeconds=0)
