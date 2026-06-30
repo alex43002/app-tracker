@@ -29,15 +29,18 @@ classifiers, etc.) is acceptable for the matching/scoring work below._
 
 ### Resume ↔ job matching
 
-- [ ] Scan uploaded resumes from a job record for keywords (No AI; ML OK).
-- [ ] Scrape a designated job URL for the most relevant skills/keywords
+_Shipped in FEAT-21: backend `app/matching` engine (extraction, keyword/skill
+taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
+
+- [x] Scan uploaded resumes from a job record for keywords (No AI; ML OK).
+- [x] Scrape a designated job URL for the most relevant skills/keywords
       (No AI; ML OK).
-- [ ] Compare a resume to a job posting and produce a detailed score based on
+- [x] Compare a resume to a job posting and produce a detailed score based on
       keyword matching and other metrics estimating interview likelihood
       (No AI; ML OK).
-- [ ] New dedicated tab for the above so job seekers can see their score before
+- [x] New dedicated tab for the above so job seekers can see their score before
       submitting.
-- [ ] Resume-to-job gap analysis.
+- [x] Resume-to-job gap analysis.
 
 ### Job discovery
 

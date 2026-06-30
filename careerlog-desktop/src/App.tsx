@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Alerts } from "./pages/Alerts";
 import { Dashboard } from "./pages/Dashboard";
 import { Jobs } from "./pages/Jobs";
+import { Match } from "./pages/Match";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -40,6 +41,15 @@ function App() {
           element={
             <Protected>
               <Jobs />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/match"
+          element={
+            <Protected>
+              <Match />
             </Protected>
           }
         />

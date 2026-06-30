@@ -45,6 +45,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {[
             { to: "/", label: "Dashboard", end: true },
             { to: "/jobs", label: "Jobs" },
+            { to: "/match", label: "Match" },
             { to: "/alerts", label: "Alerts" },
           ].map(({ to, label, end }) => (
             <NavLink
