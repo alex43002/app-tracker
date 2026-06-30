@@ -89,7 +89,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 New work focused on the user's account and the desktop app itself (outside the
 no-generative-AI matching/discovery constraint below).
 
-- [ ] **FEAT-28 — Expanded profile settings.** Extend the profile settings so
+- [x] **FEAT-28 — Expanded profile settings.** Extend the profile settings so
       users can view and modify their basic user information (e.g. name, email,
       and other core account details) from within the app, with validation and
       persistence to the backend.
