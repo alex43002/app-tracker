@@ -106,6 +106,65 @@ def test_clearance_required(description, expected):
     assert enrich.clearance_required(description) is expected
 
 
+@pytest.mark.parametrize(
+    "title,description,expected",
+    [
+        ("Software Engineer Intern", "", "internship"),
+        ("Backend Engineer (Contract)", "", "contract"),
+        ("Customer Support", "This is a part-time role", "part-time"),
+        ("Warehouse Associate", "Seasonal / temporary position", "temporary"),
+        ("Backend Engineer", "Full-time, permanent role", "full-time"),
+        # No signal → None (the inference layer; enrich() defaults separately).
+        ("Backend Engineer", "Join our internal platform team", None),
+    ],
+)
+def test_infer_employment_type(title, description, expected):
+    from app.discovery.normalize import infer_employment_type
+
+    assert infer_employment_type(title, description) == expected
+
+
+def test_enrich_defaults_employment_type_to_full_time():
+    """BUG-24: postings with no structured/inferable type default to full-time."""
+    out = enrich.enrich(
+        {
+            "title": "Backend Engineer",
+            "description": "Join our internal platform team. " + "x" * 400,
+            "company": "Acme",
+            "location": "Remote",
+            "employmentType": None,
+        }
+    )
+    assert out["employmentType"] == "full-time"
+
+
+def test_enrich_keeps_structured_employment_type():
+    """A connector-provided (e.g. Lever commitment) value is preserved."""
+    out = enrich.enrich(
+        {
+            "title": "Backend Engineer",
+            "description": "x" * 400,
+            "company": "Acme",
+            "location": "Remote",
+            "employmentType": "contract",
+        }
+    )
+    assert out["employmentType"] == "contract"
+
+
+def test_enrich_infers_employment_type_from_text():
+    out = enrich.enrich(
+        {
+            "title": "Software Engineering Intern",
+            "description": "x" * 400,
+            "company": "Acme",
+            "location": "Remote",
+            "employmentType": None,
+        }
+    )
+    assert out["employmentType"] == "internship"
+
+
 def test_dedupe_key_is_stable_and_company_aware():
     a = enrich.dedupe_key("Acme Inc", "Backend Engineer", "Remote, US")
     b = enrich.dedupe_key("acme   inc", "backend  engineer", "remote, us")

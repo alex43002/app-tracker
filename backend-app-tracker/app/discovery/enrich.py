@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 
+from app.discovery.normalize import infer_employment_type
+
 # Annual salary below this looks like a data error or a genuinely underpaid
 # full-time role; flagged for the user to scrutinise.
 UNDERPAID_THRESHOLD = 35_000
@@ -64,6 +66,28 @@ def experience_level(title: str | None, description: str | None = None) -> str |
             return "mid"
         return "entry"
     return None
+
+
+# --------------------------- employment type -------------------------------
+
+# Most ATS board postings are standard full-time roles; internships, contracts,
+# part-time, and temporary positions almost always say so in the title or body.
+# When nothing signals otherwise we assume full-time so the Discover employment
+# filter has a concrete value to match (BUG-24).
+DEFAULT_EMPLOYMENT_TYPE = "full-time"
+
+
+def employment_type(posting: dict) -> str:
+    """Resolve a posting's canonical employment type, never None.
+
+    A structured value from the connector (e.g. Lever's `commitment`) wins;
+    otherwise infer from the title/description; otherwise default to full-time.
+    """
+    existing = posting.get("employmentType")
+    if existing:
+        return existing
+    inferred = infer_employment_type(posting.get("title"), posting.get("description"))
+    return inferred or DEFAULT_EMPLOYMENT_TYPE
 
 
 # --------------------------- degree requirement ----------------------------
@@ -165,6 +189,7 @@ def enrich(posting: dict) -> dict:
     flags = quality_flags(posting)
     description = posting.get("description")
     return {
+        "employmentType": employment_type(posting),
         "experienceLevel": experience_level(posting.get("title"), description),
         "requiresDegree": requires_degree(description),
         "sponsorshipAvailable": sponsorship_available(description),
