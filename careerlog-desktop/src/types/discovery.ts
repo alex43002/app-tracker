@@ -79,6 +79,28 @@ export interface Preferences {
   hiddenEmploymentTypes: string[];
 }
 
+/** Saved discovery search criteria (a subset of the discovery filters). */
+export type AlertCriteria = Record<string, string | number | boolean>;
+
+/** A saved discovery search that notifies on new matching postings (FEAT-22). */
+export interface JobAlert {
+  id: string;
+  name: string;
+  criteria: AlertCriteria;
+  notify: boolean;
+  lastCheckedAt: string | null;
+  lastNotifiedAt: string | null;
+  lastMatchCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Result of re-running a saved search (FEAT-22). */
+export interface JobAlertCheck {
+  newMatches: number;
+  total: number;
+}
+
 export interface IngestResult {
   source: string;
   company: string;

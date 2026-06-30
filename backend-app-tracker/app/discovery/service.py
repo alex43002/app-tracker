@@ -154,6 +154,42 @@ def _build_query(
     return query
 
 
+# Discovery filter criteria (camelCase, as the client sends them) → the
+# _build_query keyword args. Used by saved job alerts to reuse the exact same
+# filtering as the live Discover query.
+CRITERIA_FIELDS = {
+    "q": "q",
+    "company": "company",
+    "location": "location",
+    "employmentType": "employment_type",
+    "source": "source",
+    "salaryMin": "salary_min",
+    "experienceLevel": "experience_level",
+    "requiresDegree": "requires_degree",
+    "sponsorshipAvailable": "sponsorship_available",
+    "clearanceRequired": "clearance_required",
+    "maxAgeDays": "max_age_days",
+    "minQuality": "min_quality",
+}
+
+
+def clean_criteria(criteria: dict) -> dict:
+    """Keep only allowed discovery-filter keys with non-empty values."""
+    return {
+        key: value
+        for key, value in (criteria or {}).items()
+        if key in CRITERIA_FIELDS and value not in (None, "")
+    }
+
+
+def criteria_query(criteria: dict) -> dict:
+    """Build the Mongo filter for a saved alert's criteria (no preferences)."""
+    kwargs = {arg: None for arg in CRITERIA_FIELDS.values()}
+    for key, value in clean_criteria(criteria).items():
+        kwargs[CRITERIA_FIELDS[key]] = value
+    return _build_query(**kwargs)
+
+
 def _collapse(docs: list[dict], page: int, page_size: int) -> tuple[list[dict], int]:
     """Merge duplicate postings (same ``dedupeKey``) into one listing.
 

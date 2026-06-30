@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from app.config import settings
 from app.database import get_db
 from app.alerts.service import process_due_alerts
+from app.job_alerts.service import process_due_job_alerts
 from app.notifications.notifier import build_notifier
 
 logger = logging.getLogger("careerlog.alerts")
@@ -32,6 +33,12 @@ async def _run_loop() -> None:
             )
             if sent:
                 logger.info("Delivered %s due alert(s)", sent)
+            # Saved discovery searches (FEAT-22): notify on new matching postings.
+            notified = await asyncio.to_thread(
+                process_due_job_alerts, get_db(), notifier, now
+            )
+            if notified:
+                logger.info("Delivered %s job alert(s)", notified)
         except Exception:
             logger.exception("Alert scheduler run failed")
         await asyncio.sleep(settings.alerts_poll_seconds)

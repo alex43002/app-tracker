@@ -8,15 +8,56 @@ import {
   ingestBoard,
 } from "../api/discovery";
 import { fetchPreferences, updatePreferences } from "../api/preferences";
+import {
+  checkJobAlert,
+  createJobAlert,
+  deleteJobAlert,
+  fetchJobAlerts,
+  updateJobAlert,
+} from "../api/jobAlerts";
 import { fetchJobs, fetchJobResumes } from "../api/jobs";
 import { scoreMatch } from "../api/match";
 import { JobCard } from "../components/discovery/JobCard";
 import type {
+  AlertCriteria,
   DiscoveredJob,
   DiscoveryFilters,
+  JobAlert,
   Preferences,
 } from "../types/discovery";
 import type { Job, JobResume } from "../types/job";
+
+// Discovery-filter keys that make up a saved search's criteria.
+const CRITERIA_KEYS: (keyof DiscoveryFilters)[] = [
+  "q",
+  "company",
+  "location",
+  "employmentType",
+  "source",
+  "salaryMin",
+  "experienceLevel",
+  "requiresDegree",
+  "sponsorshipAvailable",
+  "clearanceRequired",
+  "maxAgeDays",
+  "minQuality",
+];
+
+function criteriaFromFilters(filters: DiscoveryFilters): AlertCriteria {
+  const out: AlertCriteria = {};
+  for (const key of CRITERIA_KEYS) {
+    const value = filters[key];
+    if (value !== undefined && value !== "") {
+      out[key] = value as string | number | boolean;
+    }
+  }
+  return out;
+}
+
+function criteriaSummary(criteria: AlertCriteria): string {
+  const parts = Object.entries(criteria).map(([k, v]) => `${k}: ${v}`);
+  return parts.length ? parts.join(" · ") : "any posting";
+}
 
 const EMPLOYMENT_TYPES = [
   "full-time",
@@ -46,6 +87,10 @@ export function Discovery() {
   const [boardToken, setBoardToken] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [importing, setImporting] = useState(false);
+
+  // Saved searches / job alerts
+  const [alerts, setAlerts] = useState<JobAlert[]>([]);
+  const [alertName, setAlertName] = useState("");
 
   // Company preferences
   const [prefs, setPrefs] = useState<Preferences | null>(null);
@@ -88,7 +133,59 @@ export function Discovery() {
       .catch(() => {
         /* preferences are optional; ignore */
       });
+    fetchJobAlerts()
+      .then(setAlerts)
+      .catch(() => {
+        /* alerts are optional; ignore */
+      });
   }, []);
+
+  async function handleSaveAlert() {
+    if (!alertName.trim()) return;
+    try {
+      const created = await createJobAlert(
+        alertName.trim(),
+        criteriaFromFilters(filters)
+      );
+      setAlerts((prev) => [...prev, created]);
+      setAlertName("");
+      toast.success("Saved search created");
+    } catch {
+      toast.error("Failed to save search");
+    }
+  }
+
+  async function handleCheckAlert(alert: JobAlert) {
+    try {
+      const { newMatches, total } = await checkJobAlert(alert.id);
+      setAlerts((prev) =>
+        prev.map((a) =>
+          a.id === alert.id ? { ...a, lastMatchCount: newMatches } : a
+        )
+      );
+      toast.success(`${newMatches} new · ${total} total match this search`);
+    } catch {
+      toast.error("Failed to check saved search");
+    }
+  }
+
+  async function handleToggleNotify(alert: JobAlert) {
+    try {
+      const updated = await updateJobAlert(alert.id, { notify: !alert.notify });
+      setAlerts((prev) => prev.map((a) => (a.id === alert.id ? updated : a)));
+    } catch {
+      toast.error("Failed to update alert");
+    }
+  }
+
+  async function handleDeleteAlert(alert: JobAlert) {
+    try {
+      await deleteJobAlert(alert.id);
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+    } catch {
+      toast.error("Failed to delete saved search");
+    }
+  }
 
   async function savePrefs(patch: Partial<Preferences>) {
     try {
@@ -444,6 +541,72 @@ export function Discovery() {
             />
           </div>
         )}
+
+        {/* Saved searches & alerts */}
+        <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">
+              Save this search as an alert:
+            </span>
+            <input
+              value={alertName}
+              onChange={(e) => setAlertName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSaveAlert()}
+              placeholder="e.g. Remote senior Python"
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={handleSaveAlert}
+              disabled={!alertName.trim()}
+              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300"
+            >
+              Save search
+            </button>
+            <span className="text-xs text-gray-400">
+              Get notified when new matching postings are imported.
+            </span>
+          </div>
+
+          {alerts.length > 0 && (
+            <ul className="mt-3 divide-y divide-gray-100">
+              {alerts.map((alert) => (
+                <li
+                  key={alert.id}
+                  className="flex flex-wrap items-center gap-3 py-2 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-gray-800">
+                      {alert.name}
+                    </span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {criteriaSummary(alert.criteria)}
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={alert.notify}
+                      onChange={() => handleToggleNotify(alert)}
+                    />
+                    notify
+                  </label>
+                  <button
+                    onClick={() => handleCheckAlert(alert)}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Check now
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAlert(alert)}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         {/* Résumé-fit ranking */}
         {myJobs.length > 0 && (

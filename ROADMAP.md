@@ -1,11 +1,12 @@
 # CareerLog — Product Roadmap (Remaining Work)
 
-_Last updated: 2026-06-29_
+_Last updated: 2026-06-30_
 
 All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, and **feature
 (FEAT-\*)** roadmap items are complete, including the batch of product issues
-found in manual testing (BUG-14/15/16, FEAT-17/18/19/20). This file lists the
-**work that is still open**.
+found in manual testing (BUG-14/15/16, FEAT-17/18/19/20), plus the
+**résumé ↔ job matching** epic (FEAT-21) and the **job discovery & aggregation**
+epic (FEAT-22). This file lists the **work that is still open**.
 
 ---
 
@@ -27,10 +28,10 @@ branded, signed release still needs:
 _Constraint: no generative AI. Classic ML (NLP, TF-IDF, embeddings, classic
 classifiers, etc.) is acceptable for the matching/scoring work below._
 
-### Resume ↔ job matching
+### ✅ Resume ↔ job matching (FEAT-21 — shipped)
 
-_Shipped in FEAT-21: backend `app/matching` engine (extraction, keyword/skill
-taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
+_Backend `app/matching` engine (extraction, keyword/skill taxonomy, scoring,
+SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 - [x] Scan uploaded resumes from a job record for keywords (No AI; ML OK).
 - [x] Scrape a designated job URL for the most relevant skills/keywords
@@ -42,7 +43,7 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
       submitting.
 - [x] Resume-to-job gap analysis.
 
-### Job discovery
+### ✅ Job discovery & aggregation (FEAT-22 — shipped)
 
 - [x] Unified job discovery + resume-matching tab: collects public job postings
       in the backend from supported company career pages / ATS systems,
@@ -52,8 +53,9 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
       résumé-fit ranking that reuses FEAT-21.)_
 - [x] Duplicate detection that merges repeated postings across different job
       boards and ATS sources into one clean listing.
-- [ ] Saved searches and job alerts that notify users when new roles match their
-      preferred title, salary, location, and work arrangement.
+- [x] Saved searches and job alerts that notify users when new roles match their
+      preferred title, salary, location, and work arrangement. _(FEAT-22: saved
+      discovery searches + background notifications on newly-ingested matches.)_
 - [x] Job posting quality checks that flag unclear, misleading, underpaid, or
       potentially low-quality opportunities.
 - [x] Eligibility filters that help users identify jobs matching their degree
@@ -68,7 +70,7 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
       companies or job types users want to avoid. _(FEAT-22: per-user
       preferred/hidden companies + hidden job types, applied in Discover.)_
 
-### Interview & research prep
+### ⬜ Interview & research prep
 
 - [ ] Interview preparation workspace that turns a job description into
       role-specific prep notes, likely topics, and practice questions.
@@ -80,7 +82,7 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
 - [ ] Offer comparison tool to evaluate compensation, benefits, flexibility, and
       long-term fit.
 
-### Tracking & integrations
+### ⬜ Tracking & integrations
 
 - [ ] Browser extension to save jobs from any supported career page directly
       into the application tracker.

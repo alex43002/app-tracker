@@ -290,6 +290,38 @@ One document per user; controls applied to discovery on opt-in.
 
 ---
 
+## Job Alerts Collection (FEAT-22)
+
+**Collection name:** `job_alerts`
+
+Saved discovery searches that notify the owner when new matching postings are
+ingested. `criteria` holds only allowlisted discovery-filter keys (validated on
+write), so it's safe to replay against the hardened discovery query.
+
+```js
+{
+  _id: ObjectId,
+  userId: String,           // from JWT `sub`
+  name: String,
+  criteria: Object,         // subset of discovery filters (q, location, salaryMin, …)
+  notify: Boolean,          // background notifications on/off
+  lastCheckedAt: Date | null,
+  lastNotifiedAt: Date | null,
+  lastMatchCount: Number,   // new matches at the last check
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Indexes (intended)
+
+```js
+{ userId: 1 }
+{ notify: 1 }   // the scheduler scans notify-enabled alerts
+```
+
+---
+
 ## Global Rules (LOCKED)
 
 * `_id` is the MongoDB authority
