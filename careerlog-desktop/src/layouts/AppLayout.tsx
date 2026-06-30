@@ -49,6 +49,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             { to: "/compare", label: "Compare" },
             { to: "/match", label: "Match" },
             { to: "/alerts", label: "Alerts" },
+            { to: "/offers", label: "Offers" },
           ].map(({ to, label, end }) => (
             <NavLink
               key={to}

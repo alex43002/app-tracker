@@ -158,8 +158,10 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
       Glassdoor-style notes (if integrated legally), and known ATS platform.
 - [ ] STAR story library to organize reusable interview stories for behavioral
       questions.
-- [ ] Offer comparison tool to evaluate compensation, benefits, flexibility, and
-      long-term fit.
+- [x] Offer comparison tool to evaluate compensation, benefits, flexibility, and
+      long-term fit. _(Backend `app/offers` per-user CRUD with computed total
+      comp + desktop **Offers** tab: editor and a side-by-side comparison that
+      highlights the best value per metric and an overall blended score.)_
 
 ### ⬜ Tracking & integrations
 

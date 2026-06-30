@@ -25,6 +25,7 @@ from app.matching.routes import router as matching_router
 from app.discovery.routes import router as discovery_router
 from app.preferences.routes import router as preferences_router
 from app.job_alerts.routes import router as job_alerts_router
+from app.offers.routes import router as offers_router
 
 
 @asynccontextmanager
@@ -150,3 +151,4 @@ app.include_router(matching_router, prefix="/api/match", tags=["Matching"])
 app.include_router(discovery_router, prefix="/api/discovery", tags=["Discovery"])
 app.include_router(preferences_router, prefix="/api/preferences", tags=["Preferences"])
 app.include_router(job_alerts_router, prefix="/api/job-alerts", tags=["Job Alerts"])
+app.include_router(offers_router, prefix="/api/offers", tags=["Offers"])
