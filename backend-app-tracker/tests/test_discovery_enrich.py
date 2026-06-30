@@ -23,6 +23,23 @@ def test_experience_level(title, description, expected):
 
 
 @pytest.mark.parametrize(
+    "location,description,expected",
+    [
+        ("Remote, US", "", "remote"),
+        ("Hybrid - New York", "", "hybrid"),
+        ("San Francisco, CA (On-site)", "", "onsite"),
+        ("New York", "This is a fully remote role", "remote"),
+        ("New York", "Hybrid schedule, 3 days in office", "hybrid"),
+        # "remote" mentioned only incidentally → not enough to classify.
+        ("New York", "You will manage remote teams across regions", None),
+        ("New York", "", None),
+    ],
+)
+def test_work_arrangement(location, description, expected):
+    assert enrich.work_arrangement(location, description) == expected
+
+
+@pytest.mark.parametrize(
     "description,expected",
     [
         ("Bachelor's degree in CS required", True),

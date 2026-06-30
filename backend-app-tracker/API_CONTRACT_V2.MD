@@ -817,7 +817,9 @@ GET /api/discovery/jobs?page=1&pageSize=25&sortBy=postedAt&sortOrder=desc&collap
 
 Paginated (same envelope as other list endpoints). Filters:
 
-- `q` (title substring), `company`/`location` (substring)
+- `q` (title substring), `company`/`location` (substring — city/state/region)
+- `workArrangement` — exact, `remote|hybrid|onsite` (derived at ingest from the
+  location + description; FEAT-24)
 - `employmentType` (exact, canonical
   `full-time|part-time|contract|internship|temporary`), `source` (exact).
   Always populated at ingest: a structured ATS value (e.g. Lever `commitment`)
@@ -857,6 +859,7 @@ Paginated (same envelope as other list endpoints). Filters:
   "updatedAt": "ISO-8601",
 
   "experienceLevel": "senior | null",
+  "workArrangement": "remote | hybrid | onsite | null",
   "requiresDegree": true,
   "sponsorshipAvailable": true,
   "clearanceRequired": false,

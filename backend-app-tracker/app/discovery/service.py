@@ -97,6 +97,7 @@ def _build_query(
     q: str | None,
     company: str | None,
     location: str | None,
+    work_arrangement: str | None,
     employment_type: str | None,
     source: str | None,
     salary_min: int | None,
@@ -117,6 +118,8 @@ def _build_query(
         query["title"] = _escape_regex(q)
     if location:
         query["location"] = _escape_regex(location)
+    if work_arrangement:
+        query["workArrangement"] = work_arrangement
     if source:
         query["source"] = source
     if salary_min is not None:
@@ -161,6 +164,7 @@ CRITERIA_FIELDS = {
     "q": "q",
     "company": "company",
     "location": "location",
+    "workArrangement": "work_arrangement",
     "employmentType": "employment_type",
     "source": "source",
     "salaryMin": "salary_min",
@@ -232,6 +236,7 @@ def list_jobs(
     q: str | None = None,
     company: str | None = None,
     location: str | None = None,
+    work_arrangement: str | None = None,
     employment_type: str | None = None,
     source: str | None = None,
     salary_min: int | None = None,
@@ -250,6 +255,7 @@ def list_jobs(
         q=q,
         company=company,
         location=location,
+        work_arrangement=work_arrangement,
         employment_type=employment_type,
         source=source,
         salary_min=salary_min,

@@ -35,6 +35,7 @@ const CRITERIA_KEYS: (keyof DiscoveryFilters)[] = [
   "q",
   "company",
   "location",
+  "workArrangement",
   "employmentType",
   "source",
   "salaryMin",
@@ -70,6 +71,11 @@ const EMPLOYMENT_TYPES = [
   "temporary",
 ];
 const EXPERIENCE_LEVELS = ["entry", "mid", "senior", "lead"];
+const WORK_ARRANGEMENTS = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+];
 
 export function Discovery() {
   const [filters, setFilters] = useState<DiscoveryFilters>({
@@ -463,9 +469,21 @@ export function Discovery() {
           <input
             value={filters.location ?? ""}
             onChange={(e) => setFilter("location", e.target.value)}
-            placeholder="Location"
+            placeholder="City, state, or region"
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
+          <select
+            value={filters.workArrangement ?? ""}
+            onChange={(e) => setFilter("workArrangement", e.target.value)}
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any location type</option>
+            {WORK_ARRANGEMENTS.map((w) => (
+              <option key={w.value} value={w.value}>
+                {w.label}
+              </option>
+            ))}
+          </select>
           <select
             value={filters.employmentType ?? ""}
             onChange={(e) => setFilter("employmentType", e.target.value)}

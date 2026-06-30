@@ -112,6 +112,25 @@ def test_filters_by_salary_and_query(client, auth_payload, fake_greenhouse):
     assert [j["title"] for j in q["items"]] == ["Data Analyst"]
 
 
+def test_filter_by_work_arrangement(client, auth_payload, fake_greenhouse):
+    """FEAT-24: remote/onsite filtering via the derived workArrangement field."""
+    jwt = _register(client, auth_payload, "disc-remote@example.com")
+    headers = _headers(jwt)
+    client.post(
+        "/api/discovery/ingest",
+        headers=headers,
+        json={"source": "greenhouse", "boardToken": "remoteco"},
+    )
+
+    # The Backend Engineer posting is "Remote"; the Data Analyst is "New York".
+    remote = client.get(
+        "/api/discovery/jobs?company=remoteco&workArrangement=remote",
+        headers=headers,
+    ).json()["data"]
+    assert [j["title"] for j in remote["items"]] == ["Backend Engineer"]
+    assert remote["items"][0]["workArrangement"] == "remote"
+
+
 def test_ingest_unsupported_source(client, auth_payload):
     jwt = _register(client, auth_payload, "disc-bad@example.com")
     res = client.post(
