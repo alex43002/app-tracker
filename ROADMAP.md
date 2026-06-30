@@ -31,19 +31,20 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 
 ### Bugs
 
-- [ ] **BUG-23 — Compare tab fails to load jobs (422).** The Compare tab requests
+- [x] **BUG-23 — Compare tab fails to load jobs (422).** The Compare tab requests
       `GET /api/jobs/?page=1&pageSize=200&...`, but the endpoint caps `pageSize`
       at `le=100` ([`app/jobs/routes.py`](backend-app-tracker/app/jobs/routes.py)),
       so the request is rejected with `VALIDATION_ERROR`. Fix by raising the cap
       (or removing it for this view) and/or having the desktop client page within
-      the allowed bounds.
+      the allowed bounds. _(Cap already raised to 200; Compare now pages through
+      all jobs via `fetchAllJobs` so >200 tracked jobs all load.)_
 - [x] **BUG-24 — Discover employment-type filter returns 0 results.** Reproduced
       with the Stripe board token: filtering by `employmentType` returns nothing
       for every option, even though employment type is shown on the linked
       posting page. Audit ingestion/normalization so `employmentType` is reliably
       extracted and stored on `discovered_jobs`, and confirm the filter matches
       the normalized values.
-- [ ] **BUG-25 — Filtering after ranking by fit drops the active filter set.** In
+- [x] **BUG-25 — Filtering after ranking by fit drops the active filter set.** In
       the Discover tab, if you rank jobs by résumé fit and *then* apply a filter,
       the filter doesn't combine with all currently-active filters (including the
       current resume fit). Applying a filter must use the full set of active
