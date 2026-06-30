@@ -43,6 +43,12 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       posting page. Audit ingestion/normalization so `employmentType` is reliably
       extracted and stored on `discovered_jobs`, and confirm the filter matches
       the normalized values.
+- [ ] **BUG-25 — Filtering after ranking by fit drops the active filter set.** In
+      the Discover tab, if you rank jobs by résumé fit and *then* apply a filter,
+      the filter doesn't combine with all currently-active filters (including the
+      current resume fit). Applying a filter must use the full set of active
+      filters together with the selected resume fit, rather than resetting or
+      ignoring the existing ranking/filter state.
 
 ### Discover tab
 
@@ -56,6 +62,13 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 - [x] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
       platforms beyond Greenhouse/Lever to improve discovery coverage across
       companies.
+- [ ] **FEAT-30 — Guided city/state/region location filter.** The location
+      filter (FEAT-24) currently takes free-form input, but job postings store
+      specific location values (or none at all), so arbitrary user text rarely
+      matches. Make the filter guided — e.g. suggest/autocomplete from the
+      locations actually present in discovered jobs, normalize input, and handle
+      postings with no location — so users select from valid options instead of
+      guessing.
 
 ### Match tab
 
