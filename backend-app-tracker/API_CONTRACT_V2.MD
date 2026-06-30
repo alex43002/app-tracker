@@ -776,15 +776,25 @@ Errors: `UNSUPPORTED_SOURCE` (400), `DISCOVERY_FETCH_FAILED` (400, unknown board
 ### Search Postings
 
 ```
-GET /api/discovery/jobs?page=1&pageSize=25&sortBy=postedAt&sortOrder=desc
+GET /api/discovery/jobs?page=1&pageSize=25&sortBy=postedAt&sortOrder=desc&collapse=true
     &q=&company=&location=&employmentType=&source=&salaryMin=
+    &experienceLevel=&requiresDegree=&maxAgeDays=&minQuality=
 ```
 
-Paginated (same envelope as other list endpoints). Filters: `q` (title
-substring), `company`/`location` (substring), `employmentType` (exact, canonical
-`full-time|part-time|contract|internship|temporary`), `source` (exact),
-`salaryMin` (postings whose `salaryMax` ≥ value). `sortBy` ∈
-`postedAt|ingestedAt|company|title|salaryMax`. Each item:
+Paginated (same envelope as other list endpoints). Filters:
+
+- `q` (title substring), `company`/`location` (substring)
+- `employmentType` (exact, canonical
+  `full-time|part-time|contract|internship|temporary`), `source` (exact)
+- `salaryMin` — postings whose `salaryMax` ≥ value
+- `experienceLevel` — `entry|mid|senior|lead` (eligibility)
+- `requiresDegree` — `true|false` (eligibility)
+- `maxAgeDays` — only postings with `postedAt` within N days (freshness)
+- `minQuality` — `qualityScore` ≥ value (0–100; hides low-quality listings)
+- `collapse` (default `true`) — merge duplicate postings of the same role across
+  boards/sources into one listing; `false` returns raw per-posting rows.
+
+`sortBy` ∈ `postedAt|ingestedAt|company|title|salaryMax`. Each item:
 
 ```json
 {
@@ -802,9 +812,23 @@ substring), `company`/`location` (substring), `employmentType` (exact, canonical
   "salaryMax": 150000,
   "postedAt": "ISO-8601 | null",
   "ingestedAt": "ISO-8601",
-  "updatedAt": "ISO-8601"
+  "updatedAt": "ISO-8601",
+
+  "experienceLevel": "senior | null",
+  "requiresDegree": true,
+  "qualityFlags": ["no_salary", "thin_description", "no_location", "underpaid", "spammy_title"],
+  "qualityScore": 100,
+
+  "duplicateCount": 2,
+  "sources": [
+    { "source": "greenhouse", "boardToken": "acme", "url": "https://…" },
+    { "source": "lever", "boardToken": "acme", "url": "https://…" }
+  ]
 }
 ```
+
+`duplicateCount`/`sources` are present only when `collapse=true` (the default).
+`qualityFlags` is the subset of the listed flags that apply.
 
 ---
 

@@ -239,6 +239,13 @@ normalized into one shape. Deduped per source by `(source, boardToken, sourceId)
   salaryMin: Number | null, // best-effort parse from the posting text
   salaryMax: Number | null,
 
+  // Derived at ingest (enrichment) for eligibility/quality filtering.
+  experienceLevel: String | null,  // entry|mid|senior|lead
+  requiresDegree: Boolean,
+  qualityFlags: [String],   // no_salary|thin_description|no_location|underpaid|spammy_title
+  qualityScore: Number,     // 0–100 (100 - 20·flags)
+  dedupeKey: String,        // company|title|location slug — collapses duplicates
+
   postedAt: Date | null,    // from the ATS (updated_at / createdAt)
   ingestedAt: Date,         // first time we stored it ($setOnInsert)
   updatedAt: Date           // last upsert

@@ -1,0 +1,139 @@
+"""Derived signals for a normalized posting (no generative AI — heuristics).
+
+Computed once at ingest and stored so listing/filtering is cheap:
+
+* **Eligibility** — `experienceLevel` (entry/mid/senior/lead), `requiresDegree`.
+* **Quality** — `qualityFlags` (no salary, thin description, missing location,
+  underpaid, spammy title) plus a 0–100 `qualityScore`.
+* **Dedupe** — a `dedupeKey` (company + title + location) so the same role posted
+  to several boards collapses into one clean listing.
+
+Every function is pure and unit-testable; the heuristics are intentionally
+conservative so a flag means something.
+"""
+
+from __future__ import annotations
+
+import re
+
+# Annual salary below this looks like a data error or a genuinely underpaid
+# full-time role; flagged for the user to scrutinise.
+UNDERPAID_THRESHOLD = 35_000
+# Descriptions shorter than this rarely contain enough to evaluate a role.
+THIN_DESCRIPTION_CHARS = 250
+
+
+def _norm(text: str | None) -> str:
+    return re.sub(r"\s+", " ", (text or "").lower()).strip()
+
+
+# --------------------------- experience level ------------------------------
+
+_LEAD_RE = re.compile(r"\b(principal|staff|lead|director|head of|vp|chief)\b")
+_SENIOR_RE = re.compile(r"\b(senior|sr\.?)\b")
+_ENTRY_RE = re.compile(
+    r"\b(intern|internship|junior|jr\.?|entry[- ]level|new grad|graduate|trainee)\b"
+)
+_MID_RE = re.compile(r"\b(mid[- ]level|intermediate)\b")
+_YEARS_RE = re.compile(r"(\d{1,2})\s*\+?\s*(?:to|-|–)?\s*(\d{1,2})?\s*years?")
+
+
+def experience_level(title: str | None, description: str | None = None) -> str | None:
+    """Best-effort seniority: entry|mid|senior|lead, or None if unclear.
+
+    Title wins (it's the strongest signal); falls back to a years-of-experience
+    requirement in the description.
+    """
+    t = _norm(title)
+    if _LEAD_RE.search(t):
+        return "lead"
+    if _SENIOR_RE.search(t):
+        return "senior"
+    if _ENTRY_RE.search(t):
+        return "entry"
+    if _MID_RE.search(t):
+        return "mid"
+
+    d = _norm(description)
+    match = _YEARS_RE.search(d)
+    if match:
+        low = int(match.group(1))
+        if low >= 6:
+            return "senior"
+        if low >= 3:
+            return "mid"
+        return "entry"
+    return None
+
+
+# --------------------------- degree requirement ----------------------------
+
+_DEGREE_RE = re.compile(
+    r"\b(bachelor'?s?|master'?s?|ph\.?d|mba|b\.?s\.?|m\.?s\.?|"
+    r"b\.?a\.?|degree in|undergraduate degree)\b"
+)
+
+
+def requires_degree(description: str | None) -> bool:
+    return bool(_DEGREE_RE.search(_norm(description)))
+
+
+# --------------------------- quality ---------------------------------------
+
+_SPAM_RE = re.compile(
+    r"(\$\$\$|!!!|urgent|immediate start|no experience (?:needed|required)|"
+    r"earn \$|work from home!!|apply now!!)"
+)
+
+
+def quality_flags(posting: dict) -> list[str]:
+    """Signals that a posting may be unclear, misleading, or low quality."""
+    flags: list[str] = []
+    if posting.get("salaryMin") is None and posting.get("salaryMax") is None:
+        flags.append("no_salary")
+    if len(posting.get("description") or "") < THIN_DESCRIPTION_CHARS:
+        flags.append("thin_description")
+    if not posting.get("location"):
+        flags.append("no_location")
+    salary_max = posting.get("salaryMax")
+    if salary_max is not None and salary_max < UNDERPAID_THRESHOLD:
+        flags.append("underpaid")
+    if _SPAM_RE.search(_norm(posting.get("title"))):
+        flags.append("spammy_title")
+    return flags
+
+
+def quality_score(flags: list[str]) -> int:
+    """0–100, higher is better. Each flag costs 20 points (floored at 0)."""
+    return max(0, 100 - 20 * len(flags))
+
+
+# --------------------------- dedupe ----------------------------------------
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def dedupe_key(company: str | None, title: str | None, location: str | None) -> str:
+    """Stable key for collapsing the same role posted across boards/sources."""
+    parts = [
+        _SLUG_RE.sub("-", _norm(company)).strip("-"),
+        _SLUG_RE.sub("-", _norm(title)).strip("-"),
+        _SLUG_RE.sub("-", _norm(location)).strip("-"),
+    ]
+    return "|".join(parts)
+
+
+def enrich(posting: dict) -> dict:
+    """Compute all derived fields for a normalized posting."""
+    flags = quality_flags(posting)
+    return {
+        "experienceLevel": experience_level(
+            posting.get("title"), posting.get("description")
+        ),
+        "requiresDegree": requires_degree(posting.get("description")),
+        "qualityFlags": flags,
+        "qualityScore": quality_score(flags),
+        "dedupeKey": dedupe_key(
+            posting.get("company"), posting.get("title"), posting.get("location")
+        ),
+    }

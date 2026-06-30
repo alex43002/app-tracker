@@ -1,0 +1,422 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+
+import { AppLayout } from "../layouts/AppLayout";
+import {
+  fetchDiscoveredJobs,
+  fetchDiscoverySources,
+  ingestBoard,
+} from "../api/discovery";
+import { fetchJobs, fetchJobResumes } from "../api/jobs";
+import { scoreMatch } from "../api/match";
+import { JobCard } from "../components/discovery/JobCard";
+import type { DiscoveredJob, DiscoveryFilters } from "../types/discovery";
+import type { Job, JobResume } from "../types/job";
+
+const EMPLOYMENT_TYPES = [
+  "full-time",
+  "part-time",
+  "contract",
+  "internship",
+  "temporary",
+];
+const EXPERIENCE_LEVELS = ["entry", "mid", "senior", "lead"];
+
+export function Discovery() {
+  const [filters, setFilters] = useState<DiscoveryFilters>({
+    page: 1,
+    pageSize: 25,
+    sortBy: "postedAt",
+    sortOrder: "desc",
+    collapse: true,
+  });
+  const [jobs, setJobs] = useState<DiscoveredJob[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Ingest form
+  const [sources, setSources] = useState<string[]>([]);
+  const [ingestSource, setIngestSource] = useState("");
+  const [boardToken, setBoardToken] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  // Résumé-fit ranking
+  const [myJobs, setMyJobs] = useState<Job[]>([]);
+  const [fitJobId, setFitJobId] = useState("");
+  const [fitResumes, setFitResumes] = useState<JobResume[]>([]);
+  const [fitResumeId, setFitResumeId] = useState("");
+  const [fitById, setFitById] = useState<Record<string, number>>({});
+  const [ranking, setRanking] = useState(false);
+  const [sortByFit, setSortByFit] = useState(false);
+
+  const setFilter = useCallback(
+    <K extends keyof DiscoveryFilters>(key: K, value: DiscoveryFilters[K]) => {
+      setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+      setSortByFit(false);
+    },
+    []
+  );
+
+  // Load supported sources + the user's jobs (for the fit picker) once.
+  useEffect(() => {
+    fetchDiscoverySources()
+      .then((s) => {
+        setSources(s);
+        setIngestSource((cur) => cur || s[0] || "");
+      })
+      .catch(() => toast.error("Failed to load sources"));
+    fetchJobs(1, 100, "createdAt", "desc")
+      .then((res) => setMyJobs(res.items))
+      .catch(() => {
+        /* fit ranking is optional; ignore */
+      });
+  }, []);
+
+  // Debounced fetch whenever filters change.
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const t = setTimeout(() => {
+      fetchDiscoveredJobs(filters)
+        .then((res) => {
+          if (!active) return;
+          setJobs(res.items);
+          setTotalPages(res.meta.totalPages);
+          setTotalItems(res.meta.totalItems);
+        })
+        .catch(() => active && toast.error("Failed to load postings"))
+        .finally(() => active && setLoading(false));
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [filters]);
+
+  // Load résumés for the selected fit job.
+  useEffect(() => {
+    if (!fitJobId) {
+      setFitResumes([]);
+      setFitResumeId("");
+      return;
+    }
+    fetchJobResumes(fitJobId)
+      .then((list) => {
+        setFitResumes(list);
+        setFitResumeId(list.length === 1 ? list[0].id : "");
+      })
+      .catch(() => toast.error("Failed to load résumés"));
+  }, [fitJobId]);
+
+  async function handleImport() {
+    if (!ingestSource || !boardToken.trim()) return;
+    setImporting(true);
+    try {
+      const res = await ingestBoard(
+        ingestSource,
+        boardToken.trim(),
+        companyName.trim() || undefined
+      );
+      toast.success(
+        `Imported ${res.company}: ${res.inserted} new, ${res.updated} updated`
+      );
+      setBoardToken("");
+      setCompanyName("");
+      // Refresh the list.
+      setFilters((prev) => ({ ...prev, page: 1 }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleRankByFit() {
+    if (!fitResumeId || jobs.length === 0) return;
+    setRanking(true);
+    try {
+      const entries = await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const res = await scoreMatch({
+              resumeId: fitResumeId,
+              jobDescription: job.description,
+            });
+            return [job.id, res.score] as const;
+          } catch {
+            return [job.id, 0] as const;
+          }
+        })
+      );
+      setFitById(Object.fromEntries(entries));
+      setSortByFit(true);
+    } catch {
+      toast.error("Failed to rank by résumé fit");
+    } finally {
+      setRanking(false);
+    }
+  }
+
+  const displayedJobs = useMemo(() => {
+    if (!sortByFit) return jobs;
+    return [...jobs].sort(
+      (a, b) => (fitById[b.id] ?? -1) - (fitById[a.id] ?? -1)
+    );
+  }, [jobs, sortByFit, fitById]);
+
+  return (
+    <AppLayout>
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Discover</h1>
+          <p className="text-sm text-gray-500">
+            Browse aggregated public postings from supported ATS systems. Filter,
+            spot low-quality or stale listings, and rank by how well they match
+            your résumé.
+          </p>
+        </div>
+
+        {/* Import a board */}
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-gray-700">Source</span>
+            <select
+              value={ingestSource}
+              onChange={(e) => setIngestSource(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            >
+              {sources.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-gray-700">
+              Board token
+            </span>
+            <input
+              value={boardToken}
+              onChange={(e) => setBoardToken(e.target.value)}
+              placeholder="e.g. stripe"
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-gray-700">
+              Company name (optional)
+            </span>
+            <input
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Display name"
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <button
+            onClick={handleImport}
+            disabled={importing || !boardToken.trim()}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300"
+          >
+            {importing ? "Importing…" : "Import board"}
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-3 lg:grid-cols-4">
+          <input
+            value={filters.q ?? ""}
+            onChange={(e) => setFilter("q", e.target.value)}
+            placeholder="Search title…"
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <input
+            value={filters.location ?? ""}
+            onChange={(e) => setFilter("location", e.target.value)}
+            placeholder="Location"
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <select
+            value={filters.employmentType ?? ""}
+            onChange={(e) => setFilter("employmentType", e.target.value)}
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any type</option>
+            {EMPLOYMENT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.experienceLevel ?? ""}
+            onChange={(e) => setFilter("experienceLevel", e.target.value)}
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any level</option>
+            {EXPERIENCE_LEVELS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={0}
+            step={10000}
+            value={filters.salaryMin ?? ""}
+            onChange={(e) =>
+              setFilter(
+                "salaryMin",
+                e.target.value ? Number(e.target.value) : undefined
+              )
+            }
+            placeholder="Min salary"
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <select
+            value={filters.requiresDegree === undefined ? "" : String(filters.requiresDegree)}
+            onChange={(e) =>
+              setFilter(
+                "requiresDegree",
+                e.target.value === "" ? undefined : e.target.value === "true"
+              )
+            }
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Degree: any</option>
+            <option value="false">No degree required</option>
+            <option value="true">Degree required</option>
+          </select>
+          <select
+            value={filters.maxAgeDays ?? ""}
+            onChange={(e) =>
+              setFilter(
+                "maxAgeDays",
+                e.target.value ? Number(e.target.value) : undefined
+              )
+            }
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any age</option>
+            <option value="7">Past week</option>
+            <option value="14">Past 2 weeks</option>
+            <option value="30">Past month</option>
+          </select>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={filters.minQuality === 60}
+              onChange={(e) =>
+                setFilter("minQuality", e.target.checked ? 60 : undefined)
+              }
+            />
+            Hide low-quality
+          </label>
+        </div>
+
+        {/* Résumé-fit ranking */}
+        {myJobs.length > 0 && (
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <span className="text-sm font-medium text-gray-700">
+              Rank by résumé fit:
+            </span>
+            <select
+              value={fitJobId}
+              onChange={(e) => setFitJobId(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">Pick a job…</option>
+              {myJobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.jobTitle} — {j.company}
+                </option>
+              ))}
+            </select>
+            <select
+              value={fitResumeId}
+              onChange={(e) => setFitResumeId(e.target.value)}
+              disabled={!fitJobId || fitResumes.length === 0}
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
+            >
+              <option value="">
+                {fitResumes.length === 0 ? "No résumés on job" : "Pick a résumé…"}
+              </option>
+              {fitResumes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.filename ?? r.id}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleRankByFit}
+              disabled={!fitResumeId || ranking || jobs.length === 0}
+              className="rounded bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:bg-gray-300"
+            >
+              {ranking ? "Scoring…" : "Rank these by fit"}
+            </button>
+            {sortByFit && (
+              <button
+                onClick={() => setSortByFit(false)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Clear ranking
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Results */}
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>{loading ? "Loading…" : `${totalItems} listings`}</span>
+          <span>
+            Page {filters.page} of {Math.max(totalPages, 1)}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {!loading && jobs.length === 0 ? (
+            <div className="rounded border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+              No postings match. Import a company board above, or relax your
+              filters.
+            </div>
+          ) : (
+            displayedJobs.map((job) => (
+              <JobCard key={job.id} job={job} fit={sortByFit ? fitById[job.id] : undefined} />
+            ))
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 pb-4">
+            <button
+              onClick={() =>
+                setFilters((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))
+              }
+              disabled={(filters.page ?? 1) <= 1}
+              className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() =>
+                setFilters((p) => ({
+                  ...p,
+                  page: Math.min(totalPages, (p.page ?? 1) + 1),
+                }))
+              }
+              disabled={(filters.page ?? 1) >= totalPages}
+              className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    </AppLayout>
+  );
+}

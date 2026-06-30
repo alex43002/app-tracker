@@ -8,7 +8,7 @@ duplicating them. Listing is global (postings are public) but auth-gated.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import status
 from pymongo.collection import Collection
@@ -16,9 +16,14 @@ from pymongo.collection import Collection
 from app.common.errors import raise_error
 from app.common.query import paginate
 from app.discovery.connectors import ConnectorError, SUPPORTED_SOURCES, fetch_source
+from app.discovery.enrich import enrich
 
 # Fields a client may sort discovered jobs by.
 SORTABLE_FIELDS = ("postedAt", "ingestedAt", "company", "title", "salaryMax")
+
+# When collapsing duplicates we group in Python, so cap how many matching rows we
+# scan to keep the query bounded.
+COLLAPSE_SCAN_CAP = 2000
 
 
 def _serialize(doc: dict) -> dict:
@@ -57,6 +62,8 @@ def ingest(db, source: str, token: str, company: str | None) -> dict:
         posting["boardToken"] = token
         # Bound stored/served description size.
         posting["description"] = (posting.get("description") or "")[:5000]
+        # Derived eligibility/quality/dedupe signals (computed once at ingest).
+        posting.update(enrich(posting))
         posting["updatedAt"] = now
         result = jobs.update_one(
             {
@@ -93,6 +100,10 @@ def _build_query(
     employment_type: str | None,
     source: str | None,
     salary_min: int | None,
+    experience_level: str | None,
+    requires_degree: bool | None,
+    max_age_days: int | None,
+    min_quality: int | None,
 ) -> dict:
     """Build a safe Mongo filter — every operator is server-constructed."""
     query: dict = {}
@@ -109,7 +120,47 @@ def _build_query(
     if salary_min is not None:
         # A posting qualifies if the top of its range meets the floor.
         query["salaryMax"] = {"$gte": salary_min}
+    if experience_level:
+        query["experienceLevel"] = experience_level
+    if requires_degree is not None:
+        query["requiresDegree"] = requires_degree
+    if max_age_days is not None:
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=max_age_days)
+        query["postedAt"] = {"$gte": cutoff}
+    if min_quality is not None:
+        query["qualityScore"] = {"$gte": min_quality}
     return query
+
+
+def _collapse(docs: list[dict], page: int, page_size: int) -> tuple[list[dict], int]:
+    """Merge duplicate postings (same ``dedupeKey``) into one listing.
+
+    ``docs`` must already be in the desired sort order; the first row seen for a
+    key becomes the representative and the rest are folded in as extra sources.
+    """
+    groups: dict[str, dict] = {}
+    order: list[str] = []
+    for doc in docs:
+        key = doc.get("dedupeKey") or doc["id"]
+        ref = {
+            "source": doc.get("source"),
+            "boardToken": doc.get("boardToken"),
+            "url": doc.get("url"),
+        }
+        if key not in groups:
+            doc["duplicateCount"] = 1
+            doc["sources"] = [ref]
+            groups[key] = doc
+            order.append(key)
+        else:
+            rep = groups[key]
+            rep["duplicateCount"] += 1
+            rep["sources"].append(ref)
+
+    grouped = [groups[k] for k in order]
+    total = len(grouped)
+    start = (page - 1) * page_size
+    return grouped[start : start + page_size], total
 
 
 def list_jobs(
@@ -119,12 +170,17 @@ def list_jobs(
     page_size: int,
     sort_by: str,
     sort_order: str,
+    collapse: bool = True,
     q: str | None = None,
     company: str | None = None,
     location: str | None = None,
     employment_type: str | None = None,
     source: str | None = None,
     salary_min: int | None = None,
+    experience_level: str | None = None,
+    requires_degree: bool | None = None,
+    max_age_days: int | None = None,
+    min_quality: int | None = None,
 ) -> dict:
     query = _build_query(
         q=q,
@@ -133,16 +189,42 @@ def list_jobs(
         employment_type=employment_type,
         source=source,
         salary_min=salary_min,
+        experience_level=experience_level,
+        requires_degree=requires_degree,
+        max_age_days=max_age_days,
+        min_quality=min_quality,
     )
     if sort_by not in set(SORTABLE_FIELDS):
         sort_by = "postedAt"
-    return paginate(
-        db.discovered_jobs,
-        query,
-        page=page,
-        page_size=page_size,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        serializer=_serialize,
-        sortable_fields=SORTABLE_FIELDS,
+
+    if not collapse:
+        return paginate(
+            db.discovered_jobs,
+            query,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            serializer=_serialize,
+            sortable_fields=SORTABLE_FIELDS,
+        )
+
+    # Collapse duplicates across boards/sources into one clean listing.
+    sort_direction = 1 if sort_order == "asc" else -1
+    cursor = (
+        db.discovered_jobs.find(query)
+        .sort(sort_by, sort_direction)
+        .limit(COLLAPSE_SCAN_CAP)
     )
+    docs = [_serialize(doc) for doc in cursor]
+    items, total = _collapse(docs, page, page_size)
+    total_pages = (total + page_size - 1) // page_size
+    return {
+        "items": items,
+        "meta": {
+            "page": page,
+            "pageSize": page_size,
+            "totalItems": total,
+            "totalPages": total_pages,
+        },
+    }

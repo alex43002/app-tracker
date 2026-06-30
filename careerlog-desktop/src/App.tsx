@@ -4,6 +4,7 @@ import { Alerts } from "./pages/Alerts";
 import { Dashboard } from "./pages/Dashboard";
 import { Jobs } from "./pages/Jobs";
 import { Match } from "./pages/Match";
+import { Discovery } from "./pages/Discovery";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -50,6 +51,15 @@ function App() {
           element={
             <Protected>
               <Match />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/discover"
+          element={
+            <Protected>
+              <Discovery />
             </Protected>
           }
         />

@@ -44,22 +44,25 @@ taxonomy, scoring, SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 ### Job discovery
 
-- [ ] Unified job discovery + resume-matching tab: collects public job postings
+- [x] Unified job discovery + resume-matching tab: collects public job postings
       in the backend from supported company career pages / ATS systems,
       normalizes them into one searchable format, and lets users filter or rank
       jobs by salary, location, employment type, company, ATS source, and
-      resume fit.
-- [ ] Duplicate detection that merges repeated postings across different job
+      resume fit. _(FEAT-22: Greenhouse/Lever ingestion + the Discover tab with
+      résumé-fit ranking that reuses FEAT-21.)_
+- [x] Duplicate detection that merges repeated postings across different job
       boards and ATS sources into one clean listing.
 - [ ] Saved searches and job alerts that notify users when new roles match their
       preferred title, salary, location, and work arrangement.
-- [ ] Job posting quality checks that flag unclear, misleading, underpaid, or
+- [x] Job posting quality checks that flag unclear, misleading, underpaid, or
       potentially low-quality opportunities.
-- [ ] Eligibility filters that help users identify jobs matching their degree
-      status, work authorization, and experience level.
+- [~] Eligibility filters that help users identify jobs matching their degree
+      status, work authorization, and experience level. _(FEAT-22 ships degree
+      status + experience level; work-authorization/sponsorship detection is
+      still TODO.)_
 - [ ] Side-by-side comparison view to evaluate multiple jobs by compensation,
       fit, location, requirements, and application status.
-- [ ] Posting freshness tracking to help users avoid stale, repeatedly reposted,
+- [x] Posting freshness tracking to help users avoid stale, repeatedly reposted,
       or low-signal listings.
 - [ ] Company preference controls to prioritize target employers and hide
       companies or job types users want to avoid.
