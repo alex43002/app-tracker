@@ -65,7 +65,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 
 ### Alerts tab
 
-- [ ] **FEAT-27 — Distinguish pending vs. sent alerts.** Alerts scheduled for a
+- [x] **FEAT-27 — Distinguish pending vs. sent alerts.** Alerts scheduled for a
       future date/time should be visually marked as not-yet-sent, and alerts that
       have already fired should move into a separate **Sent Alerts** section.
 

@@ -465,6 +465,11 @@ Alerts are follow-up reminders. A background scheduler delivers each alert once 
 SMTP email when configured) and stamps `lastAlertAt`. Rescheduling an alert to a new
 time lets it fire again. Delivery can be turned off with `ALERTS_ENABLED=false`.
 
+An alert is **sent** once `lastAlertAt` is set for its current schedule
+(`lastAlertAt >= scheduledAlert`); otherwise it is **pending** (not yet
+delivered). The desktop Alerts tab uses this to separate pending from sent
+reminders (FEAT-27).
+
 ### Create Alert
 
 ```
