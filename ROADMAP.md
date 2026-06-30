@@ -15,11 +15,18 @@ epic (FEAT-22). This file lists the **work that is still open**.
 The cross-platform build + tag-driven release workflow is wired, but a first
 branded, signed release still needs:
 
-- [ ] Add a 1024×1024 `careerlog-desktop/assets/icon.png` (app icon).
+- [x] Add a 1024×1024 `careerlog-desktop/assets/icon.png` (app icon). _(On-theme
+      placeholder added; replace with final branding before a public release.)_
 - [ ] Configure the signing / notarization secrets in GitHub Actions
       (per-OS: Windows code-signing cert, macOS Developer ID + notarization
-      credentials). Builds succeed unsigned when these are absent.
+      credentials). Builds succeed unsigned when these are absent. _(Manual —
+      needs your certificates; secret names documented in
+      [`careerlog-desktop/RELEASING.md`](careerlog-desktop/RELEASING.md).)_
 - [ ] Cut the first cross-platform tagged release and verify auto-update.
+      _(Manual / outward-facing — tag-push steps in
+      [`careerlog-desktop/RELEASING.md`](careerlog-desktop/RELEASING.md). Note:
+      the release workflow is nested under `careerlog-desktop/.github/` and must
+      live at the repo root to trigger.)_
 
 ---
 
