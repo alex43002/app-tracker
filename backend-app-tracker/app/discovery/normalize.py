@@ -48,6 +48,39 @@ def normalize_employment_type(raw: str | None) -> str | None:
     return None
 
 
+# Free-text signals for inferring employment type from a title/description when
+# the ATS exposes no structured commitment field (e.g. Greenhouse). Matched on
+# word boundaries and checked most-specific-first so "internal tooling" doesn't
+# read as an internship and "attempt"/"temperature" don't read as temporary.
+_EMPLOYMENT_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+    ("internship", re.compile(r"\b(intern|internship|co-?op)\b")),
+    ("part-time", re.compile(r"\bpart[\s-]?time\b")),
+    (
+        "contract",
+        re.compile(r"\b(contract|contractor|contract[\s-]?to[\s-]?hire|freelance)\b"),
+    ),
+    ("temporary", re.compile(r"\b(temporary|temp|seasonal)\b")),
+    ("full-time", re.compile(r"\b(full[\s-]?time|permanent)\b")),
+)
+
+
+def infer_employment_type(*texts: str | None) -> str | None:
+    """Infer a canonical employment type from free text (title/description).
+
+    Used when an ATS doesn't expose a structured commitment field. Matches on
+    word boundaries and checks the most specific types first, so common words
+    like "internal" or "attempt" don't trip a false positive. Returns None when
+    nothing matches.
+    """
+    blob = " ".join(t for t in texts if t).lower()
+    if not blob:
+        return None
+    for canonical, pattern in _EMPLOYMENT_PATTERNS:
+        if pattern.search(blob):
+            return canonical
+    return None
+
+
 def normalize_location(raw: str | None) -> str | None:
     """Trim/collapse a location string; return None when empty."""
     if not raw:

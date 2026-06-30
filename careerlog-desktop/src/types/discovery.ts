@@ -110,3 +110,16 @@ export interface IngestResult {
   inserted: number;
   updated: number;
 }
+
+/** ATS source + board token extracted from a pasted careers URL (FEAT-23). */
+export interface ResolvedBoard {
+  source: string;
+  boardToken: string;
+}
+
+/** An entry in the curated directory of popular public boards (FEAT-23). */
+export interface CompanyDirectoryEntry {
+  name: string;
+  source: string;
+  boardToken: string;
+}

@@ -54,7 +54,8 @@ On error:
 Query params: `?page=1&pageSize=25&sortBy=createdAt&sortOrder=asc&filters=<json>`
 
 - `page` ≥ 1 (default `1`)
-- `pageSize` 1–100 (default **25**)
+- `pageSize` 1–100 (default **25**); the jobs list allows up to **200** to
+  support the Compare view
 - `sortBy` — any document field (default `createdAt`)
 - `sortOrder` — `asc` | `desc` (default `asc`)
 - `filters` — optional JSON-encoded object merged into the query
@@ -773,6 +774,39 @@ Response (`data`):
 Errors: `UNSUPPORTED_SOURCE` (400), `DISCOVERY_FETCH_FAILED` (400, unknown board
 / ATS unreachable / bad token).
 
+### Resolve a Board Token from a URL (FEAT-23)
+
+```
+POST /api/discovery/resolve
+```
+
+Extracts the ATS source + board token from a pasted careers URL so users don't
+have to know what a board token is. Recognises Greenhouse
+(`boards.greenhouse.io/<token>`, `job-boards.greenhouse.io/<token>`,
+`boards-api.greenhouse.io/v1/boards/<token>`) and Lever
+(`jobs.lever.co/<token>`, `api.lever.co/v0/postings/<token>`). Request:
+
+```json
+{ "url": "https://boards.greenhouse.io/stripe/jobs/123" }
+```
+
+Response (`data`): `{ "source": "greenhouse", "boardToken": "stripe" }`.
+Errors: `VALIDATION_ERROR` (422) when no board token can be found.
+
+### Company Directory (FEAT-23)
+
+```
+GET /api/discovery/companies?q=<substring>&limit=20
+```
+
+A curated directory of popular public boards so users can pick a company
+instead of guessing a slug. Case-insensitive substring match on the name; an
+empty `q` returns the head of the directory. Response (`data`):
+
+```json
+{ "companies": [{ "name": "Stripe", "source": "greenhouse", "boardToken": "stripe" }] }
+```
+
 ### Search Postings
 
 ```
@@ -787,7 +821,10 @@ Paginated (same envelope as other list endpoints). Filters:
 - `workArrangement` — exact, `remote|hybrid|onsite` (derived at ingest from the
   location + description; FEAT-24)
 - `employmentType` (exact, canonical
-  `full-time|part-time|contract|internship|temporary`), `source` (exact)
+  `full-time|part-time|contract|internship|temporary`), `source` (exact).
+  Always populated at ingest: a structured ATS value (e.g. Lever `commitment`)
+  wins, otherwise it is inferred from the title/description, otherwise it
+  defaults to `full-time`.
 - `salaryMin` — postings whose `salaryMax` ≥ value
 - `experienceLevel` — `entry|mid|senior|lead` (eligibility)
 - `requiresDegree` — `true|false` (eligibility)

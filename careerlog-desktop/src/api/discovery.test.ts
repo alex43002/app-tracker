@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchCompanyDirectory,
   fetchDiscoveredJobs,
   fetchDiscoverySources,
   ingestBoard,
+  resolveBoardToken,
 } from "./discovery";
 
 afterEach(() => {
@@ -51,6 +53,29 @@ describe("discovery api", () => {
       boardToken: "acme",
       companyName: "Acme",
     });
+  });
+
+  it("resolveBoardToken POSTs the url and returns the resolved board", async () => {
+    const fetchMock = stub({ source: "greenhouse", boardToken: "stripe" });
+    const res = await resolveBoardToken("https://boards.greenhouse.io/stripe");
+    expect(res).toEqual({ source: "greenhouse", boardToken: "stripe" });
+    const c = call(fetchMock);
+    expect(c.method).toBe("POST");
+    expect(c.url).toContain("/api/discovery/resolve");
+    expect(JSON.parse(c.body as string)).toEqual({
+      url: "https://boards.greenhouse.io/stripe",
+    });
+  });
+
+  it("fetchCompanyDirectory unwraps companies and forwards the query", async () => {
+    const fetchMock = stub({
+      companies: [{ name: "Stripe", source: "greenhouse", boardToken: "stripe" }],
+    });
+    const out = await fetchCompanyDirectory("stri");
+    expect(out).toEqual([
+      { name: "Stripe", source: "greenhouse", boardToken: "stripe" },
+    ]);
+    expect(call(fetchMock).url).toContain("/api/discovery/companies?q=stri");
   });
 
   it("fetchDiscoveredJobs serializes only the set filters into the query", async () => {
