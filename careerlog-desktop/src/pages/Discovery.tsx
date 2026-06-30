@@ -122,8 +122,11 @@ export function Discovery() {
 
   const setFilter = useCallback(
     <K extends keyof DiscoveryFilters>(key: K, value: DiscoveryFilters[K]) => {
+      // BUG-25: don't clear the active résumé-fit ranking when a filter
+      // changes. Applying a filter must combine with the full set of active
+      // filters *and* the current ranking; the auto-rank effect below re-scores
+      // the newly-filtered postings instead of resetting the ranking state.
       setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-      setSortByFit(false);
     },
     []
   );
@@ -312,31 +315,61 @@ export function Discovery() {
     }
   }
 
-  async function handleRankByFit() {
-    if (!fitResumeId || jobs.length === 0) return;
-    setRanking(true);
-    try {
-      const entries = await Promise.all(
-        jobs.map(async (job) => {
-          try {
-            const res = await scoreMatch({
-              resumeId: fitResumeId,
-              jobDescription: job.description,
-            });
-            return [job.id, res.score] as const;
-          } catch {
-            return [job.id, 0] as const;
-          }
-        })
-      );
-      setFitById(Object.fromEntries(entries));
+  // Score any postings in `jobList` we haven't scored yet against the selected
+  // résumé and turn the ranking on. Cached scores are reused so re-ranking after
+  // a filter/page change only fetches the genuinely new postings (BUG-25).
+  const rankJobs = useCallback(
+    async (jobList: DiscoveredJob[]) => {
+      if (!fitResumeId || jobList.length === 0) return;
       setSortByFit(true);
-    } catch {
-      toast.error("Failed to rank by résumé fit");
-    } finally {
-      setRanking(false);
-    }
+      const missing = jobList.filter((job) => fitById[job.id] === undefined);
+      if (missing.length === 0) return;
+      setRanking(true);
+      try {
+        const entries = await Promise.all(
+          missing.map(async (job) => {
+            try {
+              const res = await scoreMatch({
+                resumeId: fitResumeId,
+                jobDescription: job.description,
+              });
+              return [job.id, res.score] as const;
+            } catch {
+              return [job.id, 0] as const;
+            }
+          })
+        );
+        setFitById((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      } catch {
+        toast.error("Failed to rank by résumé fit");
+      } finally {
+        setRanking(false);
+      }
+    },
+    [fitResumeId, fitById]
+  );
+
+  function handleRankByFit() {
+    void rankJobs(jobs);
   }
+
+  // Changing the selected résumé invalidates cached scores (they were computed
+  // against a different résumé), so clear the cache and the active ranking.
+  useEffect(() => {
+    setFitById({});
+    setSortByFit(false);
+  }, [fitResumeId]);
+
+  // BUG-25: keep the ranking live across filter/page changes. When a ranking is
+  // active, automatically score any newly-loaded postings instead of dropping
+  // the ranking, so the displayed order reflects the full active filter set
+  // together with the selected résumé fit.
+  useEffect(() => {
+    if (!sortByFit || !fitResumeId) return;
+    const missing = jobs.filter((job) => fitById[job.id] === undefined);
+    if (missing.length === 0) return;
+    void rankJobs(jobs);
+  }, [jobs, sortByFit, fitResumeId, fitById, rankJobs]);
 
   const displayedJobs = useMemo(() => {
     if (!sortByFit) return jobs;
