@@ -35,15 +35,24 @@ def list_jobs(
     pageSize: int = Query(25, ge=1, le=100),
     sortBy: str = Query("postedAt"),
     sortOrder: str = Query("desc"),
+    collapse: bool = Query(True),
     q: str | None = Query(None),
     company: str | None = Query(None),
     location: str | None = Query(None),
     employmentType: str | None = Query(None),
     source: str | None = Query(None),
     salaryMin: int | None = Query(None, ge=0),
+    experienceLevel: str | None = Query(None),
+    requiresDegree: bool | None = Query(None),
+    maxAgeDays: int | None = Query(None, ge=0),
+    minQuality: int | None = Query(None, ge=0, le=100),
     current_user_id: str = Depends(get_current_user),
 ):
-    """Search/filter the normalized, aggregated postings."""
+    """Search/filter the normalized, aggregated postings.
+
+    Duplicates across boards/sources are merged into one listing by default
+    (``collapse=true``); pass ``collapse=false`` for the raw per-posting rows.
+    """
     db = get_db()
     result = service.list_jobs(
         db,
@@ -51,11 +60,16 @@ def list_jobs(
         page_size=pageSize,
         sort_by=sortBy,
         sort_order=sortOrder,
+        collapse=collapse,
         q=q,
         company=company,
         location=location,
         employment_type=employmentType,
         source=source,
         salary_min=salaryMin,
+        experience_level=experienceLevel,
+        requires_degree=requiresDegree,
+        max_age_days=maxAgeDays,
+        min_quality=minQuality,
     )
     return success(data=result)
