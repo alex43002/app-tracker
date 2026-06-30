@@ -163,8 +163,11 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 ### ⬜ Tracking & integrations
 
-- [ ] Browser extension to save jobs from any supported career page directly
-      into the application tracker.
+- [x] Browser extension to save jobs from any supported career page directly
+      into the application tracker. _(Manifest V3 extension in
+      `browser-extension/` that scrapes the page (JSON-LD JobPosting → Open
+      Graph fallback) and saves via the existing `/api/auth/login` +
+      `/api/jobs`; no backend changes.)_
 - [ ] Email-based application tracking that automatically detects confirmations,
       interviews, rejections, and recruiter messages.
 - [ ] Source performance analytics showing which job boards, recruiters, and
