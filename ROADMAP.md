@@ -71,6 +71,24 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 
 ---
 
+## ⬜ Account & app experience
+
+New work focused on the user's account and the desktop app itself (outside the
+no-generative-AI matching/discovery constraint below).
+
+- [ ] **FEAT-28 — Expanded profile settings.** Extend the profile settings so
+      users can view and modify their basic user information (e.g. name, email,
+      and other core account details) from within the app, with validation and
+      persistence to the backend.
+- [ ] **FEAT-29 — Automatic desktop app updates.** Make the desktop app
+      auto-update from the latest published GitHub releases, similar to
+      platforms like Discord: check for updates in the background, download new
+      versions, and install them seamlessly (prompt or apply on next launch).
+      Builds on the existing tag-driven release workflow (see _Release prep_
+      above) and the auto-update verification step.
+
+---
+
 ## ⬜ Proposed features (resume matching, job discovery & prep)
 
 _Constraint: no generative AI. Classic ML (NLP, TF-IDF, embeddings, classic
