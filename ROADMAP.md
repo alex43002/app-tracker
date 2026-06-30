@@ -153,9 +153,14 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 - [ ] Interview preparation workspace that turns a job description into
       role-specific prep notes, likely topics, and practice questions.
-- [ ] Company research snapshots covering: what the company does, industry,
+- [x] Company research snapshots covering: what the company does, industry,
       size, location, hiring trends, tech-stack clues, recent news,
       Glassdoor-style notes (if integrated legally), and known ATS platform.
+      _(Backend `app/company_research` aggregates a company's ingested postings
+      into a snapshot — open roles, locations, ATS platforms, seniority mix,
+      pay range, and tech-stack clues via the FEAT-21 skill taxonomy — surfaced
+      in a desktop **Company research** tab. Recent-news/Glassdoor are
+      intentionally omitted as they need external/scraped data.)_
 - [ ] STAR story library to organize reusable interview stories for behavioral
       questions.
 - [ ] Offer comparison tool to evaluate compensation, benefits, flexibility, and
