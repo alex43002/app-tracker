@@ -165,7 +165,12 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 - [ ] Browser extension to save jobs from any supported career page directly
       into the application tracker.
-- [ ] Email-based application tracking that automatically detects confirmations,
-      interviews, rejections, and recruiter messages.
+- [x] Email-based application tracking that automatically detects confirmations,
+      interviews, rejections, and recruiter messages. _(Backend
+      `app/email_tracking` classifies pasted email text into
+      confirmation/interview/rejection/offer/recruiter via deterministic
+      heuristics, matches it to tracked jobs by company, and suggests a status;
+      desktop **Email tracking** tab applies the suggested status in one click.
+      Full inbox auto-ingest would need an external mail integration.)_
 - [ ] Source performance analytics showing which job boards, recruiters, and
       referral channels produce the best results.
