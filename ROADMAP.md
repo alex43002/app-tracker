@@ -151,8 +151,11 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 
 ### ⬜ Interview & research prep
 
-- [ ] Interview preparation workspace that turns a job description into
+- [x] Interview preparation workspace that turns a job description into
       role-specific prep notes, likely topics, and practice questions.
+      _(Backend `app/interview_prep` deterministic generator reusing the
+      FEAT-21 skill/keyword extraction + a curated question bank; desktop
+      **Interview prep** tab that can pull from a tracked job.)_
 - [ ] Company research snapshots covering: what the company does, industry,
       size, location, hiring trends, tech-stack clues, recent news,
       Glassdoor-style notes (if integrated legally), and known ATS platform.
