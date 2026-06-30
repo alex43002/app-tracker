@@ -27,3 +27,24 @@ class IngestResponse(BaseModel):
 
 class SupportedSources(BaseModel):
     sources: list[str]
+
+
+class ResolveTokenRequest(BaseModel):
+    """Extract a board token from a pasted careers URL (FEAT-23)."""
+
+    url: str = Field(min_length=1, max_length=2000, description="A careers page URL")
+
+
+class ResolveTokenResponse(BaseModel):
+    source: str
+    boardToken: str
+
+
+class CompanyDirectoryEntry(BaseModel):
+    name: str
+    source: str
+    boardToken: str
+
+
+class CompanyDirectory(BaseModel):
+    companies: list[CompanyDirectoryEntry]

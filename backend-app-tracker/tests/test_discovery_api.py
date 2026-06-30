@@ -139,6 +139,52 @@ def test_ingest_fetch_failure_maps_to_error(client, auth_payload, monkeypatch):
     assert res.json()["error"]["code"] == "DISCOVERY_FETCH_FAILED"
 
 
+def test_resolve_board_from_url(client, auth_payload):
+    jwt = _register(client, auth_payload, "disc-resolve@example.com")
+    res = client.post(
+        "/api/discovery/resolve",
+        headers=_headers(jwt),
+        json={"url": "https://boards.greenhouse.io/stripe/jobs/1"},
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data == {"source": "greenhouse", "boardToken": "stripe"}
+
+
+def test_resolve_board_rejects_unknown_url(client, auth_payload):
+    jwt = _register(client, auth_payload, "disc-resolve-bad@example.com")
+    res = client.post(
+        "/api/discovery/resolve",
+        headers=_headers(jwt),
+        json={"url": "https://example.com/careers"},
+    )
+    assert res.status_code == 422
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_company_directory_search(client, auth_payload):
+    jwt = _register(client, auth_payload, "disc-companies@example.com")
+    headers = _headers(jwt)
+
+    all_res = client.get("/api/discovery/companies", headers=headers).json()["data"]
+    assert len(all_res["companies"]) >= 1
+
+    stripe = client.get(
+        "/api/discovery/companies?q=stripe", headers=headers
+    ).json()["data"]["companies"]
+    assert any(c["name"] == "Stripe" for c in stripe)
+
+
+def test_resolve_requires_auth(client):
+    assert (
+        client.post(
+            "/api/discovery/resolve",
+            json={"url": "https://boards.greenhouse.io/stripe"},
+        ).status_code
+        == 401
+    )
+
+
 def test_discovery_requires_auth(client):
     assert client.get("/api/discovery/jobs").status_code == 401
     assert (

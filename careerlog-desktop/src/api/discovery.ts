@@ -1,7 +1,9 @@
 import type {
+  CompanyDirectoryEntry,
   DiscoveredJobPage,
   DiscoveryFilters,
   IngestResult,
+  ResolvedBoard,
 } from "../types/discovery";
 import { apiClient } from "./client";
 
@@ -31,6 +33,22 @@ export function ingestBoard(
     boardToken,
     companyName,
   });
+}
+
+/** Extract the ATS source + board token from a pasted careers URL (FEAT-23). */
+export function resolveBoardToken(url: string) {
+  return apiClient.post<ResolvedBoard>("/api/discovery/resolve", { url });
+}
+
+/** Search the curated directory of popular public boards (FEAT-23). */
+export async function fetchCompanyDirectory(
+  q?: string
+): Promise<CompanyDirectoryEntry[]> {
+  const qs = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+  const res = await apiClient.get<{ companies: CompanyDirectoryEntry[] }>(
+    `/api/discovery/companies${qs}`
+  );
+  return res.companies;
 }
 
 /** Search/filter the aggregated postings. */
