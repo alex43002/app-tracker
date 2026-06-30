@@ -5,6 +5,7 @@ import type {
   CompanyFunnels,
   Funnel,
   JobStatusCounts,
+  SourcePerformance,
   TimeToOffer,
 } from "../types/analytics";
 import { apiClient } from "./client";
@@ -54,6 +55,13 @@ export function fetchTimeToOffer() {
 /** Per-company status breakdown, busiest companies first. */
 export function fetchCompanyFunnels() {
   return apiClient.get<CompanyFunnels>("/api/analytics/by-company");
+}
+
+/** Per-source funnel + conversion rates (which channels produce results). */
+export function fetchSourcePerformance() {
+  return apiClient.get<SourcePerformance>(
+    "/api/analytics/source-performance"
+  );
 }
 
 /* ============================================================

@@ -44,6 +44,19 @@ class CompanyFunnels(BaseModel):
     companies: list[CompanyFunnel]
 
 
+class SourceFunnel(JobStatusCounts):
+    """Per-channel status counts + conversion rates (source analytics)."""
+
+    source: str
+    responseRate: float
+    interviewRate: float
+    offerRate: float
+
+
+class SourcePerformance(BaseModel):
+    sources: list[SourceFunnel]
+
+
 class AnalyticsSummary(BaseModel):
     """All headline analytics in one payload (CLN-13)."""
 

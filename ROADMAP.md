@@ -167,5 +167,8 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
       into the application tracker.
 - [ ] Email-based application tracking that automatically detects confirmations,
       interviews, rejections, and recruiter messages.
-- [ ] Source performance analytics showing which job boards, recruiters, and
-      referral channels produce the best results.
+- [x] Source performance analytics showing which job boards, recruiters, and
+      referral channels produce the best results. _(Backend
+      `/api/analytics/source-performance` derives a channel from each job's URL
+      host and reports a per-source funnel + conversion rates; desktop
+      **Sources** tab highlights the best-converting channel.)_
