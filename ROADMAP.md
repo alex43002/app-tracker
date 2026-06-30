@@ -46,7 +46,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 
 ### Discover tab
 
-- [ ] **FEAT-23 — Friendlier board-token discovery.** Board tokens are opaque:
+- [x] **FEAT-23 — Friendlier board-token discovery.** Board tokens are opaque:
       users don't know what they are, where to find them, or how to use them.
       Add a user-friendly way to locate/select the correct board token (e.g. a
       searchable company picker, "paste a careers URL and we extract the token"

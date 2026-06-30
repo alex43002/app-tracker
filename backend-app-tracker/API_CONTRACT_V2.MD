@@ -774,6 +774,39 @@ Response (`data`):
 Errors: `UNSUPPORTED_SOURCE` (400), `DISCOVERY_FETCH_FAILED` (400, unknown board
 / ATS unreachable / bad token).
 
+### Resolve a Board Token from a URL (FEAT-23)
+
+```
+POST /api/discovery/resolve
+```
+
+Extracts the ATS source + board token from a pasted careers URL so users don't
+have to know what a board token is. Recognises Greenhouse
+(`boards.greenhouse.io/<token>`, `job-boards.greenhouse.io/<token>`,
+`boards-api.greenhouse.io/v1/boards/<token>`) and Lever
+(`jobs.lever.co/<token>`, `api.lever.co/v0/postings/<token>`). Request:
+
+```json
+{ "url": "https://boards.greenhouse.io/stripe/jobs/123" }
+```
+
+Response (`data`): `{ "source": "greenhouse", "boardToken": "stripe" }`.
+Errors: `VALIDATION_ERROR` (422) when no board token can be found.
+
+### Company Directory (FEAT-23)
+
+```
+GET /api/discovery/companies?q=<substring>&limit=20
+```
+
+A curated directory of popular public boards so users can pick a company
+instead of guessing a slug. Case-insensitive substring match on the name; an
+empty `q` returns the head of the directory. Response (`data`):
+
+```json
+{ "companies": [{ "name": "Stripe", "source": "greenhouse", "boardToken": "stripe" }] }
+```
+
 ### Search Postings
 
 ```
