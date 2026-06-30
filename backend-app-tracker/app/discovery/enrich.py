@@ -78,6 +78,43 @@ def requires_degree(description: str | None) -> bool:
     return bool(_DEGREE_RE.search(_norm(description)))
 
 
+# --------------------------- work authorization ----------------------------
+
+_SPONSOR_YES_RE = re.compile(
+    r"(visa sponsorship|will sponsor|sponsorship (?:is )?available|"
+    r"we sponsor|offer sponsorship|h-?1b sponsorship)"
+)
+_SPONSOR_NO_RE = re.compile(
+    r"(no (?:visa )?sponsorship|not (?:able to|be able to) sponsor|"
+    r"sponsorship (?:is )?not available|without sponsorship|"
+    r"unable to sponsor|do(?:es)? not (?:provide|offer) sponsorship|"
+    r"must be (?:legally )?authorized to work|"
+    r"authorization to work .* without sponsorship)"
+)
+_CLEARANCE_RE = re.compile(
+    r"(security clearance|secret clearance|ts/sci|"
+    r"must be a (?:us|u\.s\.) citizen|active clearance)"
+)
+
+
+def sponsorship_available(description: str | None) -> bool | None:
+    """True/False if the posting states its sponsorship stance, else None.
+
+    A "no" statement wins over a "yes" — postings that mention both usually mean
+    "we generally sponsor, but not for this role" or similar caveats.
+    """
+    d = _norm(description)
+    if _SPONSOR_NO_RE.search(d):
+        return False
+    if _SPONSOR_YES_RE.search(d):
+        return True
+    return None
+
+
+def clearance_required(description: str | None) -> bool:
+    return bool(_CLEARANCE_RE.search(_norm(description)))
+
+
 # --------------------------- quality ---------------------------------------
 
 _SPAM_RE = re.compile(
@@ -126,11 +163,12 @@ def dedupe_key(company: str | None, title: str | None, location: str | None) -> 
 def enrich(posting: dict) -> dict:
     """Compute all derived fields for a normalized posting."""
     flags = quality_flags(posting)
+    description = posting.get("description")
     return {
-        "experienceLevel": experience_level(
-            posting.get("title"), posting.get("description")
-        ),
-        "requiresDegree": requires_degree(posting.get("description")),
+        "experienceLevel": experience_level(posting.get("title"), description),
+        "requiresDegree": requires_degree(description),
+        "sponsorshipAvailable": sponsorship_available(description),
+        "clearanceRequired": clearance_required(description),
         "qualityFlags": flags,
         "qualityScore": quality_score(flags),
         "dedupeKey": dedupe_key(

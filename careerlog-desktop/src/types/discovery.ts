@@ -27,6 +27,8 @@ export interface DiscoveredJob {
   // Derived at ingest (FEAT-22 enrichment).
   experienceLevel: string | null;
   requiresDegree: boolean;
+  sponsorshipAvailable: boolean | null;
+  clearanceRequired: boolean;
   qualityFlags: string[];
   qualityScore: number;
 
@@ -62,8 +64,19 @@ export interface DiscoveryFilters {
   salaryMin?: number;
   experienceLevel?: string;
   requiresDegree?: boolean;
+  sponsorshipAvailable?: boolean;
+  clearanceRequired?: boolean;
   maxAgeDays?: number;
   minQuality?: number;
+  applyPreferences?: boolean;
+  preferredOnly?: boolean;
+}
+
+/** Per-user company preferences (FEAT-22). */
+export interface Preferences {
+  preferredCompanies: string[];
+  hiddenCompanies: string[];
+  hiddenEmploymentTypes: string[];
 }
 
 export interface IngestResult {

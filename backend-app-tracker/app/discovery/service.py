@@ -102,19 +102,21 @@ def _build_query(
     salary_min: int | None,
     experience_level: str | None,
     requires_degree: bool | None,
+    sponsorship_available: bool | None,
+    clearance_required: bool | None,
     max_age_days: int | None,
     min_quality: int | None,
+    preferred_companies: list[str] | None = None,
+    hidden_companies: list[str] | None = None,
+    hidden_employment_types: list[str] | None = None,
+    preferred_only: bool = False,
 ) -> dict:
     """Build a safe Mongo filter — every operator is server-constructed."""
     query: dict = {}
     if q:
         query["title"] = _escape_regex(q)
-    if company:
-        query["company"] = _escape_regex(company)
     if location:
         query["location"] = _escape_regex(location)
-    if employment_type:
-        query["employmentType"] = employment_type
     if source:
         query["source"] = source
     if salary_min is not None:
@@ -124,11 +126,31 @@ def _build_query(
         query["experienceLevel"] = experience_level
     if requires_degree is not None:
         query["requiresDegree"] = requires_degree
+    if sponsorship_available is not None:
+        query["sponsorshipAvailable"] = sponsorship_available
+    if clearance_required is not None:
+        query["clearanceRequired"] = clearance_required
     if max_age_days is not None:
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=max_age_days)
         query["postedAt"] = {"$gte": cutoff}
     if min_quality is not None:
         query["qualityScore"] = {"$gte": min_quality}
+
+    # Company filter precedence: an explicit search wins; otherwise apply the
+    # user's preferences (preferred-only, then hide-list).
+    if company:
+        query["company"] = _escape_regex(company)
+    elif preferred_only and preferred_companies:
+        query["company"] = {"$in": preferred_companies}
+    elif hidden_companies:
+        query["company"] = {"$nin": hidden_companies}
+
+    # Employment type: explicit filter wins; otherwise drop hidden types.
+    if employment_type:
+        query["employmentType"] = employment_type
+    elif hidden_employment_types:
+        query["employmentType"] = {"$nin": hidden_employment_types}
+
     return query
 
 
@@ -179,8 +201,14 @@ def list_jobs(
     salary_min: int | None = None,
     experience_level: str | None = None,
     requires_degree: bool | None = None,
+    sponsorship_available: bool | None = None,
+    clearance_required: bool | None = None,
     max_age_days: int | None = None,
     min_quality: int | None = None,
+    preferred_companies: list[str] | None = None,
+    hidden_companies: list[str] | None = None,
+    hidden_employment_types: list[str] | None = None,
+    preferred_only: bool = False,
 ) -> dict:
     query = _build_query(
         q=q,
@@ -191,8 +219,14 @@ def list_jobs(
         salary_min=salary_min,
         experience_level=experience_level,
         requires_degree=requires_degree,
+        sponsorship_available=sponsorship_available,
+        clearance_required=clearance_required,
         max_age_days=max_age_days,
         min_quality=min_quality,
+        preferred_companies=preferred_companies,
+        hidden_companies=hidden_companies,
+        hidden_employment_types=hidden_employment_types,
+        preferred_only=preferred_only,
     )
     if sort_by not in set(SORTABLE_FIELDS):
         sort_by = "postedAt"

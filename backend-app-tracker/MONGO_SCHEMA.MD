@@ -240,8 +240,10 @@ normalized into one shape. Deduped per source by `(source, boardToken, sourceId)
   salaryMax: Number | null,
 
   // Derived at ingest (enrichment) for eligibility/quality filtering.
-  experienceLevel: String | null,  // entry|mid|senior|lead
+  experienceLevel: String | null,     // entry|mid|senior|lead
   requiresDegree: Boolean,
+  sponsorshipAvailable: Boolean | null, // null = posting doesn't say
+  clearanceRequired: Boolean,
   qualityFlags: [String],   // no_salary|thin_description|no_location|underpaid|spammy_title
   qualityScore: Number,     // 0–100 (100 - 20·flags)
   dedupeKey: String,        // company|title|location slug — collapses duplicates
@@ -259,6 +261,31 @@ normalized into one shape. Deduped per source by `(source, boardToken, sourceId)
 { postedAt: -1 }
 { company: 1 }
 { employmentType: 1 }
+```
+
+---
+
+## User Preferences Collection (FEAT-22)
+
+**Collection name:** `user_preferences`
+
+One document per user; controls applied to discovery on opt-in.
+
+```js
+{
+  _id: ObjectId,
+  userId: String,                  // unique; from JWT `sub`
+  preferredCompanies: [String],
+  hiddenCompanies: [String],
+  hiddenEmploymentTypes: [String],
+  updatedAt: Date
+}
+```
+
+### Indexes (intended)
+
+```js
+{ userId: 1 }  // unique
 ```
 
 ---
