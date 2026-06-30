@@ -670,10 +670,13 @@ A `SavedSearch` is:
 
 ## Matching (FEAT-21)
 
-Résumé ↔ job matching. Extracts skills/keywords (a curated taxonomy plus
-classic frequency-based keyword extraction — **no generative AI**) and scores a
-résumé against a job description so a seeker can see their fit before applying.
-Both endpoints require auth.
+Résumé ↔ job matching. Extracts skills/keywords (a curated taxonomy of ~150
+skills plus classic frequency-based keyword extraction — **no generative AI**)
+and scores a résumé against a job description so a seeker can see their fit
+before applying. Keyword coverage uses light suffix stemming and matches a job's
+keywords against the résumé's full vocabulary (not just its top terms), so
+inflectional variants and out-of-top-N matches still count (FEAT-26). Both
+endpoints require auth.
 
 ### Scrape a Job Posting
 

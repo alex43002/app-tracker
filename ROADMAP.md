@@ -59,7 +59,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 
 ### Match tab
 
-- [ ] **FEAT-26 — Improve keyword coverage.** Keyword coverage in the Match tab
+- [x] **FEAT-26 — Improve keyword coverage.** Keyword coverage in the Match tab
       needs significant improvement (still no AI — expand the
       taxonomy/extraction with classic NLP/ML).
 

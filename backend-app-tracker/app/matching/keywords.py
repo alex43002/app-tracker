@@ -48,6 +48,13 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "r": ("r language",),
     "sql": ("sql",),
     "bash": ("bash", "shell scripting", "shell script"),
+    "objective-c": ("objective-c", "objective c", "objc"),
+    "dart": ("dart",),
+    "elixir": ("elixir",),
+    "perl": ("perl",),
+    "matlab": ("matlab",),
+    "solidity": ("solidity",),
+    "groovy": ("groovy",),
     # Frontend
     "react": ("react", "react.js", "reactjs"),
     "angular": ("angular", "angular.js", "angularjs"),
@@ -57,26 +64,52 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "css": ("css", "css3"),
     "tailwind": ("tailwind", "tailwindcss", "tailwind css"),
     "redux": ("redux",),
+    "svelte": ("svelte", "sveltekit"),
+    "sass": ("sass", "scss"),
+    "jquery": ("jquery",),
+    "webpack": ("webpack",),
+    "vite": ("vite",),
+    "bootstrap": ("bootstrap",),
+    "material ui": ("material ui", "material-ui", "mui"),
+    "accessibility": ("accessibility", "a11y", "wcag"),
     # Backend / frameworks
     "node.js": ("node.js", "nodejs", "node"),
     "express": ("express", "express.js", "expressjs"),
+    "nest.js": ("nest.js", "nestjs"),
     "django": ("django",),
     "flask": ("flask",),
     "fastapi": ("fastapi", "fast api"),
     "spring": ("spring", "spring boot", "springboot"),
     "rails": ("rails", "ruby on rails"),
+    ".net": (".net", "dotnet", "asp.net", "asp.net core"),
+    "laravel": ("laravel",),
     "graphql": ("graphql",),
     "rest": ("rest", "rest api", "restful", "restful api"),
+    "grpc": ("grpc",),
+    "soap": ("soap",),
+    "websockets": ("websockets", "websocket"),
     # Data / ML (classic — the engine itself uses no generative AI)
     "machine learning": ("machine learning", "ml"),
+    "deep learning": ("deep learning",),
+    "nlp": ("nlp", "natural language processing"),
+    "computer vision": ("computer vision",),
+    "data engineering": ("data engineering",),
+    "data science": ("data science", "data scientist"),
     "pandas": ("pandas",),
     "numpy": ("numpy",),
     "scikit-learn": ("scikit-learn", "sklearn", "scikit learn"),
     "tensorflow": ("tensorflow",),
     "pytorch": ("pytorch",),
+    "keras": ("keras",),
+    "matplotlib": ("matplotlib",),
     "spark": ("spark", "apache spark", "pyspark"),
-    "etl": ("etl",),
+    "hadoop": ("hadoop",),
+    "kafka": ("kafka", "apache kafka"),
+    "airflow": ("airflow", "apache airflow"),
+    "dbt": ("dbt",),
+    "etl": ("etl", "elt"),
     "data analysis": ("data analysis", "data analytics"),
+    "data warehousing": ("data warehousing", "data warehouse"),
     # Databases
     "postgresql": ("postgresql", "postgres", "psql"),
     "mysql": ("mysql",),
@@ -84,6 +117,13 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "redis": ("redis",),
     "elasticsearch": ("elasticsearch", "elastic search"),
     "sqlite": ("sqlite",),
+    "oracle": ("oracle", "oracle db"),
+    "sql server": ("sql server", "mssql", "microsoft sql server"),
+    "dynamodb": ("dynamodb", "dynamo db"),
+    "cassandra": ("cassandra",),
+    "snowflake": ("snowflake",),
+    "bigquery": ("bigquery", "big query"),
+    "neo4j": ("neo4j",),
     # Cloud / DevOps
     "aws": ("aws", "amazon web services"),
     "azure": ("azure", "microsoft azure"),
@@ -91,11 +131,40 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "docker": ("docker",),
     "kubernetes": ("kubernetes", "k8s"),
     "terraform": ("terraform",),
-    "ci/cd": ("ci/cd", "ci cd", "cicd", "continuous integration"),
+    "ansible": ("ansible",),
+    "helm": ("helm",),
+    "prometheus": ("prometheus",),
+    "grafana": ("grafana",),
+    "ci/cd": ("ci/cd", "ci cd", "cicd", "continuous integration", "continuous delivery"),
     "jenkins": ("jenkins",),
     "github actions": ("github actions",),
+    "gitlab ci": ("gitlab ci", "gitlab-ci"),
+    "circleci": ("circleci", "circle ci"),
+    "lambda": ("aws lambda", "lambda functions"),
+    "serverless": ("serverless",),
     "linux": ("linux", "unix"),
     "nginx": ("nginx",),
+    "kafka streams": ("kafka streams",),
+    # Mobile
+    "android": ("android",),
+    "ios": ("ios",),
+    "react native": ("react native",),
+    "flutter": ("flutter",),
+    "xamarin": ("xamarin",),
+    # Security
+    "penetration testing": ("penetration testing", "pen testing", "pentesting"),
+    "owasp": ("owasp",),
+    "siem": ("siem",),
+    "oauth": ("oauth", "oauth2"),
+    "jwt": ("jwt",),
+    "encryption": ("encryption", "cryptography"),
+    # QA / testing
+    "selenium": ("selenium",),
+    "cypress": ("cypress",),
+    "playwright": ("playwright",),
+    "jest": ("jest",),
+    "pytest": ("pytest",),
+    "junit": ("junit",),
     # Practices / methods
     "agile": ("agile",),
     "scrum": ("scrum",),
@@ -103,19 +172,49 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "tdd": ("tdd", "test driven development", "test-driven development"),
     "microservices": ("microservices", "micro services"),
     "unit testing": ("unit testing", "unit tests"),
+    "object-oriented programming": ("object-oriented programming", "oop"),
+    "design patterns": ("design patterns",),
+    "data structures": ("data structures",),
+    "algorithms": ("algorithms",),
+    "mvc": ("mvc",),
     # Tools
     "git": ("git",),
     "jira": ("jira",),
+    "confluence": ("confluence",),
     "figma": ("figma",),
     "excel": ("excel", "microsoft excel"),
     "tableau": ("tableau",),
     "power bi": ("power bi", "powerbi"),
+    "looker": ("looker",),
+    "salesforce": ("salesforce",),
+    "hubspot": ("hubspot",),
+    # Design
+    "ui/ux": ("ui/ux", "ux design", "ui design", "user experience"),
+    "sketch": ("sketch app",),
+    "photoshop": ("photoshop", "adobe photoshop"),
+    "illustrator": ("illustrator", "adobe illustrator"),
+    "wireframing": ("wireframing", "wireframe"),
+    # Marketing / analytics
+    "seo": ("seo", "search engine optimization"),
+    "sem": ("sem",),
+    "google analytics": ("google analytics",),
+    "content marketing": ("content marketing",),
+    # Business / finance
+    "financial modeling": ("financial modeling", "financial modelling"),
+    "quickbooks": ("quickbooks",),
+    "gaap": ("gaap",),
+    "stakeholder management": ("stakeholder management",),
+    "product management": ("product management",),
+    # Healthcare / compliance
+    "hipaa": ("hipaa",),
+    "emr": ("emr", "electronic medical records"),
     # Soft skills
     "communication": ("communication",),
     "leadership": ("leadership",),
     "teamwork": ("teamwork", "team work"),
     "problem solving": ("problem solving", "problem-solving"),
     "project management": ("project management",),
+    "mentoring": ("mentoring", "mentorship"),
 }
 
 # Reverse index: alias -> canonical. Longer aliases are matched first so
@@ -207,6 +306,79 @@ def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
 
     ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     return ranked[:limit]
+
+
+# ---------------------------------------------------------------------------
+# Light stemming + vocabulary (FEAT-26: better keyword coverage)
+#
+# Exact string matching makes the keyword signal brittle: "managing" in a job
+# post won't match "managed"/"management" on a résumé, and a term that appears
+# in the résumé but not in its top-N keywords is missed entirely. A conservative
+# suffix-stripping stemmer (classic NLP, deterministic, no ML model) plus a
+# full-text vocabulary set fix both without inflating scores.
+# ---------------------------------------------------------------------------
+
+# Longest suffixes first so "ing" is tried before "s", etc.
+_STEM_SUFFIXES: tuple[str, ...] = tuple(
+    sorted(
+        (
+            "izations", "ization", "izing", "ements", "ement", "ations",
+            "ation", "ingly", "ings", "ing", "edly", "ies", "ied", "ers",
+            "ors", "er", "or", "ness", "ities", "ity", "ments", "ment", "ed",
+            "es", "ly", "s",
+        ),
+        key=len,
+        reverse=True,
+    )
+)
+
+
+def stem(token: str) -> str:
+    """Collapse a word to a crude stem so inflections match.
+
+    Conservative on purpose: skill tokens bearing punctuation (``c++``,
+    ``node.js``, ``ci/cd``) and very short words are returned untouched. A
+    single suffix is stripped, then a trailing ``e`` is dropped so
+    ``manage``/``managing``/``management``/``managed`` all fold to ``manag``.
+    """
+    if len(token) <= 4 or any(c in token for c in ".+#/_-"):
+        return token
+    for suffix in _STEM_SUFFIXES:
+        if token.endswith(suffix) and len(token) - len(suffix) >= 3:
+            token = token[: -len(suffix)]
+            break
+    if len(token) > 3 and token.endswith("e"):
+        token = token[:-1]
+    return token
+
+
+def stem_term(term: str) -> str:
+    """Stem each word of a (possibly multi-word) term."""
+    return " ".join(stem(part) for part in term.split(" "))
+
+
+def vocabulary(text: str) -> set[str]:
+    """All stemmed content terms (unigrams + bigrams) present in ``text``.
+
+    Used as the *present* set when scoring keyword coverage so a job keyword is
+    credited whenever it appears anywhere in the résumé — not just in the
+    résumé's top-ranked keywords — and across inflectional variants.
+    """
+    toks = [
+        t
+        for t in _tokens(normalize(text))
+        if t not in STOPWORDS and not t.isdigit() and len(t) > 1
+    ]
+    stems = [stem(t) for t in toks]
+    vocab: set[str] = set(stems)
+    for a, b in zip(stems, stems[1:]):
+        vocab.add(f"{a} {b}")
+    # Fold in canonical skills so a job keyword that is really a skill still
+    # matches even though skills are stored unstemmed.
+    for canonical in extract_skills(text):
+        vocab.add(canonical)
+        vocab.add(stem_term(canonical))
+    return vocab
 
 
 @dataclass(frozen=True)
