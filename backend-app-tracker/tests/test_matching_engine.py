@@ -50,6 +50,39 @@ def test_profile_does_not_double_count_skill_as_keyword():
     assert "python" not in prof.keywords
 
 
+def test_expanded_taxonomy_covers_more_domains():
+    text = "Built React Native apps, ran a Kafka pipeline, used Snowflake and Terraform."
+    skills = set(keywords.extract_skills(text))
+    assert {"react native", "kafka", "snowflake", "terraform"} <= skills
+
+
+@pytest.mark.parametrize(
+    "word,expected",
+    [
+        ("managing", "manag"),
+        ("managed", "manag"),
+        ("management", "manag"),
+        ("manager", "manag"),
+        ("systems", "system"),
+        ("analytics", "analytic"),
+        # Skill tokens with punctuation and very short words are left alone.
+        ("c++", "c++"),
+        ("node.js", "node.js"),
+        ("ci/cd", "ci/cd"),
+        ("api", "api"),
+    ],
+)
+def test_stem_folds_inflections_but_spares_skills(word, expected):
+    assert keywords.stem(word) == expected
+
+
+def test_vocabulary_includes_stemmed_unigrams_and_bigrams():
+    vocab = keywords.vocabulary("Managing distributed logistics operations daily")
+    assert "manag" in vocab
+    assert "logistic" in vocab
+    assert "distribut logistic" in vocab
+
+
 # --------------------------- text extraction --------------------------------
 
 def test_extract_plain_text():

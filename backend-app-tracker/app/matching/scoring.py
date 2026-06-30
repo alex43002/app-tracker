@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.matching.keywords import TermProfile, profile
+from app.matching.keywords import TermProfile, profile, stem_term, vocabulary
 
 # Skills dominate the score; keyword coverage is a supporting signal. If a job
 # posting yields no skills at all (taxonomy miss), scoring falls back entirely
@@ -59,15 +59,38 @@ def _coverage(required: list[str], present: set[str]) -> tuple[float, list[str],
     return len(matched) / len(required), matched, missing
 
 
+def _keyword_coverage(
+    required: list[str], resume_vocab: set[str]
+) -> tuple[float, list[str], list[str]]:
+    """Keyword coverage with light stemming against the full résumé vocabulary.
+
+    A required keyword counts as covered if it (or its stemmed form) appears
+    anywhere in the résumé. Matched/missing keep the original job phrasing so
+    the UI shows readable terms.
+    """
+    if not required:
+        return 1.0, [], []
+    matched, missing = [], []
+    for term in required:
+        if term in resume_vocab or stem_term(term) in resume_vocab:
+            matched.append(term)
+        else:
+            missing.append(term)
+    return len(matched) / len(required), matched, missing
+
+
 def score_match(resume_text: str, job_text: str, *, keyword_limit: int = 25) -> MatchResult:
     """Compare a résumé to a job description and return an explainable score."""
     resume = profile(resume_text, keyword_limit=keyword_limit * 2)
     job = profile(job_text, keyword_limit=keyword_limit)
 
     resume_terms = resume.all_terms
+    resume_vocab = vocabulary(resume_text)
 
     skill_cov, matched_skills, missing_skills = _coverage(job.skills, resume_terms)
-    kw_cov, matched_keywords, missing_keywords = _coverage(job.keywords, resume_terms)
+    kw_cov, matched_keywords, missing_keywords = _keyword_coverage(
+        job.keywords, resume_vocab
+    )
 
     # Blend the two signals. When the job has no detectable skills, lean fully on
     # keyword coverage so the score doesn't collapse to a meaningless 0/100.
