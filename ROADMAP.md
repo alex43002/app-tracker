@@ -53,7 +53,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       helper, and inline guidance/examples).
 - [x] **FEAT-24 — Location filtering.** Let users narrow discovered jobs by
       city, state, remote status, or region.
-- [ ] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
+- [x] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
       platforms beyond Greenhouse/Lever to improve discovery coverage across
       companies.
 

@@ -21,6 +21,7 @@ _EMPLOYMENT_ALIASES: dict[str, str] = {
     "regular": "full-time",
     "part time": "part-time",
     "part-time": "part-time",
+    "parttime": "part-time",
     "contract": "contract",
     "contractor": "contract",
     "contract-to-hire": "contract",
