@@ -93,7 +93,7 @@ no-generative-AI matching/discovery constraint below).
       users can view and modify their basic user information (e.g. name, email,
       and other core account details) from within the app, with validation and
       persistence to the backend.
-- [ ] **FEAT-29 — Automatic desktop app updates.** Make the desktop app
+- [x] **FEAT-29 — Automatic desktop app updates.** Make the desktop app
       auto-update from the latest published GitHub releases, similar to
       platforms like Discord: check for updates in the background, download new
       versions, and install them seamlessly (prompt or apply on next launch).
