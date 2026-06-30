@@ -22,6 +22,7 @@ from app.resumes.routes import router as resumes_router
 from app.analytics.routes import router as analytics_router
 from app.saved_searches.routes import router as saved_searches_router
 from app.matching.routes import router as matching_router
+from app.discovery.routes import router as discovery_router
 
 
 @asynccontextmanager
@@ -144,3 +145,4 @@ app.include_router(
     saved_searches_router, prefix="/api/saved-searches", tags=["Saved Searches"]
 )
 app.include_router(matching_router, prefix="/api/match", tags=["Matching"])
+app.include_router(discovery_router, prefix="/api/discovery", tags=["Discovery"])
