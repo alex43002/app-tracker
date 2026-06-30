@@ -23,6 +23,54 @@ branded, signed release still needs:
 
 ---
 
+## ⬜ Improvements & fixes from manual testing (2026-06-30)
+
+Follow-ups to the shipped **Match** (FEAT-21) and **Discover/Compare/Alerts**
+(FEAT-22) work, found while exercising the desktop app end-to-end. _Same
+constraint as below: no generative AI — classic NLP/ML is fine._
+
+### Bugs
+
+- [ ] **BUG-23 — Compare tab fails to load jobs (422).** The Compare tab requests
+      `GET /api/jobs/?page=1&pageSize=200&...`, but the endpoint caps `pageSize`
+      at `le=100` ([`app/jobs/routes.py`](backend-app-tracker/app/jobs/routes.py)),
+      so the request is rejected with `VALIDATION_ERROR`. Fix by raising the cap
+      (or removing it for this view) and/or having the desktop client page within
+      the allowed bounds.
+- [ ] **BUG-24 — Discover employment-type filter returns 0 results.** Reproduced
+      with the Stripe board token: filtering by `employmentType` returns nothing
+      for every option, even though employment type is shown on the linked
+      posting page. Audit ingestion/normalization so `employmentType` is reliably
+      extracted and stored on `discovered_jobs`, and confirm the filter matches
+      the normalized values.
+
+### Discover tab
+
+- [ ] **FEAT-23 — Friendlier board-token discovery.** Board tokens are opaque:
+      users don't know what they are, where to find them, or how to use them.
+      Add a user-friendly way to locate/select the correct board token (e.g. a
+      searchable company picker, "paste a careers URL and we extract the token"
+      helper, and inline guidance/examples).
+- [ ] **FEAT-24 — Location filtering.** Let users narrow discovered jobs by
+      city, state, remote status, or region.
+- [ ] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
+      platforms beyond Greenhouse/Lever to improve discovery coverage across
+      companies.
+
+### Match tab
+
+- [ ] **FEAT-26 — Improve keyword coverage.** Keyword coverage in the Match tab
+      needs significant improvement (still no AI — expand the
+      taxonomy/extraction with classic NLP/ML).
+
+### Alerts tab
+
+- [ ] **FEAT-27 — Distinguish pending vs. sent alerts.** Alerts scheduled for a
+      future date/time should be visually marked as not-yet-sent, and alerts that
+      have already fired should move into a separate **Sent Alerts** section.
+
+---
+
 ## ⬜ Proposed features (resume matching, job discovery & prep)
 
 _Constraint: no generative AI. Classic ML (NLP, TF-IDF, embeddings, classic
