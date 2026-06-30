@@ -36,6 +36,38 @@ LEVER_FIXTURE = [
     }
 ]
 
+ASHBY_FIXTURE = {
+    "name": "Acme",
+    "jobs": [
+        {
+            "id": "ash-1",
+            "title": "Platform Engineer",
+            "location": "San Francisco",
+            "isRemote": True,
+            "employmentType": "FullTime",
+            "jobUrl": "https://jobs.ashbyhq.com/acme/ash-1",
+            "descriptionPlain": "Go and Kubernetes. Salary $140,000 - $170,000.",
+            "publishedAt": "2026-06-10T09:00:00Z",
+        }
+    ],
+}
+
+RECRUITEE_FIXTURE = {
+    "offers": [
+        {
+            "id": 42,
+            "title": "Product Designer",
+            "location": "Amsterdam, NL",
+            "remote": False,
+            "employment_type_code": "parttime",
+            "careers_url": "https://acme.recruitee.com/o/product-designer",
+            "description": "<p>Figma and design systems. Pay 60k-80k.</p>",
+            "requirements": "<p>3 years experience.</p>",
+            "published_at": "2026-06-12T08:00:00Z",
+        }
+    ]
+}
+
 
 # --------------------------- normalization ---------------------------------
 
@@ -111,6 +143,44 @@ def test_lever_connector_normalizes(monkeypatch):
     assert job["location"] == "New York"
     assert (job["salaryMin"], job["salaryMax"]) == (100000, 130000)
     assert job["postedAt"] is not None
+
+
+def test_ashby_connector_normalizes(monkeypatch):
+    monkeypatch.setattr(connectors, "_get_json", lambda url: ASHBY_FIXTURE)
+    jobs = fetch_source("ashby", "acme")
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job["source"] == "ashby"
+    assert job["sourceId"] == "ash-1"
+    assert job["company"] == "Acme"  # falls back to the board's name field
+    assert job["title"] == "Platform Engineer"
+    assert job["employmentType"] == "full-time"
+    # isRemote folds into the location so the location/work filters stay aligned.
+    assert "Remote" in job["location"]
+    assert (job["salaryMin"], job["salaryMax"]) == (140000, 170000)
+    assert job["postedAt"] is not None
+
+
+def test_recruitee_connector_normalizes(monkeypatch):
+    monkeypatch.setattr(connectors, "_get_json", lambda url: RECRUITEE_FIXTURE)
+    jobs = fetch_source("recruitee", "acme", "Acme Inc")
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job["source"] == "recruitee"
+    assert job["sourceId"] == "42"
+    assert job["company"] == "Acme Inc"
+    assert job["title"] == "Product Designer"
+    assert job["employmentType"] == "part-time"
+    assert job["location"] == "Amsterdam, NL"
+    assert "<p>" not in job["description"]  # HTML stripped
+    assert "Figma" in job["description"]
+    assert (job["salaryMin"], job["salaryMax"]) == (60000, 80000)
+
+
+def test_supported_sources_includes_new_connectors():
+    from app.discovery.connectors import SUPPORTED_SOURCES
+
+    assert {"greenhouse", "lever", "ashby", "recruitee"} <= set(SUPPORTED_SOURCES)
 
 
 def test_fetch_source_rejects_unknown_source():

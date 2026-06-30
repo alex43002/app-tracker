@@ -740,14 +740,16 @@ ownership/lookup errors (`RESOURCE_OWNERSHIP_VIOLATION`, `RESUME_NOT_FOUND`,
 ## Discovery (FEAT-22)
 
 Aggregated, normalized public job postings collected from supported ATS systems
-(Greenhouse, Lever). Postings are **shared** (not per-user) and deduped per
+(Greenhouse, Lever, Ashby, Recruitee). Postings are **shared** (not per-user)
+and deduped per
 source by `(source, boardToken, sourceId)`. All endpoints require auth. Only
 public ATS JSON APIs are used — no HTML scraping, nothing behind a login.
 
 ### Supported Sources
 
 ```
-GET /api/discovery/sources      # { "sources": ["greenhouse", "lever"] }
+GET /api/discovery/sources
+# { "sources": ["greenhouse", "lever", "ashby", "recruitee"] }
 ```
 
 ### Ingest a Board

@@ -5,6 +5,8 @@ auth, no HTML scraping):
 
 * Greenhouse — ``boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true``
 * Lever      — ``api.lever.co/v0/postings/{token}?mode=json``
+* Ashby      — ``api.ashbyhq.com/posting-api/job-board/{token}``
+* Recruitee  — ``{token}.recruitee.com/api/offers/``
 
 A connector takes a company's *board token* (the slug in its careers URL) and
 returns a list of normalized posting dicts. Network access goes through the
@@ -159,10 +161,110 @@ def fetch_lever(token: str, company: str | None = None) -> list[dict]:
     return out
 
 
+# --------------------------------------------------------------------------- #
+# Ashby
+# --------------------------------------------------------------------------- #
+
+def _with_remote(location: str | None) -> str | None:
+    """Fold an explicit remote flag into the location string.
+
+    Several ATSs expose a structured ``isRemote``/``remote`` boolean separate
+    from the (often city-only) location text. Surfacing it in the location keeps
+    the location filter and the enrich-derived work arrangement consistent.
+    """
+    if not location:
+        return "Remote"
+    if "remote" in location.lower():
+        return location
+    return f"{location} (Remote)"
+
+
+def fetch_ashby(token: str, company: str | None = None) -> list[dict]:
+    url = (
+        "https://api.ashbyhq.com/posting-api/job-board/"
+        f"{token}?includeCompensation=true"
+    )
+    data = _get_json(url)
+    jobs = data.get("jobs", []) if isinstance(data, dict) else []
+    company_name = company or (data.get("name") if isinstance(data, dict) else None) or token
+    out: list[dict] = []
+    for job in jobs:
+        description = (job.get("descriptionPlain") or "").strip()
+        if not description and job.get("descriptionHtml"):
+            description, _ = html_to_text(job["descriptionHtml"])
+        location = normalize_location(job.get("location"))
+        if job.get("isRemote"):
+            location = _with_remote(location)
+        sal_min, sal_max = parse_salary(description)
+        out.append(
+            {
+                "source": "ashby",
+                "sourceId": str(job.get("id")),
+                "company": company_name,
+                "title": (job.get("title") or "").strip(),
+                "location": location,
+                "employmentType": normalize_employment_type(
+                    job.get("employmentType")
+                ),
+                "url": job.get("jobUrl") or job.get("applyUrl"),
+                "description": description,
+                "salaryMin": sal_min,
+                "salaryMax": sal_max,
+                "postedAt": _parse_iso(job.get("publishedAt")),
+            }
+        )
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Recruitee
+# --------------------------------------------------------------------------- #
+
+def fetch_recruitee(token: str, company: str | None = None) -> list[dict]:
+    url = f"https://{token}.recruitee.com/api/offers/"
+    data = _get_json(url)
+    offers = data.get("offers", []) if isinstance(data, dict) else []
+    company_name = company or token
+    out: list[dict] = []
+    for offer in offers:
+        html = " ".join(
+            part
+            for part in (offer.get("description"), offer.get("requirements"))
+            if part
+        )
+        description, _ = html_to_text(html)
+        location = normalize_location(offer.get("location"))
+        if offer.get("remote"):
+            location = _with_remote(location)
+        sal_min, sal_max = parse_salary(description)
+        out.append(
+            {
+                "source": "recruitee",
+                "sourceId": str(offer.get("id")),
+                "company": company_name,
+                "title": (offer.get("title") or "").strip(),
+                "location": location,
+                "employmentType": normalize_employment_type(
+                    offer.get("employment_type_code")
+                ),
+                "url": offer.get("careers_url") or offer.get("careers_apply_url"),
+                "description": description,
+                "salaryMin": sal_min,
+                "salaryMax": sal_max,
+                "postedAt": _parse_iso(
+                    offer.get("published_at") or offer.get("created_at")
+                ),
+            }
+        )
+    return out
+
+
 # source name -> connector callable
 CONNECTORS = {
     "greenhouse": fetch_greenhouse,
     "lever": fetch_lever,
+    "ashby": fetch_ashby,
+    "recruitee": fetch_recruitee,
 }
 
 SUPPORTED_SOURCES = tuple(CONNECTORS)
