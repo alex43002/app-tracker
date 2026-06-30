@@ -785,7 +785,10 @@ Paginated (same envelope as other list endpoints). Filters:
 
 - `q` (title substring), `company`/`location` (substring)
 - `employmentType` (exact, canonical
-  `full-time|part-time|contract|internship|temporary`), `source` (exact)
+  `full-time|part-time|contract|internship|temporary`), `source` (exact).
+  Always populated at ingest: a structured ATS value (e.g. Lever `commitment`)
+  wins, otherwise it is inferred from the title/description, otherwise it
+  defaults to `full-time`.
 - `salaryMin` — postings whose `salaryMax` ≥ value
 - `experienceLevel` — `entry|mid|senior|lead` (eligibility)
 - `requiresDegree` — `true|false` (eligibility)

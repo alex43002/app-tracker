@@ -37,7 +37,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       so the request is rejected with `VALIDATION_ERROR`. Fix by raising the cap
       (or removing it for this view) and/or having the desktop client page within
       the allowed bounds.
-- [ ] **BUG-24 — Discover employment-type filter returns 0 results.** Reproduced
+- [x] **BUG-24 — Discover employment-type filter returns 0 results.** Reproduced
       with the Stripe board token: filtering by `employmentType` returns nothing
       for every option, even though employment type is shown on the linked
       posting page. Audit ingestion/normalization so `employmentType` is reliably

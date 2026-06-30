@@ -108,7 +108,9 @@ def fetch_greenhouse(token: str, company: str | None = None) -> list[dict]:
                 "company": company_name,
                 "title": (job.get("title") or "").strip(),
                 "location": location,
-                "employmentType": None,  # Greenhouse boards rarely expose this
+                # Greenhouse exposes no structured commitment field; the enrich
+                # step infers it from title/description (defaulting to full-time).
+                "employmentType": None,
                 "url": job.get("absolute_url"),
                 "description": description,
                 "salaryMin": sal_min,
