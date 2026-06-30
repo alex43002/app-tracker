@@ -89,6 +89,19 @@ def test_create_job_with_notes_persists(client, auth_token):
     assert match and match[0]["notes"] == "Referred by Sam"
 
 
+def test_list_jobs_allows_pagesize_up_to_200(client, auth_token):
+    """BUG-23: the Compare view requests pageSize=200, which must be accepted."""
+    headers = {"Authorization": f"Bearer {auth_token['jwt']}"}
+
+    ok = client.get("/api/jobs?pageSize=200", headers=headers)
+    assert ok.status_code == 200
+    assert ok.json()["data"]["meta"]["pageSize"] == 200
+
+    too_big = client.get("/api/jobs?pageSize=201", headers=headers)
+    assert too_big.status_code == 422
+    assert too_big.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_company_filter_matches_case_insensitive_substring(client, auth_token):
     """FEAT-19: company/location filters match partial, case-insensitive text."""
     headers = {"Authorization": f"Bearer {auth_token['jwt']}"}

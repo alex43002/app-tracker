@@ -76,7 +76,7 @@ async def create_job(
 @router.get("/")
 def get_jobs(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(25, ge=1, le=100),
+    pageSize: int = Query(25, ge=1, le=200),
     sortBy: str = Query("createdAt"),
     sortOrder: str = Query("asc"),
     filters: str | None = Query(None),
