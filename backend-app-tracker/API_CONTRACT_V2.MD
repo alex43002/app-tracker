@@ -667,6 +667,76 @@ A `SavedSearch` is:
 
 ---
 
+## Matching (FEAT-21)
+
+Résumé ↔ job matching. Extracts skills/keywords (a curated taxonomy plus
+classic frequency-based keyword extraction — **no generative AI**) and scores a
+résumé against a job description so a seeker can see their fit before applying.
+Both endpoints require auth.
+
+### Scrape a Job Posting
+
+```
+POST /api/match/scrape          # { "url": "https://…" }
+```
+
+Fetches a public posting URL and extracts its terms. The fetch is SSRF-guarded:
+only `http(s)`, the host must resolve to public IPs, redirects are re-validated
+per hop, and the body is size/time capped. Response (`data`):
+
+```json
+{
+  "title": "Backend Engineer",
+  "textLength": 1234,
+  "skills": ["python", "fastapi", "docker"],
+  "keywords": ["distributed systems", "payments"]
+}
+```
+
+Errors: `JOB_FETCH_FAILED` (400, e.g. non-public address / unreachable),
+`JOB_FETCH_EMPTY` (422, no readable text at the URL).
+
+### Score a Résumé Against a Job
+
+```
+POST /api/match/score
+```
+
+Request — provide **one résumé source** (`resumeId` of an uploaded résumé *or*
+raw `resumeText`) and **one job source** (`jobUrl` to scrape *or* raw
+`jobDescription` text):
+
+```json
+{ "resumeId": "…", "jobDescription": "We need Python, Django, AWS…" }
+```
+
+Response (`data`) — a 0–100 score plus an explainable breakdown and the gaps
+(missing skills first) for gap analysis:
+
+```json
+{
+  "score": 82,
+  "breakdown": {
+    "skillCoverage": 0.8,
+    "keywordCoverage": 0.5,
+    "matchedSkills": ["python", "django"],
+    "missingSkills": ["aws"],
+    "matchedKeywords": ["payments"],
+    "missingKeywords": ["fintech"]
+  },
+  "gaps": ["aws", "fintech"],
+  "resume": { "skills": ["python", "django"], "keywords": ["payments"] },
+  "job":    { "skills": ["python", "django", "aws"], "keywords": ["payments", "fintech"] }
+}
+```
+
+Errors: `VALIDATION_ERROR` (422, missing a résumé/job source),
+`RESUME_UNREADABLE` (422, couldn't extract text from the file), plus the résumé
+ownership/lookup errors (`RESOURCE_OWNERSHIP_VIOLATION`, `RESUME_NOT_FOUND`,
+`INVALID_RESUME_ID`) and the scrape errors above when `jobUrl` is used.
+
+---
+
 ## Error Codes (v1, as implemented)
 
 | Code | HTTP | Meaning |
@@ -679,6 +749,9 @@ A `SavedSearch` is:
 | `RESOURCE_NOT_FOUND` | 404 | Resource does not exist |
 | `INVALID_RESUME_ID` | 400 | Résumé id is not a valid ObjectId |
 | `RESUME_NOT_FOUND` | 404 | No GridFS file for that id |
+| `RESUME_UNREADABLE` | 422 | Could not extract text from the résumé file (matching) |
+| `JOB_FETCH_FAILED` | 400 | Job-posting URL could not be fetched safely/successfully |
+| `JOB_FETCH_EMPTY` | 422 | No readable job text found at the URL |
 | `VALIDATION_ERROR` | 400 / 413 / 422 | Empty update, bad/forbidden filters, request validation failure, or oversized/invalid résumé |
 
 > Request-validation failures (missing required field, bad `EmailStr`/`HttpUrl`)
