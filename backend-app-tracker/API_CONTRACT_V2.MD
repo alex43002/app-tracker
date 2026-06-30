@@ -54,7 +54,8 @@ On error:
 Query params: `?page=1&pageSize=25&sortBy=createdAt&sortOrder=asc&filters=<json>`
 
 - `page` ≥ 1 (default `1`)
-- `pageSize` 1–100 (default **25**)
+- `pageSize` 1–100 (default **25**); the jobs list allows up to **200** to
+  support the Compare view
 - `sortBy` — any document field (default `createdAt`)
 - `sortOrder` — `asc` | `desc` (default `asc`)
 - `filters` — optional JSON-encoded object merged into the query
