@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Save to CareerLog</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="head">
+      <h1>CareerLog</h1>
+      <button id="logout" class="link" hidden>Sign out</button>
+    </header>
+
+    <!-- Login view -->
+    <section id="login-view" hidden>
+      <p class="muted">Sign in to save jobs to your tracker.</p>
+      <label>API URL
+        <input id="api-base" type="url" placeholder="http://localhost:8000" />
+      </label>
+      <label>Email
+        <input id="email" type="email" autocomplete="username" />
+      </label>
+      <label>Password
+        <input id="password" type="password" autocomplete="current-password" />
+      </label>
+      <button id="login" class="primary">Sign in</button>
+    </section>
+
+    <!-- Save view -->
+    <section id="save-view" hidden>
+      <label>Job title
+        <input id="job-title" type="text" />
+      </label>
+      <label>Company
+        <input id="company" type="text" />
+      </label>
+      <label>Location
+        <input id="location" type="text" />
+      </label>
+      <div class="row">
+        <label>Status
+          <select id="status">
+            <option value="applied">Applied</option>
+            <option value="interviewing">Interviewing</option>
+            <option value="offer">Offer</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </label>
+        <label>Type
+          <select id="employment-type">
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+            <option value="temporary">Temporary</option>
+          </select>
+        </label>
+      </div>
+      <p class="muted url" id="url"></p>
+      <button id="save" class="primary">Save to CareerLog</button>
+    </section>
+
+    <p id="status-msg" class="status" role="status"></p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

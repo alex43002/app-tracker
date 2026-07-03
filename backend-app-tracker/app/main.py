@@ -25,6 +25,10 @@ from app.matching.routes import router as matching_router
 from app.discovery.routes import router as discovery_router
 from app.preferences.routes import router as preferences_router
 from app.job_alerts.routes import router as job_alerts_router
+from app.company_research.routes import router as company_research_router
+from app.interview_prep.routes import router as interview_prep_router
+from app.offers.routes import router as offers_router
+from app.star_stories.routes import router as star_stories_router
 
 
 @asynccontextmanager
@@ -150,3 +154,11 @@ app.include_router(matching_router, prefix="/api/match", tags=["Matching"])
 app.include_router(discovery_router, prefix="/api/discovery", tags=["Discovery"])
 app.include_router(preferences_router, prefix="/api/preferences", tags=["Preferences"])
 app.include_router(job_alerts_router, prefix="/api/job-alerts", tags=["Job Alerts"])
+app.include_router(
+    company_research_router, prefix="/api/company-research", tags=["Company Research"]
+)
+app.include_router(
+    interview_prep_router, prefix="/api/interview-prep", tags=["Interview Prep"]
+)
+app.include_router(offers_router, prefix="/api/offers", tags=["Offers"])
+app.include_router(star_stories_router, prefix="/api/star-stories", tags=["STAR Stories"])

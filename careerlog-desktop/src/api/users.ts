@@ -5,6 +5,31 @@ export function fetchCurrentUser() {
   return apiClient.get<User>("/api/users/me");
 }
 
+/** Editable core profile fields (FEAT-28). */
+export interface UpdateUserPayload {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  email?: string;
+}
+
+/**
+ * Update the current user's core account details (FEAT-28). Only the provided
+ * fields change. Returns the new `updatedAt` and the resulting `emailVerified`
+ * state (an email change resets verification server-side).
+ */
+export function updateUser(userId: string, payload: UpdateUserPayload) {
+  return apiClient.put<{ updatedAt: string; emailVerified: boolean }>(
+    `/api/users/${userId}`,
+    payload
+  );
+}
+
+/** Remove the current user's profile picture (FEAT-28). */
+export function deleteProfilePicture(userId: string) {
+  return apiClient.delete<void>(`/api/users/${userId}/pfp`);
+}
+
 /**
  * Upload a new profile picture (multipart). Returns the new GridFS id.
  */

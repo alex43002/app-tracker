@@ -3,6 +3,7 @@ import type {
   DiscoveredJobPage,
   DiscoveryFilters,
   IngestResult,
+  LocationFacets,
   ResolvedBoard,
 } from "../types/discovery";
 import { apiClient } from "./client";
@@ -49,6 +50,18 @@ export async function fetchCompanyDirectory(
     `/api/discovery/companies${qs}`
   );
   return res.companies;
+}
+
+/** Distinct locations present in postings, for the guided filter (FEAT-30). */
+export async function fetchLocationFacets(
+  q?: string,
+  limit = 50
+): Promise<LocationFacets> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (q && q.trim()) params.append("q", q.trim());
+  return apiClient.get<LocationFacets>(
+    `/api/discovery/locations?${params.toString()}`
+  );
 }
 
 /** Search/filter the aggregated postings. */
