@@ -6,6 +6,7 @@ import { Jobs } from "./pages/Jobs";
 import { Match } from "./pages/Match";
 import { Discovery } from "./pages/Discovery";
 import { Compare } from "./pages/Compare";
+import { Offers } from "./pages/Offers";
 import { Stories } from "./pages/Stories";
 import { Profile } from "./pages/Profile";
 import Login from "./pages/Login";
@@ -86,6 +87,10 @@ function App() {
         />
 
         <Route
+          path="/offers"
+          element={
+            <Protected>
+              <Offers />
           path="/stories"
           element={
             <Protected>

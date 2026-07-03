@@ -167,8 +167,10 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 - [x] STAR story library to organize reusable interview stories for behavioral
       questions. _(Backend `app/star_stories` per-user CRUD + desktop **STAR
       stories** tab with tags and search.)_
-- [ ] Offer comparison tool to evaluate compensation, benefits, flexibility, and
-      long-term fit.
+- [x] Offer comparison tool to evaluate compensation, benefits, flexibility, and
+      long-term fit. _(Backend `app/offers` per-user CRUD with computed total
+      comp + desktop **Offers** tab: editor and a side-by-side comparison that
+      highlights the best value per metric and an overall blended score.)_
 
 ### ⬜ Tracking & integrations
 
