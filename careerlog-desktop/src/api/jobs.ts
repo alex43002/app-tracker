@@ -69,6 +69,32 @@ export function fetchJobs(
 }
 
 /**
+ * Fetch *every* job for the current user by paging through the list endpoint.
+ *
+ * The list endpoint caps `pageSize` at 200 (see BUG-23), so views that need the
+ * complete set — like Compare — must page through rather than rely on a single
+ * oversized request (which the backend rejects with a 422). This walks the
+ * pages until all `totalItems` are collected.
+ */
+export async function fetchAllJobs(
+  sortBy = "createdAt",
+  sortOrder: "asc" | "desc" = "asc",
+  filters?: Record<string, unknown>
+): Promise<Job[]> {
+  const pageSize = 200;
+  const first = await fetchJobs(1, pageSize, sortBy, sortOrder, filters);
+  const items = [...first.items];
+  const totalPages = first.meta?.totalPages ?? 1;
+
+  for (let page = 2; page <= totalPages; page++) {
+    const next = await fetchJobs(page, pageSize, sortBy, sortOrder, filters);
+    items.push(...next.items);
+  }
+
+  return items;
+}
+
+/**
  * Fetch resume file for a job.
  *
  * Notes:
