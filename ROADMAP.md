@@ -164,9 +164,14 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
       _(Backend `app/interview_prep` deterministic generator reusing the
       FEAT-21 skill/keyword extraction + a curated question bank; desktop
       **Interview prep** tab that can pull from a tracked job.)_
-- [ ] Company research snapshots covering: what the company does, industry,
+- [x] Company research snapshots covering: what the company does, industry,
       size, location, hiring trends, tech-stack clues, recent news,
       Glassdoor-style notes (if integrated legally), and known ATS platform.
+      _(Backend `app/company_research` aggregates a company's ingested postings
+      into a snapshot — open roles, locations, ATS platforms, seniority mix,
+      pay range, and tech-stack clues via the FEAT-21 skill taxonomy — surfaced
+      in a desktop **Company research** tab. Recent-news/Glassdoor are
+      intentionally omitted as they need external/scraped data.)_
 - [x] STAR story library to organize reusable interview stories for behavioral
       questions. _(Backend `app/star_stories` per-user CRUD + desktop **STAR
       stories** tab with tags and search.)_
