@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { UserMenu } from "../components/common/UserMenu";
+import { UpdateBanner } from "../components/common/UpdateBanner";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -120,6 +121,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {/* Right */}
           <UserMenu />
         </header>
+
+        {/* Auto-update prompt (FEAT-29) — only visible when an update is in flight */}
+        <UpdateBanner />
 
         {/* Scroll Container */}
         <main className="flex-1 overflow-y-auto bg-gray-50">
