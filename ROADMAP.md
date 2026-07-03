@@ -164,8 +164,9 @@ SSRF-guarded URL scrape) + the desktop **Match** tab._
 - [ ] Company research snapshots covering: what the company does, industry,
       size, location, hiring trends, tech-stack clues, recent news,
       Glassdoor-style notes (if integrated legally), and known ATS platform.
-- [ ] STAR story library to organize reusable interview stories for behavioral
-      questions.
+- [x] STAR story library to organize reusable interview stories for behavioral
+      questions. _(Backend `app/star_stories` per-user CRUD + desktop **STAR
+      stories** tab with tags and search.)_
 - [ ] Offer comparison tool to evaluate compensation, benefits, flexibility, and
       long-term fit.
 
