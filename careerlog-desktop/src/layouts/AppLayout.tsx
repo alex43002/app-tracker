@@ -50,6 +50,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             { to: "/compare", label: "Compare" },
             { to: "/match", label: "Match" },
             { to: "/alerts", label: "Alerts" },
+            { to: "/email-tracking", label: "Email tracking" },
             { to: "/sources", label: "Sources" },
             { to: "/company-research", label: "Company research" },
             { to: "/interview-prep", label: "Interview prep" },

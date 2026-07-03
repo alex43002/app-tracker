@@ -6,6 +6,7 @@ import { Jobs } from "./pages/Jobs";
 import { Match } from "./pages/Match";
 import { Discovery } from "./pages/Discovery";
 import { Compare } from "./pages/Compare";
+import { EmailTracking } from "./pages/EmailTracking";
 import { Sources } from "./pages/Sources";
 import { CompanyResearch } from "./pages/CompanyResearch";
 import { InterviewPrep } from "./pages/InterviewPrep";
@@ -85,6 +86,15 @@ function App() {
           element={
             <Protected>
               <Alerts />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/email-tracking"
+          element={
+            <Protected>
+              <EmailTracking />
             </Protected>
           }
         />
