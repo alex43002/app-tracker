@@ -5,11 +5,12 @@ electron-builder reads packaging resources from this directory (see
 
 ## App icons (required for branded installers)
 
-Add a single high-resolution **square** source icon and electron-builder will
-generate the per-platform formats:
+A single high-resolution **square** source icon drives electron-builder's
+per-platform formats:
 
 - `assets/icon.png` — **1024×1024** (used for Linux directly; macOS/Windows
-  icons are generated from it).
+  icons are generated from it). ✅ **present** (currently an on-theme
+  placeholder — replace with final branding before a public release).
 
 Optionally provide platform-specific icons instead:
 
@@ -17,8 +18,8 @@ Optionally provide platform-specific icons instead:
 - `assets/icon.ico` — Windows (256×256 multi-size)
 
 > The repo's `careerlog.png` (1183×789) is **not square**, so it can't be used
-> as-is. Export a 1024×1024 PNG before cutting a branded release. Without an
-> icon, builds fall back to the default Electron icon.
+> as the source icon. The current `icon.png` is a 1024×1024 placeholder; swap in
+> final branding (same dimensions) before cutting a branded release.
 
 ## Code signing
 
