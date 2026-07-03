@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import LogoutButton from "./LogoutButton";
 import { useCurrentUser } from "../../store/userContext";
 import { fetchProfilePicture, uploadProfilePicture } from "../../api/users";
@@ -11,6 +12,7 @@ import { fetchProfilePicture, uploadProfilePicture } from "../../api/users";
  */
 export function UserMenu() {
   const { user, refreshUser } = useCurrentUser();
+  const navigate = useNavigate();
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -170,6 +172,31 @@ export function UserMenu() {
 
           {/* Settings */}
           <div className="py-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/profile");
+              }}
+              className="
+                flex w-full items-center gap-2 px-4 py-2 text-left text-sm
+                text-gray-700 hover:bg-gray-50
+              "
+            >
+              <svg
+                className="h-4 w-4 text-gray-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+              </svg>
+              Profile settings
+            </button>
             <button
               type="button"
               role="menuitem"
