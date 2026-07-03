@@ -63,7 +63,7 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 - [x] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
       platforms beyond Greenhouse/Lever to improve discovery coverage across
       companies.
-- [ ] **FEAT-30 — Guided city/state/region location filter.** The location
+- [x] **FEAT-30 — Guided city/state/region location filter.** The location
       filter (FEAT-24) currently takes free-form input, but job postings store
       specific location values (or none at all), so arbitrary user text rarely
       matches. Make the filter guided — e.g. suggest/autocomplete from the

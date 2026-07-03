@@ -6,6 +6,7 @@ import {
   fetchCompanyDirectory,
   fetchDiscoveredJobs,
   fetchDiscoverySources,
+  fetchLocationFacets,
   ingestBoard,
   resolveBoardToken,
 } from "../api/discovery";
@@ -20,13 +21,15 @@ import {
 import { fetchJobs, fetchJobResumes } from "../api/jobs";
 import { scoreMatch } from "../api/match";
 import { JobCard } from "../components/discovery/JobCard";
-import type {
-  AlertCriteria,
-  CompanyDirectoryEntry,
-  DiscoveredJob,
-  DiscoveryFilters,
-  JobAlert,
-  Preferences,
+import {
+  NO_LOCATION_FILTER,
+  type AlertCriteria,
+  type CompanyDirectoryEntry,
+  type DiscoveredJob,
+  type DiscoveryFilters,
+  type JobAlert,
+  type LocationFacet,
+  type Preferences,
 } from "../types/discovery";
 import type { Job, JobResume } from "../types/job";
 
@@ -101,6 +104,10 @@ export function Discovery() {
   const [resolving, setResolving] = useState(false);
   const [directory, setDirectory] = useState<CompanyDirectoryEntry[]>([]);
 
+  // Guided location filter (FEAT-30): real locations to suggest + no-location count.
+  const [locationFacets, setLocationFacets] = useState<LocationFacet[]>([]);
+  const [noLocationCount, setNoLocationCount] = useState(0);
+
   // Saved searches / job alerts
   const [alerts, setAlerts] = useState<JobAlert[]>([]);
   const [alertName, setAlertName] = useState("");
@@ -131,8 +138,22 @@ export function Discovery() {
     []
   );
 
+  // Load the guided location options (FEAT-30). Re-run after an import so newly
+  // ingested locations show up in the picker.
+  const loadLocationFacets = useCallback(() => {
+    fetchLocationFacets()
+      .then((res) => {
+        setLocationFacets(res.locations);
+        setNoLocationCount(res.noLocationCount);
+      })
+      .catch(() => {
+        /* the guided picker is optional; fall back to free text */
+      });
+  }, []);
+
   // Load supported sources + the user's jobs (for the fit picker) once.
   useEffect(() => {
+    loadLocationFacets();
     fetchDiscoverySources()
       .then((s) => {
         setSources(s);
@@ -159,7 +180,7 @@ export function Discovery() {
       .catch(() => {
         /* the company picker is optional; ignore */
       });
-  }, []);
+  }, [loadLocationFacets]);
 
   // Paste a careers URL → fill source + board token (FEAT-23).
   async function handleResolveUrl() {
@@ -306,8 +327,9 @@ export function Discovery() {
       );
       setBoardToken("");
       setCompanyName("");
-      // Refresh the list.
+      // Refresh the list + the guided location options (FEAT-30).
       setFilters((prev) => ({ ...prev, page: 1 }));
+      loadLocationFacets();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -499,12 +521,44 @@ export function Discovery() {
             placeholder="Search title…"
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
-          <input
-            value={filters.location ?? ""}
-            onChange={(e) => setFilter("location", e.target.value)}
-            placeholder="City, state, or region"
-            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
-          />
+          {/* Guided location filter (FEAT-30): suggest real locations and
+              offer a "no location listed" option instead of free-form text. */}
+          <div className="flex flex-col gap-1">
+            <input
+              list="location-facets"
+              value={filters.location === NO_LOCATION_FILTER ? "" : filters.location ?? ""}
+              disabled={filters.location === NO_LOCATION_FILTER}
+              onChange={(e) =>
+                setFilter("location", e.target.value || undefined)
+              }
+              placeholder="City, state, or region"
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
+            />
+            <datalist id="location-facets">
+              {locationFacets.map((l) => (
+                <option
+                  key={l.value}
+                  value={l.value}
+                  label={`${l.count} posting${l.count === 1 ? "" : "s"}`}
+                />
+              ))}
+            </datalist>
+            {noLocationCount > 0 && (
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={filters.location === NO_LOCATION_FILTER}
+                  onChange={(e) =>
+                    setFilter(
+                      "location",
+                      e.target.checked ? NO_LOCATION_FILTER : undefined
+                    )
+                  }
+                />
+                No location listed ({noLocationCount})
+              </label>
+            )}
+          </div>
           <select
             value={filters.workArrangement ?? ""}
             onChange={(e) => setFilter("workArrangement", e.target.value)}
