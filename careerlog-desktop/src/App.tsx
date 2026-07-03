@@ -7,6 +7,9 @@ import { Match } from "./pages/Match";
 import { Discovery } from "./pages/Discovery";
 import { Compare } from "./pages/Compare";
 import { InterviewPrep } from "./pages/InterviewPrep";
+import { Offers } from "./pages/Offers";
+import { Stories } from "./pages/Stories";
+import { Profile } from "./pages/Profile";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -89,6 +92,33 @@ function App() {
           element={
             <Protected>
               <InterviewPrep />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/offers"
+          element={
+            <Protected>
+              <Offers />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/stories"
+          element={
+            <Protected>
+              <Stories />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Profile />
             </Protected>
           }
         />

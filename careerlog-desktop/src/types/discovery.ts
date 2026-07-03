@@ -123,3 +123,21 @@ export interface CompanyDirectoryEntry {
   source: string;
   boardToken: string;
 }
+
+/** A location present in discovered postings + its posting count (FEAT-30). */
+export interface LocationFacet {
+  value: string;
+  count: number;
+}
+
+/** Guided location filter options: real locations + the no-location count (FEAT-30). */
+export interface LocationFacets {
+  locations: LocationFacet[];
+  noLocationCount: number;
+}
+
+/**
+ * Sentinel sent as the `location` filter to match postings with no location
+ * listed. Must match the backend's NO_LOCATION constant (FEAT-30).
+ */
+export const NO_LOCATION_FILTER = "__no_location__";
