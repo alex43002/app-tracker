@@ -12,13 +12,21 @@
 
 - **Authenticate** — register, log in, and refresh a session.
 - **Manage job applications** — create, view, update, and delete jobs, each with a title, company, URL, location, employment type, salary target/range, status, free-text notes, and **multiple uploaded résumés** per job (stored server-side in MongoDB GridFS).
-- **Track the pipeline** — jobs move through statuses (`applied`, `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts, a pipeline visualization, and analytics (funnel, applications over time, time-to-offer, per-company).
+- **Track the pipeline** — jobs move through statuses (`applied`, `interviewing`, `offer`, `rejected`), surfaced as a dashboard with status counts, a pipeline visualization, and analytics (funnel, applications over time, time-to-offer, per-company, and per-source).
 - **Score résumé ↔ job fit (Match tab)** — extract skills/keywords from a résumé and a job posting (pasted text or a scraped URL) and produce an explainable 0–100 match score with **gap analysis** — matched vs. missing skills/keywords. Uses classic NLP (a curated skills taxonomy + frequency-based keyword extraction); **no generative AI**.
-- **Discover & aggregate jobs (Discover tab)** — ingest public postings from supported ATS systems (Greenhouse, Lever), normalized into one searchable feed. Filter by salary, location, employment type, company, source, **eligibility** (experience level, degree, visa sponsorship, clearance), **freshness**, and **quality** (flags unclear/underpaid/low-signal listings); merge **duplicates** across boards; and **rank by résumé fit** (reusing the Match engine).
+- **Discover & aggregate jobs (Discover tab)** — ingest public postings from supported ATS systems (Greenhouse, Lever, Ashby, Recruitee), normalized into one searchable feed. Filter by salary, **guided location** (autocompleted from the locations actually present, plus a "no location" option), employment type, company, source, **eligibility** (experience level, degree, visa sponsorship, clearance), **freshness**, and **quality** (flags unclear/underpaid/low-signal listings); merge **duplicates** across boards; and **rank by résumé fit** (reusing the Match engine).
 - **Company preferences** — prioritize target employers and hide companies / job types you want to avoid.
 - **Saved searches & job alerts** — save a discovery search and get notified when new matching postings are ingested.
 - **Compare jobs side by side (Compare tab)** — evaluate multiple tracked jobs on compensation, location, requirements, and application status.
 - **Configure follow-up alerts** — schedule a reminder (`sms` or `email`) with a message and time. A background scheduler delivers due alerts via a pluggable notifier (console by default, SMTP email when configured; Twilio SMS when configured).
+- **Prep for interviews (Interview prep tab)** — turn a job description into role-specific prep notes, likely topics, and practice questions. Deterministic and template-driven, reusing the Match skill/keyword extraction; **no generative AI**.
+- **Research a company (Company research tab)** — a snapshot built from a company's ingested postings: open roles, locations, ATS platforms, seniority mix, pay range, and tech-stack clues.
+- **Organize behavioral stories (STAR stories tab)** — a library of reusable Situation · Task · Action · Result stories with tags and search.
+- **Compare offers (Offers tab)** — capture competing offers and evaluate them side by side on compensation, benefits, flexibility, and long-term fit, with an overall blended score.
+- **Track applications from email (Email tracking tab)** — paste a recruiting email to detect confirmations, interviews, rejections, offers, and recruiter outreach (deterministic heuristics), then apply the suggested status to the matching job in one click.
+- **See what's working (Sources tab)** — source performance analytics show which job boards / channels your applications come from and how well each converts.
+- **Manage your account (Profile settings)** — view and edit your name, email, phone, and avatar from within the app, with validation and re-verification on email change.
+- **Save jobs from your browser** — a Manifest V3 [browser extension](browser-extension/) scrapes any career page and saves the job into your tracker through the API.
 
 ### Non-goals
 - No local authoritative data storage / offline mode on the client (read-only last-cached view only).
@@ -37,6 +45,7 @@ CareerLog is split into two independently deployable parts that live side by sid
 | --- | --- | --- |
 | [backend-app-tracker/](backend-app-tracker/) | REST API and source of truth | Python · FastAPI · MongoDB · JWT |
 | [careerlog-desktop/](careerlog-desktop/) | Windows-first desktop client | Electron · React · TypeScript · Vite |
+| [browser-extension/](browser-extension/) | Save jobs from any career page | Manifest V3 · vanilla JS |
 
 For the full design — request lifecycle, response envelope, auth/ownership model, and data model — see **[architecture.md](architecture.md)**.
 
@@ -55,7 +64,7 @@ End users do **not** need Python, Node, or this source tree. The desktop client 
 3. Run the `.exe` and follow the NSIS installer prompts. CareerLog installs and creates a shortcut.
 4. Launch CareerLog and sign in. The app **requires a running CareerLog backend** (see [Backend setup](#1-backend--backend-app-tracker)); point it at your backend via the `VITE_API_BASE_URL` used at build time (defaults to `http://127.0.0.1:8000`).
 
-Once installed, CareerLog **auto-updates** itself from GitHub Releases via `electron-updater` — new versions are picked up automatically.
+Once installed, CareerLog **auto-updates** itself from GitHub Releases via `electron-updater` — it checks in the background, downloads new versions, and shows an in-app **"Restart to update"** prompt to apply them.
 
 > Releases are published to the [`alex43002/app-tracker`](https://github.com/alex43002/app-tracker) repository.
 

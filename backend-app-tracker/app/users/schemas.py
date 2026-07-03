@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -24,9 +24,24 @@ class User(BaseModel):
 # =====================
 
 class UpdateUserRequest(BaseModel):
-    phoneNumber: Optional[str] = None
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
+    """Editable core account fields (FEAT-28). All optional — only sent fields
+    are changed. Email changes are validated for uniqueness and reset
+    verification in the service layer."""
+
+    phoneNumber: Optional[str] = Field(default=None, max_length=40)
+    firstName: Optional[str] = Field(default=None, max_length=100)
+    lastName: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = None
+
+    @field_validator("phoneNumber", "firstName", "lastName")
+    @classmethod
+    def _non_empty(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("must not be blank")
+        return trimmed
 
 
 # =====================
@@ -35,3 +50,4 @@ class UpdateUserRequest(BaseModel):
 
 class UpdateUserResponse(BaseModel):
     updatedAt: datetime
+    emailVerified: bool
