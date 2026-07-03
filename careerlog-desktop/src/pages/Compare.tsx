@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { AppLayout } from "../layouts/AppLayout";
-import { fetchJobs } from "../api/jobs";
+import { fetchAllJobs } from "../api/jobs";
 import { StatusBadge } from "../components/jobs/StatusBadge";
 import type { Job } from "../types/job";
 
@@ -63,8 +63,8 @@ export function Compare() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchJobs(1, 200, "createdAt", "desc")
-      .then((res) => setJobs(res.items))
+    fetchAllJobs("createdAt", "desc")
+      .then(setJobs)
       .catch(() => toast.error("Failed to load jobs"))
       .finally(() => setLoading(false));
   }, []);
