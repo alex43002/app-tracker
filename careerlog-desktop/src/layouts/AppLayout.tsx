@@ -50,6 +50,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             { to: "/compare", label: "Compare" },
             { to: "/match", label: "Match" },
             { to: "/alerts", label: "Alerts" },
+            { to: "/sources", label: "Sources" },
             { to: "/company-research", label: "Company research" },
             { to: "/interview-prep", label: "Interview prep" },
             { to: "/offers", label: "Offers" },
@@ -126,7 +127,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <UserMenu />
         </header>
 
-        {/* Auto-update prompt (FEAT-29) — only visible when an update is in flight */}
+        {/* Auto-update prompt (FEAT-29) â€” only visible when an update is in flight */}
         <UpdateBanner />
 
         {/* Scroll Container */}

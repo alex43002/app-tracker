@@ -3,6 +3,8 @@ from statistics import mean, median
 
 from pymongo.collection import Collection
 
+from app.analytics.sources import source_from_url
+
 # The pipeline statuses, in funnel order. Kept here so every analytic agrees on
 # the set of known statuses and their ordering.
 STATUSES = ("applied", "interviewing", "offer", "rejected")
@@ -185,6 +187,37 @@ def _company_funnels_from(jobs_list: list[dict]) -> dict:
     return {"companies": companies}
 
 
+def _source_performance_from(jobs_list: list[dict]) -> dict:
+    """Funnel + conversion rates grouped by the channel each job came from.
+
+    The source is derived from the job URL host (job boards / ATS platforms get
+    friendly names; other sites fall back to their domain), so users can see
+    which channels actually produce interviews and offers.
+    """
+    by_source: dict[str, dict] = {}
+    for job in jobs_list:
+        source = source_from_url(job.get("url"))
+        row = by_source.setdefault(
+            source, {"source": source, **_empty_status_counts(), "total": 0}
+        )
+        status = job.get("status")
+        if status in STATUSES:
+            row[status] += 1
+        row["total"] += 1
+
+    sources = []
+    for row in by_source.values():
+        total = row["total"]
+        row["responseRate"] = _rate(total - row["applied"], total)
+        row["interviewRate"] = _rate(row["interviewing"] + row["offer"], total)
+        row["offerRate"] = _rate(row["offer"], total)
+        sources.append(row)
+
+    # Busiest channels first; break ties by offer rate then name.
+    sources.sort(key=lambda r: (-r["total"], -r["offerRate"], r["source"]))
+    return {"sources": sources}
+
+
 # ---- per-endpoint wrappers (each does its own fetch) ----
 
 
@@ -216,6 +249,12 @@ def get_company_funnels(jobs: Collection, user_id: str) -> dict:
     """Per-company status breakdown, busiest companies first."""
     cursor = jobs.find({"userId": user_id}, {"company": 1, "status": 1})
     return _company_funnels_from(list(cursor))
+
+
+def get_source_performance(jobs: Collection, user_id: str) -> dict:
+    """Per-source funnel + conversion rates (which channels produce results)."""
+    cursor = jobs.find({"userId": user_id}, {"url": 1, "status": 1})
+    return _source_performance_from(list(cursor))
 
 
 def get_summary(

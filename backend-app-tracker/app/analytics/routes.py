@@ -10,6 +10,7 @@ from app.analytics.schemas import (
     CompanyFunnels,
     Funnel,
     JobStatusCounts,
+    SourcePerformance,
     TimeToOffer,
 )
 
@@ -52,6 +53,15 @@ def get_company_funnels(current_user_id: str = Depends(get_current_user)):
     db = get_db()
     result = service.get_company_funnels(db.jobs, current_user_id)
     return success(data=CompanyFunnels(**result).model_dump())
+
+
+@router.get("/source-performance")
+def get_source_performance(current_user_id: str = Depends(get_current_user)):
+    """Per-source funnel + conversion rates: which job boards, recruiters, and
+    referral channels produce the best results."""
+    db = get_db()
+    result = service.get_source_performance(db.jobs, current_user_id)
+    return success(data=SourcePerformance(**result).model_dump())
 
 
 @router.get("/summary")
