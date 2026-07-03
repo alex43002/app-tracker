@@ -6,6 +6,7 @@ import {
   fetchCompanyDirectory,
   fetchDiscoveredJobs,
   fetchDiscoverySources,
+  fetchLocationFacets,
   ingestBoard,
   resolveBoardToken,
 } from "../api/discovery";
@@ -20,13 +21,15 @@ import {
 import { fetchJobs, fetchJobResumes } from "../api/jobs";
 import { scoreMatch } from "../api/match";
 import { JobCard } from "../components/discovery/JobCard";
-import type {
-  AlertCriteria,
-  CompanyDirectoryEntry,
-  DiscoveredJob,
-  DiscoveryFilters,
-  JobAlert,
-  Preferences,
+import {
+  NO_LOCATION_FILTER,
+  type AlertCriteria,
+  type CompanyDirectoryEntry,
+  type DiscoveredJob,
+  type DiscoveryFilters,
+  type JobAlert,
+  type LocationFacet,
+  type Preferences,
 } from "../types/discovery";
 import type { Job, JobResume } from "../types/job";
 
@@ -101,6 +104,10 @@ export function Discovery() {
   const [resolving, setResolving] = useState(false);
   const [directory, setDirectory] = useState<CompanyDirectoryEntry[]>([]);
 
+  // Guided location filter (FEAT-30): real locations to suggest + no-location count.
+  const [locationFacets, setLocationFacets] = useState<LocationFacet[]>([]);
+  const [noLocationCount, setNoLocationCount] = useState(0);
+
   // Saved searches / job alerts
   const [alerts, setAlerts] = useState<JobAlert[]>([]);
   const [alertName, setAlertName] = useState("");
@@ -122,14 +129,31 @@ export function Discovery() {
 
   const setFilter = useCallback(
     <K extends keyof DiscoveryFilters>(key: K, value: DiscoveryFilters[K]) => {
+      // BUG-25: don't clear the active résumé-fit ranking when a filter
+      // changes. Applying a filter must combine with the full set of active
+      // filters *and* the current ranking; the auto-rank effect below re-scores
+      // the newly-filtered postings instead of resetting the ranking state.
       setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-      setSortByFit(false);
     },
     []
   );
 
+  // Load the guided location options (FEAT-30). Re-run after an import so newly
+  // ingested locations show up in the picker.
+  const loadLocationFacets = useCallback(() => {
+    fetchLocationFacets()
+      .then((res) => {
+        setLocationFacets(res.locations);
+        setNoLocationCount(res.noLocationCount);
+      })
+      .catch(() => {
+        /* the guided picker is optional; fall back to free text */
+      });
+  }, []);
+
   // Load supported sources + the user's jobs (for the fit picker) once.
   useEffect(() => {
+    loadLocationFacets();
     fetchDiscoverySources()
       .then((s) => {
         setSources(s);
@@ -156,7 +180,7 @@ export function Discovery() {
       .catch(() => {
         /* the company picker is optional; ignore */
       });
-  }, []);
+  }, [loadLocationFacets]);
 
   // Paste a careers URL → fill source + board token (FEAT-23).
   async function handleResolveUrl() {
@@ -303,8 +327,9 @@ export function Discovery() {
       );
       setBoardToken("");
       setCompanyName("");
-      // Refresh the list.
+      // Refresh the list + the guided location options (FEAT-30).
       setFilters((prev) => ({ ...prev, page: 1 }));
+      loadLocationFacets();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -312,31 +337,61 @@ export function Discovery() {
     }
   }
 
-  async function handleRankByFit() {
-    if (!fitResumeId || jobs.length === 0) return;
-    setRanking(true);
-    try {
-      const entries = await Promise.all(
-        jobs.map(async (job) => {
-          try {
-            const res = await scoreMatch({
-              resumeId: fitResumeId,
-              jobDescription: job.description,
-            });
-            return [job.id, res.score] as const;
-          } catch {
-            return [job.id, 0] as const;
-          }
-        })
-      );
-      setFitById(Object.fromEntries(entries));
+  // Score any postings in `jobList` we haven't scored yet against the selected
+  // résumé and turn the ranking on. Cached scores are reused so re-ranking after
+  // a filter/page change only fetches the genuinely new postings (BUG-25).
+  const rankJobs = useCallback(
+    async (jobList: DiscoveredJob[]) => {
+      if (!fitResumeId || jobList.length === 0) return;
       setSortByFit(true);
-    } catch {
-      toast.error("Failed to rank by résumé fit");
-    } finally {
-      setRanking(false);
-    }
+      const missing = jobList.filter((job) => fitById[job.id] === undefined);
+      if (missing.length === 0) return;
+      setRanking(true);
+      try {
+        const entries = await Promise.all(
+          missing.map(async (job) => {
+            try {
+              const res = await scoreMatch({
+                resumeId: fitResumeId,
+                jobDescription: job.description,
+              });
+              return [job.id, res.score] as const;
+            } catch {
+              return [job.id, 0] as const;
+            }
+          })
+        );
+        setFitById((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      } catch {
+        toast.error("Failed to rank by résumé fit");
+      } finally {
+        setRanking(false);
+      }
+    },
+    [fitResumeId, fitById]
+  );
+
+  function handleRankByFit() {
+    void rankJobs(jobs);
   }
+
+  // Changing the selected résumé invalidates cached scores (they were computed
+  // against a different résumé), so clear the cache and the active ranking.
+  useEffect(() => {
+    setFitById({});
+    setSortByFit(false);
+  }, [fitResumeId]);
+
+  // BUG-25: keep the ranking live across filter/page changes. When a ranking is
+  // active, automatically score any newly-loaded postings instead of dropping
+  // the ranking, so the displayed order reflects the full active filter set
+  // together with the selected résumé fit.
+  useEffect(() => {
+    if (!sortByFit || !fitResumeId) return;
+    const missing = jobs.filter((job) => fitById[job.id] === undefined);
+    if (missing.length === 0) return;
+    void rankJobs(jobs);
+  }, [jobs, sortByFit, fitResumeId, fitById, rankJobs]);
 
   const displayedJobs = useMemo(() => {
     if (!sortByFit) return jobs;
@@ -466,12 +521,44 @@ export function Discovery() {
             placeholder="Search title…"
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
-          <input
-            value={filters.location ?? ""}
-            onChange={(e) => setFilter("location", e.target.value)}
-            placeholder="City, state, or region"
-            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
-          />
+          {/* Guided location filter (FEAT-30): suggest real locations and
+              offer a "no location listed" option instead of free-form text. */}
+          <div className="flex flex-col gap-1">
+            <input
+              list="location-facets"
+              value={filters.location === NO_LOCATION_FILTER ? "" : filters.location ?? ""}
+              disabled={filters.location === NO_LOCATION_FILTER}
+              onChange={(e) =>
+                setFilter("location", e.target.value || undefined)
+              }
+              placeholder="City, state, or region"
+              className="rounded border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
+            />
+            <datalist id="location-facets">
+              {locationFacets.map((l) => (
+                <option
+                  key={l.value}
+                  value={l.value}
+                  label={`${l.count} posting${l.count === 1 ? "" : "s"}`}
+                />
+              ))}
+            </datalist>
+            {noLocationCount > 0 && (
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={filters.location === NO_LOCATION_FILTER}
+                  onChange={(e) =>
+                    setFilter(
+                      "location",
+                      e.target.checked ? NO_LOCATION_FILTER : undefined
+                    )
+                  }
+                />
+                No location listed ({noLocationCount})
+              </label>
+            )}
+          </div>
           <select
             value={filters.workArrangement ?? ""}
             onChange={(e) => setFilter("workArrangement", e.target.value)}

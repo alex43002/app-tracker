@@ -53,6 +53,18 @@ export interface CompanyFunnels {
   companies: CompanyFunnel[];
 }
 
+/** Per-source funnel + conversion rates (source performance analytics). */
+export interface SourceFunnel extends JobStatusCounts {
+  source: string;
+  responseRate: number;
+  interviewRate: number;
+  offerRate: number;
+}
+
+export interface SourcePerformance {
+  sources: SourceFunnel[];
+}
+
 /** Bucket granularity for applications-over-time (FEAT-13). */
 export type AnalyticsInterval = "week" | "month" | "quarter";
 

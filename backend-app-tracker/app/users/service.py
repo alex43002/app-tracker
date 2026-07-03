@@ -52,9 +52,39 @@ def get_user(users: Collection, user_id: str) -> dict:
 
 
 def update_user(users: Collection, user_id: str, payload) -> dict:
+    oid = _to_object_id(user_id)
+    existing = users.find_one({"_id": oid})
+    if not existing:
+        raise_error(
+            code="RESOURCE_NOT_FOUND",
+            message="User not found",
+            http_status=status.HTTP_404_NOT_FOUND,
+        )
+
     update_fields = {
         k: v for k, v in payload.model_dump().items() if v is not None
     }
+
+    # Email change (FEAT-28): normalize, enforce uniqueness, and require the new
+    # address to be re-verified. An unchanged email is dropped so we never reset
+    # verification for a no-op edit.
+    new_email = update_fields.get("email")
+    if new_email is not None:
+        normalized = str(new_email).strip().lower()
+        if normalized == existing.get("email"):
+            update_fields.pop("email")
+        else:
+            taken = users.find_one(
+                {"email": normalized, "_id": {"$ne": oid}}, {"_id": 1}
+            )
+            if taken:
+                raise_error(
+                    code="EMAIL_TAKEN",
+                    message="That email address is already in use",
+                    http_status=status.HTTP_409_CONFLICT,
+                )
+            update_fields["email"] = normalized
+            update_fields["emailVerified"] = False
 
     if not update_fields:
         raise_error(
@@ -65,19 +95,14 @@ def update_user(users: Collection, user_id: str, payload) -> dict:
 
     update_fields["updatedAt"] = datetime.now(tz=timezone.utc)
 
-    result = users.update_one(
-        {"_id": _to_object_id(user_id)},
-        {"$set": update_fields},
-    )
+    users.update_one({"_id": oid}, {"$set": update_fields})
 
-    if result.matched_count == 0:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="User not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
-
-    return {"updatedAt": update_fields["updatedAt"]}
+    return {
+        "updatedAt": update_fields["updatedAt"],
+        "emailVerified": update_fields.get(
+            "emailVerified", existing.get("emailVerified", False)
+        ),
+    }
 
 
 def delete_user(users: Collection, user_id: str) -> None:

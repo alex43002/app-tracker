@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, shell } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
@@ -135,6 +135,81 @@ function createWindow() {
 }
 
 /* ============================================================
+   Automatic updates (FEAT-29)
+
+   Discord-style background updates from the GitHub releases the
+   tag-driven release workflow publishes: check on launch and on a
+   schedule, download in the background, and let the user apply the
+   update on next restart. Status is forwarded to the renderer so the
+   UI can show progress and a "restart to update" prompt.
+============================================================ */
+
+// How often to re-check while the app stays open (6 hours).
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+type UpdateStatus =
+  | { state: "checking" }
+  | { state: "available"; version?: string }
+  | { state: "not-available" }
+  | { state: "downloading"; percent: number }
+  | { state: "downloaded"; version?: string }
+  | { state: "error"; message: string };
+
+function broadcastUpdateStatus(status: UpdateStatus) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send("update:status", status);
+  }
+}
+
+let autoUpdatesStarted = false;
+
+function setupAutoUpdates() {
+  // electron-updater can't run against an unpackaged dev build.
+  if (isDev || autoUpdatesStarted) return;
+  autoUpdatesStarted = true;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () =>
+    broadcastUpdateStatus({ state: "checking" })
+  );
+  autoUpdater.on("update-available", (info) =>
+    broadcastUpdateStatus({ state: "available", version: info?.version })
+  );
+  autoUpdater.on("update-not-available", () =>
+    broadcastUpdateStatus({ state: "not-available" })
+  );
+  autoUpdater.on("download-progress", (progress) =>
+    broadcastUpdateStatus({
+      state: "downloading",
+      percent: Math.round(progress?.percent ?? 0),
+    })
+  );
+  autoUpdater.on("update-downloaded", (info) =>
+    broadcastUpdateStatus({ state: "downloaded", version: info?.version })
+  );
+  autoUpdater.on("error", (err) =>
+    broadcastUpdateStatus({
+      state: "error",
+      message: err?.message ?? "Update failed",
+    })
+  );
+
+  // Renderer-driven controls: re-check on demand, and apply a downloaded update.
+  ipcMain.handle("update:check", () =>
+    autoUpdater.checkForUpdates().catch(() => undefined)
+  );
+  ipcMain.handle("update:install", () => {
+    autoUpdater.quitAndInstall();
+  });
+
+  const check = () => autoUpdater.checkForUpdates().catch(() => undefined);
+  void check();
+  setInterval(check, UPDATE_CHECK_INTERVAL_MS);
+}
+
+/* ============================================================
    App Lifecycle
 ============================================================ */
 
@@ -157,7 +232,7 @@ app.whenReady().then(() => {
     }
   });
 
-  autoUpdater.checkForUpdatesAndNotify();
+  setupAutoUpdates();
 });
 
 app.on("window-all-closed", () => {
