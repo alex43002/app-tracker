@@ -10,6 +10,7 @@ from app.discovery.schemas import (
     CompanyDirectory,
     IngestRequest,
     IngestResponse,
+    LocationFacets,
     ResolveTokenRequest,
     ResolveTokenResponse,
     SupportedSources,
@@ -57,6 +58,18 @@ def list_companies(
     """Search a curated directory of popular public boards (FEAT-23)."""
     matches = boards.search_companies(q, limit)
     return success(data=CompanyDirectory(companies=matches).model_dump())
+
+
+@router.get("/locations")
+def list_locations(
+    q: str | None = Query(None, max_length=200),
+    limit: int = Query(50, ge=1, le=200),
+    current_user_id: str = Depends(get_current_user),
+):
+    """Distinct locations present in postings, for the guided filter (FEAT-30)."""
+    db = get_db()
+    result = service.location_facets(db, q=q, limit=limit)
+    return success(data=LocationFacets(**result).model_dump())
 
 
 @router.post("/ingest")

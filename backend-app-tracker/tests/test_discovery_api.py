@@ -131,6 +131,65 @@ def test_filter_by_work_arrangement(client, auth_payload, fake_greenhouse):
     assert remote["items"][0]["workArrangement"] == "remote"
 
 
+def test_location_facets(client, auth_payload, fake_greenhouse):
+    """FEAT-30: the guided picker surfaces locations actually present."""
+    jwt = _register(client, auth_payload, "disc-locfacet@example.com")
+    headers = _headers(jwt)
+    client.post(
+        "/api/discovery/ingest",
+        headers=headers,
+        json={"source": "greenhouse", "boardToken": "locco"},
+    )
+
+    data = client.get("/api/discovery/locations", headers=headers).json()["data"]
+    values = {f["value"] for f in data["locations"]}
+    assert {"Remote", "New York"} <= values
+    assert all(f["count"] >= 1 for f in data["locations"])
+    assert data["noLocationCount"] == 0
+
+    # Substring search narrows the options.
+    ny = client.get(
+        "/api/discovery/locations?q=new", headers=headers
+    ).json()["data"]["locations"]
+    assert [f["value"] for f in ny] == ["New York"]
+
+
+def test_no_location_filter(client, auth_payload, monkeypatch):
+    """FEAT-30: postings with no location are filterable via the sentinel."""
+    from app.discovery import connectors
+
+    fixture = {
+        "jobs": [
+            {
+                "id": 9,
+                "title": "Mystery Role",
+                "absolute_url": "https://boards.greenhouse.io/noloc/jobs/9",
+                "updated_at": "2026-06-01T12:00:00Z",
+                "location": {"name": ""},
+                "content": "A role with no location listed anywhere at all here.",
+            },
+        ]
+    }
+    monkeypatch.setattr(connectors, "_get_json", lambda url: fixture)
+
+    jwt = _register(client, auth_payload, "disc-noloc@example.com")
+    headers = _headers(jwt)
+    client.post(
+        "/api/discovery/ingest",
+        headers=headers,
+        json={"source": "greenhouse", "boardToken": "noloc"},
+    )
+
+    facets = client.get("/api/discovery/locations", headers=headers).json()["data"]
+    assert facets["noLocationCount"] >= 1
+
+    listed = client.get(
+        "/api/discovery/jobs?company=noloc&location=__no_location__",
+        headers=headers,
+    ).json()["data"]
+    assert [j["title"] for j in listed["items"]] == ["Mystery Role"]
+
+
 def test_ingest_unsupported_source(client, auth_payload):
     jwt = _register(client, auth_payload, "disc-bad@example.com")
     res = client.post(

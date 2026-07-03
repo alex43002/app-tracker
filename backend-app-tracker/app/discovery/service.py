@@ -25,6 +25,13 @@ SORTABLE_FIELDS = ("postedAt", "ingestedAt", "company", "title", "salaryMax")
 # scan to keep the query bounded.
 COLLAPSE_SCAN_CAP = 2000
 
+# Sentinel a client can pass as the location filter to match postings that have
+# no location listed (FEAT-30: guided location filter).
+NO_LOCATION = "__no_location__"
+
+# Hard cap on how many distinct locations the guided picker will surface.
+LOCATION_FACET_CAP = 200
+
 
 def _serialize(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
@@ -92,6 +99,56 @@ def _escape_regex(value: str) -> dict:
     return {"$regex": re.escape(value), "$options": "i"}
 
 
+def _normalize_location(value: str) -> str:
+    """Collapse whitespace and trim so case/spacing variants merge (FEAT-30)."""
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def location_facets(db, *, q: str | None = None, limit: int = 50) -> dict:
+    """Distinct, normalized locations present in discovered postings (FEAT-30).
+
+    Powers the guided location filter: rather than typing free-form text that
+    rarely matches a posting's exact location string, the client offers the
+    locations that actually exist. Case/whitespace variants collapse into one
+    canonical option (the most-seen spelling wins), results are ranked by how
+    many postings use them, and the count of postings with no location is
+    reported separately so the picker can offer a "No location listed" choice.
+    """
+    rows = db.discovered_jobs.aggregate(
+        [{"$group": {"_id": "$location", "count": {"$sum": 1}}}]
+    )
+
+    no_location = 0
+    merged: dict[str, dict] = {}
+    for row in rows:
+        raw = row.get("_id")
+        count = int(row.get("count", 0) or 0)
+        if raw is None or not str(raw).strip():
+            no_location += count
+            continue
+        display = _normalize_location(str(raw))
+        key = display.casefold()
+        entry = merged.get(key)
+        if entry is None:
+            merged[key] = {"value": display, "count": count}
+        else:
+            entry["count"] += count
+            # Keep the spelling used by the most postings as the display value.
+            if count > entry["_top"]:
+                entry["value"] = display
+        merged[key]["_top"] = max(count, merged[key].get("_top", 0))
+
+    options = list(merged.values())
+    if q and q.strip():
+        needle = q.strip().casefold()
+        options = [o for o in options if needle in o["value"].casefold()]
+    options.sort(key=lambda o: (-o["count"], o["value"].casefold()))
+
+    capped = max(1, min(limit, LOCATION_FACET_CAP))
+    options = [{"value": o["value"], "count": o["count"]} for o in options[:capped]]
+    return {"locations": options, "noLocationCount": no_location}
+
+
 def _build_query(
     *,
     q: str | None,
@@ -116,7 +173,13 @@ def _build_query(
     query: dict = {}
     if q:
         query["title"] = _escape_regex(q)
-    if location:
+    if location == NO_LOCATION:
+        # Postings with no location listed (FEAT-30).
+        query["$or"] = [
+            {"location": {"$in": [None, ""]}},
+            {"location": {"$exists": False}},
+        ]
+    elif location:
         query["location"] = _escape_regex(location)
     if work_arrangement:
         query["workArrangement"] = work_arrangement
