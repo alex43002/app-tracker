@@ -6,6 +6,7 @@ import { Jobs } from "./pages/Jobs";
 import { Match } from "./pages/Match";
 import { Discovery } from "./pages/Discovery";
 import { Compare } from "./pages/Compare";
+import { InterviewPrep } from "./pages/InterviewPrep";
 import { Offers } from "./pages/Offers";
 import { Stories } from "./pages/Stories";
 import { Profile } from "./pages/Profile";
@@ -87,10 +88,24 @@ function App() {
         />
 
         <Route
+          path="/interview-prep"
+          element={
+            <Protected>
+              <InterviewPrep />
+            </Protected>
+          }
+        />
+
+        <Route
           path="/offers"
           element={
             <Protected>
               <Offers />
+            </Protected>
+          }
+        />
+
+        <Route
           path="/stories"
           element={
             <Protected>
