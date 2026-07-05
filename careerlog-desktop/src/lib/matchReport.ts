@@ -1,16 +1,16 @@
-import type { MatchScore } from "../types/match";
+import type { CoverageInfo, MatchScore, MatchStatus, TermMatch } from "../types/match";
 
 /* ============================================================
    Match report model (FEAT-21)
 
-   Pure logic that turns a raw MatchScore into an explainable
-   report — the verdict, *why* the score is what it is, what went
-   well, what went wrong, and what to do next. Kept free of any
-   rendering (React or PDF) so it can be unit-tested and reused by
-   both the on-screen result and the exported PDF.
+   Pure logic that turns a MatchScore into an explainable report:
+   the verdict + parse confidence, *why* the score landed where it
+   did (per-section coverage), what went well (with the résumé
+   evidence that earned it), what's missing (required first), and
+   honest, non-padding recommendations. No rendering here so it can
+   be unit-tested and shared by the on-screen result and the PDF.
 ============================================================ */
 
-/** Score band shared by the on-screen result and the PDF, so they never drift. */
 export type ScoreBand = "strong" | "partial" | "weak";
 
 export interface ScoreVerdict {
@@ -18,8 +18,6 @@ export interface ScoreVerdict {
   label: string;
 }
 
-// Thresholds live here (single source of truth) — ScoreResult and the PDF both
-// read them via scoreVerdict rather than hard-coding their own cutoffs.
 export const STRONG_MATCH_MIN = 75;
 export const PARTIAL_MATCH_MIN = 50;
 
@@ -30,28 +28,28 @@ export function scoreVerdict(score: number): ScoreVerdict {
   return { band: "weak", label: "Weak match" };
 }
 
-/** A coverage signal (skills or keywords) with the counts behind it. */
 export interface CoverageLine {
   label: string;
-  pct: number; // 0..100
-  matched: number;
-  required: number;
-  weightPct: number; // this signal's share of the blended score
+  /** Percent 0..100, or null when the posting had no such section (N/A). */
+  pct: number | null;
 }
 
-/** A named group of terms (matched skills, missing keywords, …). */
-export interface TermGroup {
-  heading: string;
-  terms: string[];
+export interface ReportStrength {
+  term: string;
+  status: MatchStatus;
+  evidence: string[];
+}
+
+export interface ReportGap {
+  term: string;
+  required: boolean;
 }
 
 export interface MatchReportInput {
   result: MatchScore;
   jobTitle?: string;
   company?: string;
-  /** How the résumé was supplied, e.g. a filename or "Saved résumé". */
   resumeLabel: string;
-  /** How the job text was supplied, e.g. "Scraped from posting URL". */
   jobSourceLabel: string;
   generatedAt?: Date;
 }
@@ -61,23 +59,19 @@ export interface MatchReport {
   meta: { label: string; value: string }[];
   score: number;
   verdict: ScoreVerdict;
-  /** One or two sentences explaining *why* the score landed where it did. */
+  confidence: MatchScore["confidence"];
+  roleFamilies: string[];
   summary: string;
   coverage: CoverageLine[];
-  strengths: TermGroup[];
-  weaknesses: TermGroup[];
+  strengths: ReportStrength[];
+  gaps: ReportGap[];
   recommendations: string[];
 }
 
-// The blended score weights skills at 70% and keywords at 30% (mirrors the
-// backend's scoring.py). Surfaced in the report so the "why" is honest.
-const SKILL_WEIGHT_PCT = 70;
-const KEYWORD_WEIGHT_PCT = 30;
-// How many terms to name in the recommendation sentences before summarizing.
-const MAX_NAMED_RECOMMENDATIONS = 6;
+const MAX_NAMED_TERMS = 6;
 
-function pct(fraction: number): number {
-  return Math.round(fraction * 100);
+function pct(fraction: number | null): number | null {
+  return fraction === null ? null : Math.round(fraction * 100);
 }
 
 function joinTerms(terms: string[], limit: number): string {
@@ -87,92 +81,92 @@ function joinTerms(terms: string[], limit: number): string {
   return rest > 0 ? `${list}, and ${rest} more` : list;
 }
 
+function coverageText(cov: CoverageInfo): string {
+  const parts: string[] = [];
+  if (cov.required !== null) parts.push(`required ${pct(cov.required)}%`);
+  if (cov.responsibility !== null) parts.push(`responsibilities ${pct(cov.responsibility)}%`);
+  if (cov.preferred !== null) parts.push(`preferred ${pct(cov.preferred)}%`);
+  return parts.join(", ");
+}
+
 /** Build the full, explainable report model from a score + its context. */
 export function buildMatchReport(input: MatchReportInput): MatchReport {
   const { result } = input;
-  const b = result.breakdown;
   const generatedAt = input.generatedAt ?? new Date();
-
-  const matchedSkills = b.matchedSkills.length;
-  const requiredSkills = matchedSkills + b.missingSkills.length;
-  const matchedKeywords = b.matchedKeywords.length;
-  const requiredKeywords = matchedKeywords + b.missingKeywords.length;
+  const verdict = scoreVerdict(result.score);
 
   const meta: { label: string; value: string }[] = [];
   const role = [input.jobTitle, input.company].filter(Boolean).join(" — ");
   if (role) meta.push({ label: "Position", value: role });
   meta.push({ label: "Résumé", value: input.resumeLabel });
   meta.push({ label: "Job description", value: input.jobSourceLabel });
+  if (result.roleFamilies.length > 0) {
+    meta.push({ label: "Read as", value: result.roleFamilies.join(" · ") });
+  }
+  meta.push({ label: "Parse confidence", value: result.confidence });
   meta.push({ label: "Generated", value: generatedAt.toLocaleString() });
 
-  const verdict = scoreVerdict(result.score);
-
-  // "Why" — honest about what drove the number, adapting to the taxonomy cases
-  // the backend handles (no skills detected → keyword-only scoring).
-  let summary: string;
-  if (requiredSkills === 0) {
-    summary =
-      `This posting didn't yield recognizable skills, so the ${result.score}/100 ` +
-      `score reflects keyword coverage alone (${pct(b.keywordCoverage)}% of the ` +
-      `posting's salient terms).`;
-  } else {
-    summary =
-      `This is a ${verdict.label.toLowerCase()} (${result.score}/100). Skills carry ` +
-      `${SKILL_WEIGHT_PCT}% of the score: your résumé demonstrates ${matchedSkills} ` +
-      `of ${requiredSkills} required skills (${pct(b.skillCoverage)}%). Keyword ` +
-      `coverage — the remaining ${KEYWORD_WEIGHT_PCT}% — is ${pct(b.keywordCoverage)}%.`;
-  }
+  const covText = coverageText(result.coverage);
+  const summary =
+    `${verdict.label} (${result.score}/100), parsed with ${result.confidence} ` +
+    `confidence. ${result.confidenceReason}` +
+    (covText ? ` Coverage — ${covText}.` : "") +
+    (result.skillSignalAvailable
+      ? ""
+      : " The recognized-skills signal is N/A for this field, so this is a keyword-based estimate.");
 
   const coverage: CoverageLine[] = [
-    {
-      label: "Skill coverage",
-      pct: pct(b.skillCoverage),
-      matched: matchedSkills,
-      required: requiredSkills,
-      weightPct: SKILL_WEIGHT_PCT,
-    },
-    {
-      label: "Keyword coverage",
-      pct: pct(b.keywordCoverage),
-      matched: matchedKeywords,
-      required: requiredKeywords,
-      weightPct: KEYWORD_WEIGHT_PCT,
-    },
+    { label: "Required", pct: pct(result.coverage.required) },
+    { label: "Responsibilities", pct: pct(result.coverage.responsibility) },
+    { label: "Preferred", pct: pct(result.coverage.preferred) },
+    { label: "Recognized skills", pct: pct(result.coverage.concept) },
   ];
 
-  const strengths: TermGroup[] = [
-    { heading: "Skills you match", terms: b.matchedSkills },
-    { heading: "Keywords you cover", terms: b.matchedKeywords },
-  ];
+  const strengths: ReportStrength[] = result.strengths.map((m: TermMatch) => ({
+    term: m.term,
+    status: m.status,
+    evidence: m.evidence,
+  }));
 
-  const weaknesses: TermGroup[] = [
-    { heading: "Missing skills", terms: b.missingSkills },
-    { heading: "Missing keywords", terms: b.missingKeywords },
-  ];
+  const gaps: ReportGap[] = result.gaps.map((m) => ({
+    term: m.term,
+    required: m.bucket === "required",
+  }));
 
-  // Recommendations, ordered by impact: skills first (they weigh most).
+  const requiredGaps = result.gaps.filter((g) => g.bucket === "required").map((g) => g.term);
+  const otherGaps = result.gaps.filter((g) => g.bucket !== "required").map((g) => g.term);
+  const partials = result.strengths
+    .filter((s) => s.status === "partial" || s.status === "foundational")
+    .map((s) => s.term);
+
+  // Recommendations — honest and evidence-aware; never "just add these".
   const recommendations: string[] = [];
-  if (b.missingSkills.length > 0) {
+  if (requiredGaps.length > 0) {
     recommendations.push(
-      `Add clear evidence of these skills (highest impact first): ` +
-        `${joinTerms(b.missingSkills, MAX_NAMED_RECOMMENDATIONS)}.`
+      `Prioritize the required items the posting lists that your résumé doesn't ` +
+        `evidence: ${joinTerms(requiredGaps, MAX_NAMED_TERMS)}. Add them only if you ` +
+        `genuinely have the experience.`
     );
   }
-  if (b.missingKeywords.length > 0) {
+  if (partials.length > 0) {
     recommendations.push(
-      `Work in terminology the posting emphasizes: ` +
-        `${joinTerms(b.missingKeywords, MAX_NAMED_RECOMMENDATIONS)}.`
+      `You partially match ${joinTerms(partials, MAX_NAMED_TERMS)} — strengthen these ` +
+        `with concrete, quantified examples so they read as full experience.`
+    );
+  }
+  if (otherGaps.length > 0) {
+    recommendations.push(
+      `Where accurate, mirror the posting's wording for: ` +
+        `${joinTerms(otherGaps, MAX_NAMED_TERMS)}.`
     );
   }
   if (recommendations.length === 0) {
     recommendations.push(
-      "Your résumé covers everything the posting asks for. Mirror the posting's " +
-        "exact phrasing to stay ahead of keyword screens."
+      "Your résumé covers what the posting asks for. Mirror its exact phrasing to " +
+        "stay ahead of keyword screens."
     );
-  } else if (verdict.band !== "strong") {
-    recommendations.push(
-      "Only claim skills you can back up with concrete examples — tailor, don't pad."
-    );
+  } else {
+    recommendations.push("Tailor, don't pad — only claim skills you can back up in an interview.");
   }
 
   return {
@@ -180,10 +174,12 @@ export function buildMatchReport(input: MatchReportInput): MatchReport {
     meta,
     score: result.score,
     verdict,
+    confidence: result.confidence,
+    roleFamilies: result.roleFamilies,
     summary,
     coverage,
     strengths,
-    weaknesses,
+    gaps,
     recommendations,
   };
 }
@@ -201,7 +197,5 @@ export function matchReportFilename(input: {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   const date = (input.generatedAt ?? new Date()).toISOString().slice(0, 10);
-  return slug
-    ? `match-report-${slug}-${date}.pdf`
-    : `match-report-${date}.pdf`;
+  return slug ? `match-report-${slug}-${date}.pdf` : `match-report-${date}.pdf`;
 }

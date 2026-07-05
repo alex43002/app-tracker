@@ -57,8 +57,11 @@ def test_score_with_raw_text(client, auth_payload):
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["score"] >= 80
-    assert "python" in data["breakdown"]["matchedSkills"]
-    assert isinstance(data["gaps"], list)
+    strong = {s["term"] for s in data["strengths"] if s["status"] == "strong"}
+    assert "python" in strong
+    assert data["skillSignalAvailable"] is True
+    assert data["coverage"]["concept"] is not None
+    assert data["confidence"] in {"high", "medium", "low"}
 
 
 def test_score_reports_gaps(client, auth_payload):
@@ -72,8 +75,9 @@ def test_score_reports_gaps(client, auth_payload):
         },
     )
     data = res.json()["data"]
-    assert "kubernetes" in data["breakdown"]["missingSkills"]
-    assert "aws" in data["gaps"]
+    gap_terms = {g["term"] for g in data["gaps"]}
+    assert "kubernetes" in gap_terms
+    assert "aws" in gap_terms
 
 
 def test_score_requires_a_resume_and_a_job_source(client, auth_payload):

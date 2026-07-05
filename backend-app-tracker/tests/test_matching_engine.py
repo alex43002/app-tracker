@@ -136,18 +136,22 @@ def test_perfect_coverage_scores_high():
     jd = "We need Python, Django, and PostgreSQL experience."
     resume = "Python developer using Django and PostgreSQL daily."
     result = scoring.score_match(resume, jd)
-    assert result.score >= 90
-    assert not result.breakdown.missing_skills
+    assert result.score >= 85
+    strong = {m.term for m in result.strengths if m.status == "strong"}
+    assert {"python", "django", "postgresql"} <= strong
+    assert not result.gaps  # nothing the posting asked for is missing
 
 
 def test_missing_skills_become_gaps():
     jd = "Required: Python, Kubernetes, and AWS."
     resume = "I write Python scripts."
     result = scoring.score_match(resume, jd)
-    assert "kubernetes" in result.breakdown.missing_skills
-    assert "aws" in result.breakdown.missing_skills
-    assert "kubernetes" in result.gaps
+    gaps = {m.term for m in result.gaps}
+    assert "kubernetes" in gaps
+    assert "aws" in gaps
     assert result.score < 100
+    # Concept signal is available (Python/K8s/AWS are curated), so not N/A.
+    assert result.coverage.concept is not None
 
 
 def test_resume_padding_does_not_inflate_score():

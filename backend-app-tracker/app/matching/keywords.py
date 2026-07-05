@@ -207,7 +207,10 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "product management": ("product management",),
     # Healthcare / compliance
     "hipaa": ("hipaa",),
-    "emr": ("emr", "electronic medical records"),
+    "emr": (
+        "emr", "ehr", "electronic medical record", "electronic medical records",
+        "electronic health record", "electronic health records",
+    ),
     # Soft skills
     "communication": ("communication",),
     "leadership": ("leadership",),
@@ -228,7 +231,10 @@ _ALIASES_BY_LENGTH = sorted(_ALIAS_TO_CANONICAL, key=len, reverse=True)
 
 
 # Common English + résumé/JD boilerplate stopwords. Kept compact on purpose —
-# the goal is to drop noise, not to be a linguistics-grade list.
+# the goal is to drop noise, not to be a linguistics-grade list. The second
+# block is domain-agnostic job-post scaffolding and company/legal/benefits
+# boilerplate: words like "benefits", "qualifications" or "equal opportunity"
+# say nothing about role fit in *any* field, so they must never move a score.
 STOPWORDS: frozenset[str] = frozenset(
     """
     a an the and or but if then else for to of in on at by with from as is are
@@ -245,6 +251,23 @@ STOPWORDS: frozenset[str] = frozenset(
     looking ideal ability across within while also new well help build building
     need needs want wants seeking seek join apply please ideally must
     proficiency proficient familiarity familiar expertise expert hands
+
+    qualification qualifications basic minimum essential desired nice
+    bonus preferred equivalent related field fields following example examples
+    various multiple several proven demonstrated bachelor master masters
+    degree diploma education educational gpa
+    benefit benefits perk perks compensation salary bonus insurance
+    equal opportunity employer employment diversity inclusion inclusive
+    accommodation accommodations applicant applicants veteran veterans
+    disability disabilities gender race religion age sexual orientation
+    eeo verify authorized authorization sponsorship
+    mission vision culture values people world global globally worldwide
+    business businesses environment environments area areas current future
+    day days daily weekly google amazon meta microsoft
+    users user customers customer clients client stakeholders stakeholder
+    following e.g eg i.e ie per etc provide provides providing ensure ensures
+    ensuring maintain maintains maintaining support supports supporting
+    partner partners partnering deliver delivers delivering drive drives
     """.split()
 )
 
@@ -379,6 +402,74 @@ def vocabulary(text: str) -> set[str]:
         vocab.add(canonical)
         vocab.add(stem_term(canonical))
     return vocab
+
+
+def content_tokens(text: str) -> list[str]:
+    """Content word-tokens: stopwords, digits, and single chars removed."""
+    return [
+        t
+        for t in _tokens(normalize(text))
+        if t not in STOPWORDS and not t.isdigit() and len(t) > 1
+    ]
+
+
+# Clause/list separators that bound a keyphrase. Slashes and hyphens are kept
+# so skill tokens (tcp/ip, ci/cd, ticket-based) survive.
+_PHRASE_SPLIT_RE = re.compile(r"[,.;:()\[\]{}!?\"'|\n]+")
+
+
+def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
+    """Domain-agnostic keyphrase candidates (RAKE-style), with frequencies.
+
+    The text is split on punctuation *and* stopwords; each remaining contiguous
+    run of content tokens is one candidate keyphrase (capped at ``max_words``),
+    and its constituent unigrams are also counted. This preserves multi-word
+    terms like ``specimen collection`` or ``local area network`` in *any* field
+    without a per-domain list, while punctuation splitting keeps comma-separated
+    list items ("assessment, medication administration") from fusing into one
+    bogus phrase.
+    """
+    counts: Counter[str] = Counter()
+
+    def flush(run: list[str]) -> None:
+        if not run:
+            return
+        counts[" ".join(run[:max_words])] += 1
+        for word in run:
+            if len(word) > 1:
+                counts[word] += 1
+
+    for fragment in _PHRASE_SPLIT_RE.split(normalize(text)):
+        run: list[str] = []
+        for tok in _tokens(fragment):
+            if tok in STOPWORDS or tok.isdigit() or len(tok) <= 1:
+                flush(run)
+                run = []
+            else:
+                run.append(tok)
+        flush(run)
+    return counts
+
+
+def stemmed_ngrams(text: str, *, max_words: int = 3) -> set[str]:
+    """Stemmed contiguous n-grams over the content-token stream.
+
+    Used as the *present* set when matching a job phrase against a résumé so
+    ``specimen collection`` matches ``specimen collections`` (stemming) and
+    survives intervening stopwords being removed on both sides.
+    """
+    stems = [stem(t) for t in content_tokens(text)]
+    out: set[str] = set()
+    n = len(stems)
+    for size in range(1, max_words + 1):
+        for i in range(0, n - size + 1):
+            out.add(" ".join(stems[i : i + size]))
+    return out
+
+
+def stemmed_unigrams(text: str) -> set[str]:
+    """Set of stemmed content unigrams — for unordered 'all words present' checks."""
+    return {stem(t) for t in content_tokens(text)}
 
 
 @dataclass(frozen=True)

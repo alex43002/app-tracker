@@ -62,18 +62,34 @@ class ExtractResumeResponse(BaseModel):
     text: str
 
 
-class ScoreBreakdownModel(BaseModel):
-    skillCoverage: float
-    keywordCoverage: float
-    matchedSkills: list[str]
-    missingSkills: list[str]
-    matchedKeywords: list[str]
-    missingKeywords: list[str]
+class CoverageModel(BaseModel):
+    """Per-bucket coverage. ``None`` means the posting had no such section (not
+    zero, and never a fake 100%)."""
+
+    required: float | None
+    responsibility: float | None
+    preferred: float | None
+    concept: float | None  # curated-skill signal; None when no concepts detected
+    keyword: float
+
+
+class TermMatchModel(BaseModel):
+    term: str
+    status: str  # strong | partial | foundational | missing
+    bucket: str  # required | responsibility | preferred
+    isConcept: bool
+    evidence: list[str]  # résumé phrases that earned the match
+    category: str | None = None
 
 
 class ScoreResponse(BaseModel):
     score: int
-    breakdown: ScoreBreakdownModel
-    gaps: list[str]
+    confidence: str  # high | medium | low
+    confidenceReason: str
+    skillSignalAvailable: bool
+    roleFamilies: list[str]
+    coverage: CoverageModel
+    strengths: list[TermMatchModel]
+    gaps: list[TermMatchModel]
     resume: ExtractedTerms
     job: ExtractedTerms

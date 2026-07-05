@@ -2,26 +2,31 @@ import { describe, expect, it } from "vitest";
 
 import { buildMatchReport } from "./matchReport";
 import { renderMatchReportPdf } from "./matchReportPdf";
-import type { MatchScore } from "../types/match";
+import type { MatchScore, TermMatch } from "../types/match";
+
+function term(over: Partial<TermMatch> & { term: string }): TermMatch {
+  return { status: "strong", bucket: "required", isConcept: true, evidence: [], ...over };
+}
 
 const SCORE: MatchScore = {
   score: 62,
-  breakdown: {
-    skillCoverage: 0.6,
-    keywordCoverage: 0.5,
-    matchedSkills: ["python", "django"],
-    missingSkills: ["aws", "kubernetes"],
-    matchedKeywords: ["payments"],
-    missingKeywords: ["terraform"],
-  },
-  gaps: ["aws", "kubernetes", "terraform"],
-  resume: { skills: ["python", "django"], keywords: ["payments"] },
-  job: { skills: [], keywords: [] },
+  confidence: "high",
+  confidenceReason: "Parsed 12 requirement terms from the posting.",
+  skillSignalAvailable: true,
+  roleFamilies: ["Software engineering"],
+  coverage: { required: 0.6, responsibility: 0.5, preferred: null, concept: 0.55, keyword: 0.4 },
+  strengths: [
+    term({ term: "python", status: "strong", evidence: ["python developer"] }),
+    term({ term: "django", status: "partial", bucket: "responsibility" }),
+  ],
+  gaps: [term({ term: "aws", status: "missing", bucket: "required" })],
+  resume: { skills: ["python"], keywords: [] },
+  job: { skills: ["python", "aws"], keywords: [] },
 };
 
-function report() {
+function report(over: Partial<MatchScore> = {}) {
   return buildMatchReport({
-    result: SCORE,
+    result: { ...SCORE, ...over },
     jobTitle: "Backend Engineer",
     company: "Acme",
     resumeLabel: "cv.pdf",
@@ -32,34 +37,28 @@ function report() {
 
 describe("renderMatchReportPdf", () => {
   it("produces a non-empty PDF document", () => {
-    const doc = renderMatchReportPdf(report());
-    const blob = doc.output("blob");
+    const blob = renderMatchReportPdf(report()).output("blob");
     expect(blob.size).toBeGreaterThan(0);
-    // jsPDF sets the correct mime type on the emitted blob.
     expect(blob.type).toBe("application/pdf");
   });
 
   it("emits a PDF header signature", () => {
-    const doc = renderMatchReportPdf(report());
-    const out = doc.output("arraybuffer") as ArrayBuffer;
+    const out = renderMatchReportPdf(report()).output("arraybuffer") as ArrayBuffer;
     const head = String.fromCharCode(...new Uint8Array(out).slice(0, 5));
     expect(head).toBe("%PDF-");
   });
 
-  it("does not throw when many terms force a second page", () => {
-    const big = {
-      ...SCORE,
-      breakdown: {
-        ...SCORE.breakdown,
-        missingKeywords: Array.from({ length: 200 }, (_, i) => `term-${i}`),
-      },
-    };
-    const model = buildMatchReport({
-      result: big,
-      resumeLabel: "cv.pdf",
-      jobSourceLabel: "Pasted description",
-    });
-    const doc = renderMatchReportPdf(model);
+  it("renders an N/A coverage line without throwing", () => {
+    // preferred coverage is null in SCORE — must render as N/A, not a crash.
+    const doc = renderMatchReportPdf(report());
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("paginates when there are many gaps", () => {
+    const many = Array.from({ length: 250 }, (_, i) =>
+      term({ term: `gap-${i}`, status: "missing", bucket: "preferred" })
+    );
+    const doc = renderMatchReportPdf(report({ gaps: many }));
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });
 });

@@ -104,18 +104,33 @@ def score(db, payload, user_id: str) -> dict:
         job_text, _ = _job_text_from_url(str(payload.jobUrl))
 
     result = scoring.score_match(resume_text, job_text)
-    b = result.breakdown
+
+    def _term(m) -> dict:
+        return {
+            "term": m.term,
+            "status": m.status,
+            "bucket": m.bucket,
+            "isConcept": m.is_concept,
+            "evidence": m.evidence,
+            "category": m.category,
+        }
+
+    c = result.coverage
     return {
         "score": result.score,
-        "breakdown": {
-            "skillCoverage": b.skill_coverage,
-            "keywordCoverage": b.keyword_coverage,
-            "matchedSkills": b.matched_skills,
-            "missingSkills": b.missing_skills,
-            "matchedKeywords": b.matched_keywords,
-            "missingKeywords": b.missing_keywords,
+        "confidence": result.confidence,
+        "confidenceReason": result.confidence_reason,
+        "skillSignalAvailable": result.skill_signal_available,
+        "roleFamilies": result.role_families,
+        "coverage": {
+            "required": c.required,
+            "responsibility": c.responsibility,
+            "preferred": c.preferred,
+            "concept": c.concept,
+            "keyword": c.keyword,
         },
-        "gaps": result.gaps,
+        "strengths": [_term(m) for m in result.strengths],
+        "gaps": [_term(m) for m in result.gaps],
         "resume": {
             "skills": result.resume_profile.skills,
             "keywords": result.resume_profile.keywords,

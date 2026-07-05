@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 
-import type { MatchReport, ScoreBand, TermGroup } from "./matchReport";
+import type { CoverageLine, MatchReport, ScoreBand } from "./matchReport";
 
 /* ============================================================
    Match report → PDF (FEAT-21)
@@ -20,6 +20,8 @@ const BAND_COLOR: Record<ScoreBand, RGB> = {
 const INK: RGB = [17, 24, 39];
 const MUTED: RGB = [107, 114, 128];
 const RULE: RGB = [229, 231, 235];
+const GREEN: RGB = [22, 163, 74];
+const RED: RGB = [220, 38, 38];
 
 const PAGE = { width: 595, height: 842 }; // A4 in points
 const MARGIN = 48;
@@ -33,7 +35,6 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
 
   const setColor = (c: RGB) => doc.setTextColor(c[0], c[1], c[2]);
 
-  /** Reserve vertical space, adding a page when the block wouldn't fit. */
   const ensure = (needed: number) => {
     if (y + needed > PAGE.height - MARGIN) {
       doc.addPage();
@@ -43,17 +44,18 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
 
   const paragraph = (
     text: string,
-    opts: { size?: number; color?: RGB; gap?: number; bold?: boolean } = {}
+    opts: { size?: number; color?: RGB; gap?: number; indent?: number } = {}
   ) => {
     const size = opts.size ?? 10;
-    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    const indent = opts.indent ?? 0;
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(size);
     setColor(opts.color ?? INK);
-    const lines = doc.splitTextToSize(text, CONTENT_WIDTH) as string[];
+    const lines = doc.splitTextToSize(text, CONTENT_WIDTH - indent) as string[];
     const lineHeight = size * 1.35;
     for (const line of lines) {
       ensure(lineHeight);
-      doc.text(line, MARGIN, y);
+      doc.text(line, MARGIN + indent, y);
       y += lineHeight;
     }
     y += opts.gap ?? 0;
@@ -91,8 +93,15 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   setColor(band);
-  doc.text(report.verdict.label, MARGIN, y);
-  y += 18;
+  doc.text(`${report.verdict.label}  ·  ${report.confidence} confidence`, MARGIN, y);
+  y += 14;
+  if (report.roleFamilies.length > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    setColor(MUTED);
+    doc.text(`Read as: ${report.roleFamilies.join(" · ")}`, MARGIN, y);
+    y += 14;
+  }
 
   // ---- Meta table ----
   doc.setFontSize(10);
@@ -114,52 +123,79 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
 
   // ---- Coverage ----
   sectionHeading("Coverage");
-  for (const line of report.coverage) {
-    ensure(30);
+  const coverageBar = (line: CoverageLine) => {
+    ensure(28);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     setColor(INK);
-    doc.text(`${line.label} (${line.weightPct}% of score)`, MARGIN, y);
+    doc.text(line.label, MARGIN, y);
     setColor(MUTED);
-    const detail =
-      line.required > 0
-        ? `${line.pct}%  ·  ${line.matched}/${line.required}`
-        : `${line.pct}%  ·  none detected`;
-    doc.text(detail, MARGIN + CONTENT_WIDTH, y, { align: "right" });
+    doc.text(line.pct === null ? "N/A" : `${line.pct}%`, MARGIN + CONTENT_WIDTH, y, {
+      align: "right",
+    });
     y += 8;
-
-    // Progress bar.
     const barH = 6;
     doc.setFillColor(RULE[0], RULE[1], RULE[2]);
     doc.roundedRect(MARGIN, y, CONTENT_WIDTH, barH, 3, 3, "F");
-    doc.setFillColor(band[0], band[1], band[2]);
-    const filled = Math.max(0, Math.min(1, line.pct / 100)) * CONTENT_WIDTH;
-    if (filled > 0) doc.roundedRect(MARGIN, y, filled, barH, 3, 3, "F");
-    y += barH + 16;
-  }
-
-  // ---- What went well / what's missing ----
-  const termBlock = (group: TermGroup, color: RGB, emptyText: string) => {
-    ensure(24);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    setColor(color);
-    doc.text(`${group.heading} (${group.terms.length})`, MARGIN, y);
-    y += 14;
-    paragraph(group.terms.length > 0 ? group.terms.join(", ") : emptyText, {
-      color: group.terms.length > 0 ? INK : MUTED,
-      gap: 8,
-    });
+    if (line.pct !== null && line.pct > 0) {
+      doc.setFillColor(band[0], band[1], band[2]);
+      doc.roundedRect(MARGIN, y, (line.pct / 100) * CONTENT_WIDTH, barH, 3, 3, "F");
+    }
+    y += barH + 14;
   };
+  report.coverage.forEach(coverageBar);
 
-  sectionHeading("What went well");
-  for (const g of report.strengths) {
-    termBlock(g, BAND_COLOR.strong, "Nothing from the posting was matched here.");
+  // ---- What you match (with evidence) ----
+  sectionHeading("What you match");
+  if (report.strengths.length === 0) {
+    paragraph("Nothing from the posting was found in your résumé.", { color: MUTED });
+  } else {
+    for (const s of report.strengths.slice(0, 30)) {
+      ensure(16);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      setColor(GREEN);
+      doc.text(`[${s.status}]`, MARGIN, y);
+      doc.setFont("helvetica", "normal");
+      setColor(INK);
+      doc.text(s.term, MARGIN + 66, y);
+      y += 13;
+      if (s.evidence.length > 0) {
+        paragraph(`via ${s.evidence.slice(0, 4).join(", ")}`, {
+          size: 8,
+          color: MUTED,
+          indent: 66,
+          gap: 2,
+        });
+      }
+    }
   }
 
-  sectionHeading("What's missing");
-  for (const g of report.weaknesses) {
-    termBlock(g, BAND_COLOR.weak, "None — fully covered.");
+  // ---- Gaps ----
+  sectionHeading("Gaps");
+  const requiredGaps = report.gaps.filter((g) => g.required).map((g) => g.term);
+  const otherGaps = report.gaps.filter((g) => !g.required).map((g) => g.term);
+  if (report.gaps.length === 0) {
+    paragraph("None — your résumé covers what the posting asks for.", { color: MUTED });
+  } else {
+    if (requiredGaps.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      setColor(RED);
+      ensure(14);
+      doc.text("Required, and missing:", MARGIN, y);
+      y += 13;
+      paragraph(requiredGaps.join(", "), { gap: 4 });
+    }
+    if (otherGaps.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      setColor(MUTED);
+      ensure(14);
+      doc.text("Also missing:", MARGIN, y);
+      y += 13;
+      paragraph(otherGaps.join(", "), { color: MUTED, gap: 4 });
+    }
   }
 
   // ---- Recommendations ----
@@ -171,9 +207,9 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
     setColor(INK);
     const lines = doc.splitTextToSize(rec, CONTENT_WIDTH - 14) as string[];
     doc.text("•", MARGIN, y);
-    for (let i = 0; i < lines.length; i++) {
+    for (const line of lines) {
       ensure(14);
-      doc.text(lines[i], MARGIN + 14, y);
+      doc.text(line, MARGIN + 14, y);
       y += 14;
     }
     y += 4;
@@ -187,13 +223,11 @@ export function renderMatchReportPdf(report: MatchReport): jsPDF {
     doc.setFontSize(8);
     setColor(MUTED);
     doc.text(
-      "Generated by CareerLog · estimated fit from keyword & skill coverage",
+      "Generated by CareerLog · estimated fit from section-weighted skill & keyword coverage",
       MARGIN,
       PAGE.height - 24
     );
-    doc.text(`${p} / ${pages}`, PAGE.width - MARGIN, PAGE.height - 24, {
-      align: "right",
-    });
+    doc.text(`${p} / ${pages}`, PAGE.width - MARGIN, PAGE.height - 24, { align: "right" });
   }
 
   return doc;

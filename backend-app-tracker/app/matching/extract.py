@@ -52,6 +52,21 @@ def _extract_docx(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def _dehyphenate(text: str) -> str:
+    """Repair PDF/LaTeX line-wrap artifacts that shred keyword matching.
+
+    Résumés exported from LaTeX/Word routinely hyphenate across line breaks
+    (``trou-\\nbleshooting``) and hard-wrap mid-sentence. Left as-is, the parser
+    would never match "troubleshooting". Join a hyphen-newline back into one
+    word, but keep genuine hyphenated compounds (``ticket-based``) intact by
+    only collapsing when a lowercase letter directly follows the break.
+    """
+    if not text:
+        return text
+    # word-continuation: "trou-\n bleshooting" -> "troubleshooting"
+    return re.sub(r"(\w)-\s*\n\s*([a-z])", r"\1\2", text)
+
+
 def _extract_pdf(data: bytes) -> str:
     try:
         from pypdf import PdfReader  # imported lazily so the dep is optional
@@ -59,7 +74,7 @@ def _extract_pdf(data: bytes) -> str:
         return ""
     try:
         reader = PdfReader(io.BytesIO(data))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        return _dehyphenate("\n".join(page.extract_text() or "" for page in reader.pages))
     except Exception:
         # pypdf raises a variety of errors on malformed/encrypted PDFs; a
         # résumé we can't read should degrade to "no text", not a 500.

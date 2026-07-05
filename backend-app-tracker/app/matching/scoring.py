@@ -1,122 +1,259 @@
-"""Score a résumé against a job description.
+"""Score a résumé against a job description — explainable and domain-agnostic.
 
-The score answers "how well does this résumé cover what the posting asks for?"
-It is intentionally *recall-oriented from the job's side*: a term the job
-mentions but the résumé lacks is a gap; a term the résumé has that the job never
-mentions is neither rewarded nor penalised (padding shouldn't inflate fit).
+The posting is decomposed into weighted, bucketed terms (see ``analyze.py``):
+each term is a recognized concept *or* a salient keyphrase, tagged as coming
+from required / responsibility / preferred sections. Each term is then matched
+against the résumé at one of four confidence levels — **strong** (direct hit),
+**partial** (adjacent/related evidence or the words present but not as a
+phrase), **foundational** (conceptual-tier coverage in the same area) or
+**missing** — and every non-miss carries the résumé evidence that earned it.
 
-Two weighted signals are combined:
+The final score is a weighted blend of per-bucket coverage, renormalized over
+whichever buckets the posting actually has. Two honesty rules the old engine
+violated:
 
-* **Skill coverage** — the fraction of the job's required skills the résumé
-  demonstrates. Weighted most heavily because skills are the strongest,
-  least-noisy signal.
-* **Keyword coverage** — the fraction of the job's other salient keywords the
-  résumé covers. Catches domains the taxonomy doesn't model.
-
-Output is a 0–100 integer plus the matched terms and the gaps, so the UI can
-render both the number and *why*.
+* If *no* terms could be extracted, we do **not** invent 100% coverage — the
+  result is flagged low-confidence and falls back to a clearly-labelled
+  keyword-only estimate.
+* "Concept coverage" (the curated-skill signal) is reported as **N/A**, not
+  100%, when the posting yielded no recognized concepts.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from app.matching.keywords import TermProfile, profile, stem_term, vocabulary
+from app.matching import analyze, keywords
+from app.matching.taxonomy import CONCEPT_BY_ID, TIER_FOUNDATIONAL, related_ids
 
-# Skills dominate the score; keyword coverage is a supporting signal. If a job
-# posting yields no skills at all (taxonomy miss), scoring falls back entirely
-# to keyword coverage so the number stays meaningful.
-_SKILL_WEIGHT = 0.7
-_KEYWORD_WEIGHT = 0.3
+STATUS_STRONG = "strong"
+STATUS_PARTIAL = "partial"
+STATUS_FOUNDATIONAL = "foundational"
+STATUS_MISSING = "missing"
+
+_STATUS_FACTOR = {
+    STATUS_STRONG: 1.0,
+    STATUS_PARTIAL: 0.6,
+    STATUS_FOUNDATIONAL: 0.4,
+    STATUS_MISSING: 0.0,
+}
+
+BUCKET_REQUIRED = "required"
+BUCKET_RESPONSIBILITY = "responsibility"
+BUCKET_PREFERRED = "preferred"
+_BUCKET_BASE = {
+    BUCKET_REQUIRED: 0.5,
+    BUCKET_RESPONSIBILITY: 0.3,
+    BUCKET_PREFERRED: 0.2,
+}
+
+CONFIDENCE_HIGH = "high"
+CONFIDENCE_MEDIUM = "medium"
+CONFIDENCE_LOW = "low"
 
 
 @dataclass(frozen=True)
-class ScoreBreakdown:
-    skill_coverage: float  # 0..1
-    keyword_coverage: float  # 0..1
-    matched_skills: list[str]
-    missing_skills: list[str]
-    matched_keywords: list[str]
-    missing_keywords: list[str]
+class TermMatch:
+    term: str
+    status: str
+    bucket: str
+    is_concept: bool
+    weight: float
+    evidence: list[str]
+    category: str | None = None
+
+
+@dataclass(frozen=True)
+class Coverage:
+    required: float | None
+    responsibility: float | None
+    preferred: float | None
+    concept: float | None  # curated-skill signal; None when no concepts detected
+    keyword: float  # legacy general keyword overlap (always available)
 
 
 @dataclass(frozen=True)
 class MatchResult:
-    score: int  # 0..100
-    breakdown: ScoreBreakdown
-    resume_profile: TermProfile
-    job_profile: TermProfile
-    # Ordered, de-duplicated gap list (skills first) for the UI's gap analysis.
-    gaps: list[str] = field(default_factory=list)
+    score: int
+    confidence: str
+    confidence_reason: str
+    skill_signal_available: bool
+    role_families: list[str]
+    coverage: Coverage
+    strengths: list[TermMatch]  # strong / partial / foundational, best first
+    gaps: list[TermMatch]  # missing, most important first
+    resume_profile: keywords.TermProfile
+    job_profile: keywords.TermProfile
 
 
-def _coverage(required: list[str], present: set[str]) -> tuple[float, list[str], list[str]]:
-    """Split ``required`` into matched/missing and return the matched fraction."""
-    if not required:
-        return 1.0, [], []
-    matched = [t for t in required if t in present]
-    missing = [t for t in required if t not in present]
-    return len(matched) / len(required), matched, missing
+def _match_term(term: analyze.JobTerm, resume: analyze.ResumeAnalysis) -> tuple[str, list[str]]:
+    """Classify a single job term against the résumé and return its evidence."""
+    if term.is_concept:
+        if term.key in resume.concept_ids:
+            return STATUS_STRONG, list(resume.concept_evidence.get(term.key, []))
+        related = related_ids(term.key) & resume.concept_ids
+        if related:
+            evidence: list[str] = []
+            for cid in related:
+                evidence.extend(resume.concept_evidence.get(cid, []))
+            return STATUS_PARTIAL, evidence[:4]
+        if term.tier == TIER_FOUNDATIONAL:
+            same_area = [
+                cid
+                for cid in resume.concept_ids
+                if CONCEPT_BY_ID[cid].category == term.category
+            ]
+            if same_area:
+                evidence = []
+                for cid in same_area:
+                    evidence.extend(resume.concept_evidence.get(cid, []))
+                return STATUS_FOUNDATIONAL, evidence[:4]
+        return STATUS_MISSING, []
+
+    # Generic keyphrase term.
+    if term.key in resume.ngrams:
+        return STATUS_STRONG, [term.display]
+    words = term.key.split(" ")
+    if len(words) > 1 and all(w in resume.unigrams for w in words):
+        return STATUS_PARTIAL, [term.display]
+    return STATUS_MISSING, []
 
 
-def _keyword_coverage(
-    required: list[str], resume_vocab: set[str]
-) -> tuple[float, list[str], list[str]]:
-    """Keyword coverage with light stemming against the full résumé vocabulary.
+def _bucket_of(term: analyze.JobTerm) -> str:
+    if term.required:
+        return BUCKET_REQUIRED
+    if term.preferred:
+        return BUCKET_PREFERRED
+    return BUCKET_RESPONSIBILITY
 
-    A required keyword counts as covered if it (or its stemmed form) appears
-    anywhere in the résumé. Matched/missing keep the original job phrasing so
-    the UI shows readable terms.
-    """
-    if not required:
-        return 1.0, [], []
-    matched, missing = [], []
-    for term in required:
-        if term in resume_vocab or stem_term(term) in resume_vocab:
-            matched.append(term)
-        else:
-            missing.append(term)
-    return len(matched) / len(required), matched, missing
+
+def _coverage(matches: list[TermMatch], bucket: str) -> float | None:
+    """Weighted coverage of one bucket, or None when the bucket is empty."""
+    items = [m for m in matches if m.bucket == bucket]
+    total = sum(m.weight for m in items)
+    if total == 0:
+        return None
+    earned = sum(m.weight * _STATUS_FACTOR[m.status] for m in items)
+    return round(earned / total, 4)
+
+
+def _keyword_coverage(resume_text: str, job_text: str) -> float:
+    """Legacy general keyword overlap (stemmed), kept as a stable fallback."""
+    job = keywords.profile(job_text)
+    if not job.keywords:
+        return 0.0
+    resume_vocab = keywords.vocabulary(resume_text)
+    matched = sum(
+        1
+        for kw in job.keywords
+        if kw in resume_vocab or keywords.stem_term(kw) in resume_vocab
+    )
+    return round(matched / len(job.keywords), 4)
+
+
+def _confidence(n_terms: int, has_required_or_resp: bool, skill_signal: bool) -> tuple[str, str]:
+    if n_terms == 0:
+        return (
+            CONFIDENCE_LOW,
+            "Could not extract role requirements from this posting; showing a "
+            "keyword-only estimate.",
+        )
+    if n_terms >= 8 and has_required_or_resp:
+        level = CONFIDENCE_HIGH
+    elif n_terms >= 3:
+        level = CONFIDENCE_MEDIUM
+    else:
+        level = CONFIDENCE_LOW
+    reason = f"Parsed {n_terms} requirement terms from the posting."
+    if not skill_signal:
+        reason += " Matched on salient terms (no curated skills recognized for this field)."
+    return level, reason
 
 
 def score_match(resume_text: str, job_text: str, *, keyword_limit: int = 25) -> MatchResult:
-    """Compare a résumé to a job description and return an explainable score."""
-    resume = profile(resume_text, keyword_limit=keyword_limit * 2)
-    job = profile(job_text, keyword_limit=keyword_limit)
+    """Compare a résumé to a job description and return an explainable result."""
+    job = analyze.analyze_job(job_text)
+    resume = analyze.analyze_resume(resume_text)
+    keyword_cov = _keyword_coverage(resume_text, job_text)
 
-    resume_terms = resume.all_terms
-    resume_vocab = vocabulary(resume_text)
+    resume_profile = keywords.profile(resume_text, keyword_limit=keyword_limit * 2)
+    job_profile = keywords.profile(job_text, keyword_limit=keyword_limit)
 
-    skill_cov, matched_skills, missing_skills = _coverage(job.skills, resume_terms)
-    kw_cov, matched_keywords, missing_keywords = _keyword_coverage(
-        job.keywords, resume_vocab
+    matches: list[TermMatch] = []
+    for term in job.terms:
+        status, evidence = _match_term(term, resume)
+        matches.append(
+            TermMatch(
+                term=term.display,
+                status=status,
+                bucket=_bucket_of(term),
+                is_concept=term.is_concept,
+                weight=term.weight,
+                evidence=evidence,
+                category=term.category,
+            )
+        )
+
+    cov_required = _coverage(matches, BUCKET_REQUIRED)
+    cov_resp = _coverage(matches, BUCKET_RESPONSIBILITY)
+    cov_pref = _coverage(matches, BUCKET_PREFERRED)
+
+    concept_matches = [m for m in matches if m.is_concept]
+    concept_total = sum(m.weight for m in concept_matches)
+    concept_cov = (
+        round(
+            sum(m.weight * _STATUS_FACTOR[m.status] for m in concept_matches) / concept_total,
+            4,
+        )
+        if concept_total
+        else None
     )
 
-    # Blend the two signals. When the job has no detectable skills, lean fully on
-    # keyword coverage so the score doesn't collapse to a meaningless 0/100.
-    if job.skills and job.keywords:
-        blended = _SKILL_WEIGHT * skill_cov + _KEYWORD_WEIGHT * kw_cov
-    elif job.skills:
-        blended = skill_cov
+    skill_signal = bool(concept_matches)
+    has_req_or_resp = cov_required is not None or cov_resp is not None
+    confidence, reason = _confidence(len(matches), has_req_or_resp, skill_signal)
+
+    if not matches:
+        # Nothing structured extracted — do NOT fake coverage; keyword-only.
+        score = round(keyword_cov * 100)
     else:
-        blended = kw_cov
+        present = {
+            BUCKET_REQUIRED: cov_required,
+            BUCKET_RESPONSIBILITY: cov_resp,
+            BUCKET_PREFERRED: cov_pref,
+        }
+        weight_sum = sum(_BUCKET_BASE[b] for b, c in present.items() if c is not None)
+        blended = (
+            sum(_BUCKET_BASE[b] * c for b, c in present.items() if c is not None) / weight_sum
+            if weight_sum
+            else keyword_cov
+        )
+        score = round(blended * 100)
 
-    score = round(blended * 100)
-
-    # Gap list: missing skills first (highest signal), then missing keywords.
-    gaps = missing_skills + missing_keywords
+    strengths = sorted(
+        (m for m in matches if m.status != STATUS_MISSING),
+        key=lambda m: (-_STATUS_FACTOR[m.status], -m.weight, m.term),
+    )
+    gaps = sorted(
+        (m for m in matches if m.status == STATUS_MISSING),
+        key=lambda m: (m.bucket != BUCKET_REQUIRED, not m.is_concept, -m.weight, m.term),
+    )
 
     return MatchResult(
         score=score,
-        breakdown=ScoreBreakdown(
-            skill_coverage=round(skill_cov, 4),
-            keyword_coverage=round(kw_cov, 4),
-            matched_skills=matched_skills,
-            missing_skills=missing_skills,
-            matched_keywords=matched_keywords,
-            missing_keywords=missing_keywords,
+        confidence=confidence,
+        confidence_reason=reason,
+        skill_signal_available=skill_signal,
+        role_families=job.role_families,
+        coverage=Coverage(
+            required=cov_required,
+            responsibility=cov_resp,
+            preferred=cov_pref,
+            concept=concept_cov,
+            keyword=keyword_cov,
         ),
-        resume_profile=resume,
-        job_profile=job,
+        strengths=strengths,
         gaps=gaps,
+        resume_profile=resume_profile,
+        job_profile=job_profile,
     )

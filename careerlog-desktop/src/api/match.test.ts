@@ -44,15 +44,15 @@ describe("match api", () => {
   it("scoreMatch POSTs the payload and unwraps the score", async () => {
     const fetchMock = stub({
       score: 82,
-      breakdown: {
-        skillCoverage: 0.8,
-        keywordCoverage: 0.5,
-        matchedSkills: ["python"],
-        missingSkills: ["aws"],
-        matchedKeywords: [],
-        missingKeywords: [],
-      },
-      gaps: ["aws"],
+      confidence: "high",
+      confidenceReason: "Parsed 10 requirement terms.",
+      skillSignalAvailable: true,
+      roleFamilies: ["Software engineering"],
+      coverage: { required: 0.8, responsibility: 0.6, preferred: null, concept: 0.7, keyword: 0.5 },
+      strengths: [
+        { term: "python", status: "strong", bucket: "required", isConcept: true, evidence: ["python"] },
+      ],
+      gaps: [{ term: "aws", status: "missing", bucket: "required", isConcept: true, evidence: [] }],
       resume: { skills: ["python"], keywords: [] },
       job: { skills: ["python", "aws"], keywords: [] },
     });
@@ -62,7 +62,8 @@ describe("match api", () => {
       jobDescription: "Python and AWS",
     });
     expect(res.score).toBe(82);
-    expect(res.gaps).toContain("aws");
+    expect(res.gaps.map((g) => g.term)).toContain("aws");
+    expect(res.coverage.preferred).toBeNull();
 
     const c = call(fetchMock);
     expect(c.method).toBe("POST");
