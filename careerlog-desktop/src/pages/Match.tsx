@@ -5,11 +5,21 @@ import { AppLayout } from "../layouts/AppLayout";
 import { fetchJobs, fetchJobResumes } from "../api/jobs";
 import { extractResume, scoreMatch } from "../api/match";
 import { ScoreResult } from "../components/match/ScoreResult";
+import { buildMatchReport, matchReportFilename } from "../lib/matchReport";
+import { renderMatchReportPdf } from "../lib/matchReportPdf";
 import type { Job, JobResume } from "../types/job";
 import type { MatchScore, ResumeExtractResult } from "../types/match";
 
 type JobSource = "url" | "text";
 type ResumeSource = "saved" | "upload";
+
+/** Context captured at scoring time so an exported report matches the result. */
+interface ReportContext {
+  jobTitle?: string;
+  company?: string;
+  resumeLabel: string;
+  jobSourceLabel: string;
+}
 
 // Résumé formats the backend can extract text from (mirrors ALLOWED_RESUME_TYPES).
 const RESUME_ACCEPT = ".pdf,.doc,.docx,.txt";
@@ -36,6 +46,8 @@ export function Match() {
 
   const [scoring, setScoring] = useState(false);
   const [result, setResult] = useState<MatchScore | null>(null);
+  // Snapshot of the inputs behind `result`, used to label the exported report.
+  const [reportContext, setReportContext] = useState<ReportContext | null>(null);
 
   const selectedJob = useMemo(
     () => jobs.find((j) => j.id === selectedJobId) ?? null,
@@ -106,10 +118,28 @@ export function Match() {
     }
   }
 
+  // Describe the résumé/job inputs for the exported report's header.
+  function currentReportContext(): ReportContext {
+    const savedName = resumes.find((r) => r.id === selectedResumeId)?.filename;
+    return {
+      jobTitle: selectedJob?.jobTitle,
+      company: selectedJob?.company,
+      resumeLabel:
+        resumeSource === "saved"
+          ? savedName ?? "Saved résumé"
+          : uploadedResume?.filename || "Uploaded résumé",
+      jobSourceLabel:
+        jobSource === "url"
+          ? `Scraped from ${jobUrl.trim() || "posting URL"}`
+          : "Pasted description",
+    };
+  }
+
   async function handleScore() {
     if (!canScore) return;
     setScoring(true);
     setResult(null);
+    setReportContext(null);
     try {
       const resumePart =
         resumeSource === "saved"
@@ -121,12 +151,31 @@ export function Match() {
           : { jobDescription: jobDescription.trim() };
       const res = await scoreMatch({ ...resumePart, ...jobPart });
       setResult(res);
+      setReportContext(currentReportContext());
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not score this résumé";
       toast.error(message);
     } finally {
       setScoring(false);
+    }
+  }
+
+  // Build the explainable report from the scored result and save it as a PDF.
+  function handleDownloadReport() {
+    if (!result || !reportContext) return;
+    try {
+      const report = buildMatchReport({ result, ...reportContext });
+      const doc = renderMatchReportPdf(report);
+      doc.save(
+        matchReportFilename({
+          jobTitle: reportContext.jobTitle,
+          company: reportContext.company,
+          generatedAt: report.generatedAt,
+        })
+      );
+    } catch {
+      toast.error("Could not generate the PDF report");
     }
   }
 
@@ -308,7 +357,21 @@ export function Match() {
             {/* ---------------- Result ---------------- */}
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               {result ? (
-                <ScoreResult result={result} />
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-sm font-semibold text-gray-800">
+                      Your match
+                    </h2>
+                    <button
+                      onClick={handleDownloadReport}
+                      className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      title="Download a PDF report with the full breakdown and recommendations"
+                    >
+                      ⬇ PDF report
+                    </button>
+                  </div>
+                  <ScoreResult result={result} />
+                </div>
               ) : (
                 <div className="flex h-full min-h-[12rem] items-center justify-center text-center text-sm text-gray-400">
                   Pick a résumé and a job description, then run a score to see

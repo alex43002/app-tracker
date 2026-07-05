@@ -1,4 +1,5 @@
 import type { MatchScore } from "../../types/match";
+import { scoreVerdict, type ScoreBand } from "../../lib/matchReport";
 
 /* ============================================================
    Match score result (FEAT-21)
@@ -8,13 +9,17 @@ import type { MatchScore } from "../../types/match";
    *why* — the gap list is the actionable part.
 ============================================================ */
 
-/** Tailwind color band for a 0–100 score. */
+/** Tailwind color classes per score band (labels come from scoreVerdict). */
+const BAND_CLASSES: Record<ScoreBand, { ring: string; text: string }> = {
+  strong: { ring: "ring-green-500", text: "text-green-700" },
+  partial: { ring: "ring-amber-500", text: "text-amber-700" },
+  weak: { ring: "ring-red-500", text: "text-red-700" },
+};
+
+/** Tailwind color band + label for a 0–100 score. */
 function scoreTone(score: number): { ring: string; text: string; label: string } {
-  if (score >= 75)
-    return { ring: "ring-green-500", text: "text-green-700", label: "Strong match" };
-  if (score >= 50)
-    return { ring: "ring-amber-500", text: "text-amber-700", label: "Partial match" };
-  return { ring: "ring-red-500", text: "text-red-700", label: "Weak match" };
+  const { band, label } = scoreVerdict(score);
+  return { ...BAND_CLASSES[band], label };
 }
 
 function CoverageBar({ label, value }: { label: string; value: number }) {
