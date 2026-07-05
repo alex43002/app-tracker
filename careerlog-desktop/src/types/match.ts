@@ -34,6 +34,18 @@ export interface ScrapeResult {
   keywords: string[];
 }
 
+/**
+ * Result of extracting an ad-hoc résumé upload. `text` is the extracted plain
+ * text, replayed as `resumeText` when scoring — the file itself isn't stored.
+ */
+export interface ResumeExtractResult {
+  filename: string;
+  textLength: number;
+  skills: string[];
+  keywords: string[];
+  text: string;
+}
+
 /** Request payload for scoring — one résumé source and one job source. */
 export interface ScorePayload {
   resumeId?: string;

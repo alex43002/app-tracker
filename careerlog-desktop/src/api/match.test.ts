@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scoreMatch, scrapeJob } from "./match";
+import { extractResume, scoreMatch, scrapeJob } from "./match";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -71,5 +71,27 @@ describe("match api", () => {
       resumeId: "r1",
       jobDescription: "Python and AWS",
     });
+  });
+
+  it("extractResume POSTs the file as multipart form data", async () => {
+    const fetchMock = stub({
+      filename: "cv.txt",
+      textLength: 42,
+      skills: ["python"],
+      keywords: [],
+      text: "Python developer",
+    });
+
+    const file = new File(["Python developer"], "cv.txt", { type: "text/plain" });
+    const res = await extractResume(file);
+    expect(res.text).toBe("Python developer");
+    expect(res.filename).toBe("cv.txt");
+
+    const c = call(fetchMock);
+    expect(c.method).toBe("POST");
+    expect(c.url).toContain("/api/match/extract-resume");
+    // FormData is passed through unchanged (not JSON-stringified).
+    expect(c.body).toBeInstanceOf(FormData);
+    expect((c.body as FormData).get("resume")).toBeInstanceOf(File);
   });
 });

@@ -3,12 +3,16 @@ import toast from "react-hot-toast";
 
 import { AppLayout } from "../layouts/AppLayout";
 import { fetchJobs, fetchJobResumes } from "../api/jobs";
-import { scoreMatch } from "../api/match";
+import { extractResume, scoreMatch } from "../api/match";
 import { ScoreResult } from "../components/match/ScoreResult";
 import type { Job, JobResume } from "../types/job";
-import type { MatchScore } from "../types/match";
+import type { MatchScore, ResumeExtractResult } from "../types/match";
 
 type JobSource = "url" | "text";
+type ResumeSource = "saved" | "upload";
+
+// Résumé formats the backend can extract text from (mirrors ALLOWED_RESUME_TYPES).
+const RESUME_ACCEPT = ".pdf,.doc,.docx,.txt";
 
 export function Match() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -17,6 +21,14 @@ export function Match() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [resumes, setResumes] = useState<JobResume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState("");
+
+  // Résumé source: an existing attachment or an ad-hoc file the user uploads
+  // here (extracted to text and scored without being saved to the job).
+  const [resumeSource, setResumeSource] = useState<ResumeSource>("saved");
+  const [uploadedResume, setUploadedResume] = useState<ResumeExtractResult | null>(
+    null
+  );
+  const [extracting, setExtracting] = useState(false);
 
   const [jobSource, setJobSource] = useState<JobSource>("url");
   const [jobUrl, setJobUrl] = useState("");
@@ -70,20 +82,44 @@ export function Match() {
     };
   }, [selectedJobId, selectedJob]);
 
+  const hasResume =
+    resumeSource === "saved" ? !!selectedResumeId : !!uploadedResume;
   const canScore =
-    !!selectedResumeId &&
+    hasResume &&
     (jobSource === "url" ? jobUrl.trim() !== "" : jobDescription.trim() !== "");
+
+  // Extract text from an uploaded file so it can be scored as `resumeText`.
+  async function handleResumeFile(file: File | undefined) {
+    if (!file) return;
+    setExtracting(true);
+    setUploadedResume(null);
+    setResult(null);
+    try {
+      const res = await extractResume(file);
+      setUploadedResume(res);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not read this résumé file";
+      toast.error(message);
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   async function handleScore() {
     if (!canScore) return;
     setScoring(true);
     setResult(null);
     try {
-      const payload =
+      const resumePart =
+        resumeSource === "saved"
+          ? { resumeId: selectedResumeId }
+          : { resumeText: uploadedResume?.text };
+      const jobPart =
         jobSource === "url"
-          ? { resumeId: selectedResumeId, jobUrl: jobUrl.trim() }
-          : { resumeId: selectedResumeId, jobDescription: jobDescription.trim() };
-      const res = await scoreMatch(payload);
+          ? { jobUrl: jobUrl.trim() }
+          : { jobDescription: jobDescription.trim() };
+      const res = await scoreMatch({ ...resumePart, ...jobPart });
       setResult(res);
     } catch (err) {
       const message =
@@ -100,8 +136,9 @@ export function Match() {
         <div>
           <h1 className="text-2xl font-semibold">Match</h1>
           <p className="text-sm text-gray-500">
-            Score one of your résumés against a job posting before you apply, and
-            see exactly which skills and keywords you're missing.
+            Score a résumé against a job posting before you apply, and see
+            exactly which skills and keywords you're missing. Use one you've
+            saved to the job or upload a file to check on the spot.
           </p>
         </div>
 
@@ -111,8 +148,8 @@ export function Match() {
           </div>
         ) : jobs.length === 0 ? (
           <div className="rounded border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-            Add a job (with a résumé attached) on the Jobs page first, then come
-            back here to check your match.
+            Add a job on the Jobs page first, then come back here to check your
+            match — you can score a saved résumé or upload one on the spot.
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
@@ -137,36 +174,84 @@ export function Match() {
                 </select>
               </label>
 
-              {/* Résumé picker */}
-              <label className="block">
+              {/* Résumé source */}
+              <div>
                 <span className="mb-1 block text-sm font-medium text-gray-700">
                   Résumé
                 </span>
-                <select
-                  value={selectedResumeId}
-                  onChange={(e) => setSelectedResumeId(e.target.value)}
-                  disabled={!selectedJobId || resumes.length === 0}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
-                >
-                  <option value="">
-                    {!selectedJobId
-                      ? "Select a job first"
-                      : resumes.length === 0
-                        ? "No résumés attached to this job"
-                        : "Select a résumé…"}
-                  </option>
-                  {resumes.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.filename ?? r.id}
-                    </option>
-                  ))}
-                </select>
-                {selectedJobId && resumes.length === 0 && (
-                  <span className="mt-1 block text-xs text-amber-700">
-                    Attach a résumé to this job on the Jobs page to score it.
-                  </span>
+                <div className="mb-2 flex gap-4 text-sm">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      checked={resumeSource === "saved"}
+                      onChange={() => setResumeSource("saved")}
+                    />
+                    Saved résumé
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      checked={resumeSource === "upload"}
+                      onChange={() => setResumeSource("upload")}
+                    />
+                    Upload a file
+                  </label>
+                </div>
+
+                {resumeSource === "saved" ? (
+                  <>
+                    <select
+                      value={selectedResumeId}
+                      onChange={(e) => setSelectedResumeId(e.target.value)}
+                      disabled={!selectedJobId || resumes.length === 0}
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="">
+                        {!selectedJobId
+                          ? "Select a job first"
+                          : resumes.length === 0
+                            ? "No résumés attached to this job"
+                            : "Select a résumé…"}
+                      </option>
+                      {resumes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.filename ?? r.id}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedJobId && resumes.length === 0 && (
+                      <span className="mt-1 block text-xs text-amber-700">
+                        Attach a résumé to this job on the Jobs page, or choose
+                        “Upload a file” to score one you haven't saved.
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept={RESUME_ACCEPT}
+                      onChange={(e) => handleResumeFile(e.target.files?.[0])}
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1 file:text-sm"
+                    />
+                    <span className="mt-1 block text-xs text-gray-500">
+                      PDF, DOCX, or TXT up to 5&nbsp;MB. The file is only used for
+                      this score — it isn't saved to the job.
+                    </span>
+                    {extracting && (
+                      <span className="mt-1 block text-xs text-gray-500">
+                        Reading résumé…
+                      </span>
+                    )}
+                    {uploadedResume && !extracting && (
+                      <span className="mt-1 block text-xs text-green-700">
+                        Ready: {uploadedResume.filename || "résumé"} (
+                        {uploadedResume.skills.length} skills detected)
+                      </span>
+                    )}
+                  </>
                 )}
-              </label>
+              </div>
 
               {/* Job description source */}
               <div>

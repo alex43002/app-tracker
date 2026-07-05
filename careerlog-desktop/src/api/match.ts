@@ -1,4 +1,9 @@
-import type { MatchScore, ScorePayload, ScrapeResult } from "../types/match";
+import type {
+  MatchScore,
+  ResumeExtractResult,
+  ScorePayload,
+  ScrapeResult,
+} from "../types/match";
 import { apiClient } from "./client";
 
 /* ============================================================
@@ -12,6 +17,16 @@ import { apiClient } from "./client";
 /** Scrape a job-posting URL into its title + extracted skills/keywords. */
 export function scrapeJob(url: string) {
   return apiClient.post<ScrapeResult>("/api/match/scrape", { url });
+}
+
+/**
+ * Extract text from an ad-hoc résumé file (PDF/DOCX/TXT) without saving it.
+ * The returned `text` is replayed as `resumeText` when scoring.
+ */
+export function extractResume(file: File) {
+  const form = new FormData();
+  form.append("resume", file);
+  return apiClient.post<ResumeExtractResult>("/api/match/extract-resume", form);
 }
 
 /**

@@ -48,6 +48,20 @@ class ScrapeJobResponse(BaseModel):
     keywords: list[str]
 
 
+class ExtractResumeResponse(BaseModel):
+    """Result of extracting an ad-hoc résumé upload.
+
+    ``text`` is the extracted plain text, echoed back so the client can score
+    it via ``resumeText`` without the file being stored server-side.
+    """
+
+    filename: str
+    textLength: int
+    skills: list[str]
+    keywords: list[str]
+    text: str
+
+
 class ScoreBreakdownModel(BaseModel):
     skillCoverage: float
     keywordCoverage: float

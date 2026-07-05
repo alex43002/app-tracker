@@ -13,6 +13,7 @@ from app.common.errors import raise_error
 from app.matching import keywords, scoring
 from app.matching.extract import extract_resume_text, html_to_text
 from app.matching.fetch import FetchError, fetch_url
+from app.jobs.service import read_validated_resume
 from app.resumes.service import get_resume_file
 
 
@@ -60,6 +61,33 @@ def scrape_job(url: str) -> dict:
         "textLength": len(text),
         "skills": prof.skills,
         "keywords": prof.keywords,
+    }
+
+
+def extract_resume_upload(upload) -> dict:
+    """Extract text (and a skill/keyword profile) from an ad-hoc résumé upload.
+
+    Used by Match to score a file the user hasn't saved to a job. The returned
+    ``text`` is handed back to the client, which replays it as ``resumeText``
+    when scoring — nothing is persisted.
+    """
+    data = read_validated_resume(upload)
+    text = extract_resume_text(
+        data, content_type=upload.content_type, filename=upload.filename
+    )
+    if not text:
+        raise_error(
+            code="RESUME_UNREADABLE",
+            message="Could not extract text from this résumé file",
+            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    prof = keywords.profile(text)
+    return {
+        "filename": upload.filename or "",
+        "textLength": len(text),
+        "skills": prof.skills,
+        "keywords": prof.keywords,
+        "text": text,
     }
 
 
