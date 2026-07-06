@@ -268,8 +268,62 @@ STOPWORDS: frozenset[str] = frozenset(
     following e.g eg i.e ie per etc provide provides providing ensure ensures
     ensuring maintain maintains maintaining support supports supporting
     partner partners partnering deliver delivers delivering drive drives
+
+    careers career cookie cookies privacy copyright sitemap newsletter
+    trademark reserved skip login signin signup subscribe home menu
+    navigation footer header share follow connect related recommended
+    featured similar suggested apply overview posted req id location locations
     """.split()
 )
+
+# Web-chrome / legal / geo tokens that survive section filtering and leak into
+# keyphrases from scraped pages (FEAT-31). Unlike STOPWORDS (dropped wholesale),
+# these gate whole *phrases* via ``is_noise_phrase`` so a legitimate compound is
+# only rejected when a noise token is actually present.
+_NOISE_TOKENS: frozenset[str] = frozenset(
+    """
+    inc llc ltd corp incorporated holdings alphabet
+    criminal histories felony conviction convictions arrest
+    recaptcha captcha
+    """.split()
+)
+
+# Unambiguous state/region abbreviations for location chips ("melbourne vic").
+# Only forms that aren't also common English words are listed so real terms
+# aren't nuked; matched only as the trailing token of a multi-word phrase.
+_REGION_ABBREV: frozenset[str] = frozenset(
+    """
+    nsw vic qld tas
+    tx fl ny nj nc sc ga oh mi mn tn az nv nm ut ca il
+    uk usa apac emea
+    """.split()
+)
+
+# person_outline, arrow_forward, location_on … Material-icon ligatures come
+# through the tokenizer as one snake_case token; no real skill looks like this.
+_LIGATURE_RE = re.compile(r"[a-z]+_[a-z]+")
+
+
+def is_noise_phrase(phrase: str) -> bool:
+    """True if a keyphrase is scraped page-chrome, not role signal (FEAT-31).
+
+    Rejects icon ligatures ("person_outline"), company/legal tokens
+    ("alphabet inc"), repeated-token strings ("careers careers skip") and
+    location chips ("melbourne vic"). Genuine skills and compounds pass.
+    """
+    tokens = phrase.split(" ")
+    if not tokens or not phrase:
+        return True
+    if any(_LIGATURE_RE.fullmatch(t) for t in tokens):
+        return True
+    if any(t in _NOISE_TOKENS for t in tokens):
+        return True
+    if len(tokens) >= 2:
+        if len(set(tokens)) < len(tokens):  # a token repeats
+            return True
+        if tokens[-1] in _REGION_ABBREV:  # trailing state/region code
+            return True
+    return False
 
 # A token: words (incl. internal . + # / -) so c++, ci/cd, node.js survive.
 _WORD_RE = re.compile(r"[a-z0-9][a-z0-9.+#/_-]*[a-z0-9]|[a-z0-9]")
@@ -327,7 +381,10 @@ def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
         if len(a) > 1 and len(b) > 1:
             counts[f"{a} {b}"] += 1
 
-    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ranked = sorted(
+        ((term, cnt) for term, cnt in counts.items() if not is_noise_phrase(term)),
+        key=lambda kv: (-kv[1], kv[0]),
+    )
     return ranked[:limit]
 
 
@@ -434,9 +491,11 @@ def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
     def flush(run: list[str]) -> None:
         if not run:
             return
-        counts[" ".join(run[:max_words])] += 1
+        phrase = " ".join(run[:max_words])
+        if not is_noise_phrase(phrase):
+            counts[phrase] += 1
         for word in run:
-            if len(word) > 1:
+            if len(word) > 1 and not is_noise_phrase(word):
                 counts[word] += 1
 
     for fragment in _PHRASE_SPLIT_RE.split(normalize(text)):
