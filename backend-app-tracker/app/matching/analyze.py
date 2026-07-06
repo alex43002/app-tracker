@@ -76,6 +76,9 @@ _CATEGORY_FAMILY = {
     "business": "Business",
     "healthcare": "Healthcare",
     "software": "Software engineering",
+    "product": "Product & project",
+    "sales": "Sales",
+    "finance": "Finance",
 }
 
 

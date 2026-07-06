@@ -187,6 +187,108 @@ _NETWORKING_CONCEPTS: tuple[Concept, ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Curated jargon/acronym concepts for domains the flat skill list covers only
+# thinly (FEAT-31). Same discipline as the networking set: only unambiguous
+# acronyms/multi-word terms where a normalizer genuinely helps — NOT generic
+# operational English. Categories reuse the software groups where the family is
+# identical (``security``, ``data_ml``) and introduce ``product``/``sales``/
+# ``finance`` for the new families. Aliases are chosen to avoid colliding with
+# existing concepts; where they would (e.g. ``oracle``), a distinct surface form
+# is used (``oracle financials``).
+# ---------------------------------------------------------------------------
+_DOMAIN_CONCEPTS: tuple[Concept, ...] = (
+    # --- Cybersecurity (family: Security) ---
+    Concept("soar", "security", TIER_CORE,
+            ("soar", "security orchestration automation")),
+    Concept("edr", "security", TIER_CORE,
+            ("edr", "xdr", "endpoint detection and response", "endpoint detection")),
+    Concept("iam", "security", TIER_CORE,
+            ("iam", "identity and access management", "identity access management",
+             "privileged access management", "pam")),
+    Concept("firewall", "security", TIER_CORE,
+            ("firewall", "firewalls", "next-generation firewall", "ngfw")),
+    Concept("incident response", "security", TIER_FOUNDATIONAL,
+            ("incident response", "incident handling", "csirt")),
+    Concept("vulnerability management", "security", TIER_FOUNDATIONAL,
+            ("vulnerability management", "vulnerability scanning", "vulnerability assessment")),
+    Concept("dlp", "security", TIER_FOUNDATIONAL, ("data loss prevention", "dlp")),
+    Concept("soc analyst", "security", TIER_FOUNDATIONAL,
+            ("security operations center", "security operations centre", "soc analyst")),
+    Concept("nist", "security", TIER_FOUNDATIONAL, ("nist", "nist csf")),
+    Concept("threat intelligence", "security", TIER_ADVANCED,
+            ("threat intelligence", "threat hunting", "threat intel")),
+    Concept("zero trust", "security", TIER_ADVANCED, ("zero trust", "ztna")),
+    Concept("iso 27001", "security", TIER_ADVANCED, ("iso 27001", "iso27001")),
+    # --- Data engineering (family: Data & ML) ---
+    Concept("databricks", "data_ml", TIER_CORE, ("databricks",)),
+    Concept("redshift", "data_ml", TIER_CORE, ("redshift", "amazon redshift")),
+    Concept("data pipeline", "data_ml", TIER_FOUNDATIONAL,
+            ("data pipeline", "data pipelines", "ingestion pipeline")),
+    Concept("data modeling", "data_ml", TIER_FOUNDATIONAL,
+            ("data modeling", "data modelling", "dimensional modeling", "star schema")),
+    Concept("data lake", "data_ml", TIER_FOUNDATIONAL,
+            ("data lake", "lakehouse", "delta lake")),
+    Concept("data governance", "data_ml", TIER_ADVANCED,
+            ("data governance", "data lineage", "data quality")),
+    # --- Product / project (family: Product & project) ---
+    Concept("product roadmap", "product", TIER_CORE, ("roadmap", "product roadmap")),
+    Concept("backlog", "product", TIER_CORE,
+            ("backlog", "backlog grooming", "sprint planning", "story grooming")),
+    Concept("user stories", "product", TIER_FOUNDATIONAL,
+            ("user story", "user stories", "acceptance criteria")),
+    Concept("okrs", "product", TIER_FOUNDATIONAL,
+            ("okr", "okrs", "objectives and key results")),
+    Concept("kpis", "product", TIER_FOUNDATIONAL,
+            ("kpi", "kpis", "key performance indicator", "key performance indicators")),
+    Concept("product analytics", "product", TIER_FOUNDATIONAL,
+            ("product analytics", "amplitude", "mixpanel")),
+    Concept("prd", "product", TIER_FOUNDATIONAL, ("prd", "product requirements document")),
+    Concept("a/b testing", "product", TIER_FOUNDATIONAL,
+            ("a/b testing", "ab testing", "split testing")),
+    Concept("product discovery", "product", TIER_ADVANCED,
+            ("product discovery", "customer discovery")),
+    Concept("go-to-market", "product", TIER_ADVANCED,
+            ("go-to-market", "go to market", "gtm")),
+    # --- Sales (family: Sales) ---
+    Concept("crm", "sales", TIER_CORE, ("crm", "customer relationship management")),
+    Concept("sales pipeline", "sales", TIER_CORE,
+            ("sales pipeline", "pipeline management", "deal pipeline")),
+    Concept("account management", "sales", TIER_CORE,
+            ("account management", "account executive", "key account")),
+    Concept("quota attainment", "sales", TIER_FOUNDATIONAL,
+            ("quota", "quota attainment", "quota-carrying", "quota carrying")),
+    Concept("prospecting", "sales", TIER_FOUNDATIONAL,
+            ("prospecting", "cold calling", "cold outreach", "lead generation", "lead gen")),
+    Concept("sales forecasting", "sales", TIER_FOUNDATIONAL,
+            ("sales forecasting", "revenue forecasting")),
+    Concept("sales development", "sales", TIER_FOUNDATIONAL,
+            ("sdr", "bdr", "sales development representative",
+             "business development representative")),
+    Concept("upselling", "sales", TIER_ADVANCED,
+            ("upsell", "upselling", "cross-sell", "cross-selling")),
+    # --- Finance & accounting (family: Finance) ---
+    Concept("fp&a", "finance", TIER_CORE,
+            ("fp&a", "fpa", "financial planning and analysis", "financial planning & analysis")),
+    Concept("financial reporting", "finance", TIER_CORE,
+            ("financial reporting", "financial statements")),
+    Concept("reconciliation", "finance", TIER_CORE,
+            ("reconciliation", "account reconciliation", "reconciliations", "bank reconciliation")),
+    Concept("general ledger", "finance", TIER_FOUNDATIONAL,
+            ("general ledger", "journal entries", "month-end close", "month end close")),
+    Concept("accounts payable", "finance", TIER_FOUNDATIONAL,
+            ("accounts payable", "accounts receivable")),
+    Concept("budgeting", "finance", TIER_FOUNDATIONAL,
+            ("budgeting", "budget management", "variance analysis")),
+    Concept("internal audit", "finance", TIER_FOUNDATIONAL,
+            ("internal audit", "external audit", "financial audit")),
+    Concept("erp", "finance", TIER_FOUNDATIONAL,
+            ("erp", "netsuite", "sap", "oracle financials")),
+    Concept("cpa", "finance", TIER_ADVANCED, ("cpa", "certified public accountant")),
+    Concept("sox", "finance", TIER_ADVANCED, ("sox", "sarbanes-oxley", "sarbanes oxley")),
+)
+
+
 def _software_concepts() -> tuple[Concept, ...]:
     """Wrap the flat software-skills list as core concepts with coarse categories."""
     return tuple(
@@ -200,7 +302,12 @@ def _software_concepts() -> tuple[Concept, ...]:
     )
 
 
-CONCEPTS: tuple[Concept, ...] = _NETWORKING_CONCEPTS + _software_concepts()
+# Jargon sets are listed before the generated software concepts; aliases are
+# curated to be distinct, so ``_ALIAS_TO_CONCEPT`` (first mapping wins) needs no
+# special-casing.
+CONCEPTS: tuple[Concept, ...] = (
+    _NETWORKING_CONCEPTS + _DOMAIN_CONCEPTS + _software_concepts()
+)
 
 CONCEPT_BY_ID: dict[str, Concept] = {c.id: c for c in CONCEPTS}
 
