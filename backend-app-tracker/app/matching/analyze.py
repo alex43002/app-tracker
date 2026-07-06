@@ -96,6 +96,7 @@ class JobAnalysis:
     terms: list[JobTerm]
     role_families: list[str]
     has_sections: bool
+    noise_rate: float = 0.0  # residual scraped-chrome share of scored text
 
 
 @dataclass
@@ -123,6 +124,7 @@ def analyze_job(text: str) -> JobAnalysis:
 
     merged: dict[str, JobTerm] = {}
     category_weight: Counter[str] = Counter()
+    scored_text: list[str] = []  # non-boilerplate text, for the noise estimate
 
     def add(term: JobTerm, kind: str) -> None:
         existing = merged.get(term.key)
@@ -139,6 +141,7 @@ def analyze_job(text: str) -> JobAnalysis:
 
         required = section.kind == KIND_REQUIRED
         preferred = section.kind == KIND_PREFERRED
+        scored_text.append(section.text)
 
         concept_hits = detect_concepts(section.text)
         for cid, hit in concept_hits.items():
@@ -202,6 +205,7 @@ def analyze_job(text: str) -> JobAnalysis:
         terms=list(merged.values()),
         role_families=role_families,
         has_sections=has_sections,
+        noise_rate=keywords.noise_rate("\n".join(scored_text)),
     )
 
 

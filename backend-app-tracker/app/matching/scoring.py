@@ -44,12 +44,31 @@ BUCKET_PREFERRED = "preferred"
 _BUCKET_BASE = {
     BUCKET_REQUIRED: 0.5,
     BUCKET_RESPONSIBILITY: 0.3,
-    BUCKET_PREFERRED: 0.2,
+    # Nice-to-haves weigh less (0.20 → 0.15) so an all-miss preferred list —
+    # common when scraped chrome inflates it — no longer tanks the score.
+    BUCKET_PREFERRED: 0.15,
 }
 
 CONFIDENCE_HIGH = "high"
 CONFIDENCE_MEDIUM = "medium"
 CONFIDENCE_LOW = "low"
+
+# Contamination = how much scraped page-chrome leaked into the scored terms.
+# Thresholds on the residual noise rate (see keywords.noise_rate). A high level
+# means required "gaps" may be artifacts, so the score is only approximate.
+CONTAMINATION_LOW = "low"
+CONTAMINATION_MEDIUM = "medium"
+CONTAMINATION_HIGH = "high"
+_CONTAMINATION_MEDIUM_MIN = 0.15
+_CONTAMINATION_HIGH_MIN = 0.30
+
+
+def _contamination(noise_rate: float) -> str:
+    if noise_rate >= _CONTAMINATION_HIGH_MIN:
+        return CONTAMINATION_HIGH
+    if noise_rate >= _CONTAMINATION_MEDIUM_MIN:
+        return CONTAMINATION_MEDIUM
+    return CONTAMINATION_LOW
 
 
 @dataclass(frozen=True)
@@ -78,6 +97,7 @@ class MatchResult:
     confidence: str
     confidence_reason: str
     skill_signal_available: bool
+    contamination: str  # low | medium | high — scraped-chrome leakage level
     role_families: list[str]
     coverage: Coverage
     strengths: list[TermMatch]  # strong / partial / foundational, best first
@@ -151,7 +171,9 @@ def _keyword_coverage(resume_text: str, job_text: str) -> float:
     return round(matched / len(job.keywords), 4)
 
 
-def _confidence(n_terms: int, has_required_or_resp: bool, skill_signal: bool) -> tuple[str, str]:
+def _confidence(
+    n_terms: int, has_required_or_resp: bool, skill_signal: bool, contamination: str
+) -> tuple[str, str]:
     if n_terms == 0:
         return (
             CONFIDENCE_LOW,
@@ -167,6 +189,15 @@ def _confidence(n_terms: int, has_required_or_resp: bool, skill_signal: bool) ->
     reason = f"Parsed {n_terms} requirement terms from the posting."
     if not skill_signal:
         reason += " Matched on salient terms (no curated skills recognized for this field)."
+    # Heavy scraped-page noise means some "gaps" may be page chrome, not real
+    # requirements — never claim high confidence in that case.
+    if contamination == CONTAMINATION_HIGH:
+        if level == CONFIDENCE_HIGH:
+            level = CONFIDENCE_MEDIUM
+        reason += (
+            " Some page navigation/footer text may have leaked in, so the score"
+            " is approximate."
+        )
     return level, reason
 
 
@@ -211,7 +242,10 @@ def score_match(resume_text: str, job_text: str, *, keyword_limit: int = 25) -> 
 
     skill_signal = bool(concept_matches)
     has_req_or_resp = cov_required is not None or cov_resp is not None
-    confidence, reason = _confidence(len(matches), has_req_or_resp, skill_signal)
+    contamination = _contamination(job.noise_rate)
+    confidence, reason = _confidence(
+        len(matches), has_req_or_resp, skill_signal, contamination
+    )
 
     if not matches:
         # Nothing structured extracted — do NOT fake coverage; keyword-only.
@@ -244,6 +278,7 @@ def score_match(resume_text: str, job_text: str, *, keyword_limit: int = 25) -> 
         confidence=confidence,
         confidence_reason=reason,
         skill_signal_available=skill_signal,
+        contamination=contamination,
         role_families=job.role_families,
         coverage=Coverage(
             required=cov_required,

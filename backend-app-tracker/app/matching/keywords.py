@@ -475,7 +475,9 @@ def content_tokens(text: str) -> list[str]:
 _PHRASE_SPLIT_RE = re.compile(r"[,.;:()\[\]{}!?\"'|\n]+")
 
 
-def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
+def candidate_phrases(
+    text: str, *, max_words: int = 4, drop_noise: bool = True
+) -> Counter[str]:
     """Domain-agnostic keyphrase candidates (RAKE-style), with frequencies.
 
     The text is split on punctuation *and* stopwords; each remaining contiguous
@@ -485,6 +487,9 @@ def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
     without a per-domain list, while punctuation splitting keeps comma-separated
     list items ("assessment, medication administration") from fusing into one
     bogus phrase.
+
+    ``drop_noise`` filters scraped page-chrome (see ``is_noise_phrase``); pass
+    ``False`` to measure how much noise was present (``noise_rate``).
     """
     counts: Counter[str] = Counter()
 
@@ -492,10 +497,10 @@ def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
         if not run:
             return
         phrase = " ".join(run[:max_words])
-        if not is_noise_phrase(phrase):
+        if not (drop_noise and is_noise_phrase(phrase)):
             counts[phrase] += 1
         for word in run:
-            if len(word) > 1 and not is_noise_phrase(word):
+            if len(word) > 1 and not (drop_noise and is_noise_phrase(word)):
                 counts[word] += 1
 
     for fragment in _PHRASE_SPLIT_RE.split(normalize(text)):
@@ -508,6 +513,23 @@ def candidate_phrases(text: str, *, max_words: int = 4) -> Counter[str]:
                 run.append(tok)
         flush(run)
     return counts
+
+
+def noise_rate(text: str) -> float:
+    """Share of a posting's salient phrases that look like scraped chrome.
+
+    A high rate means navigation/footer/related-job text leaked past the
+    structural and boundary filters, so the extracted terms — and the resulting
+    score — are less trustworthy (FEAT-31). Measured over the *raw* RAKE
+    candidates (before the noise filter drops them) so it reflects how much junk
+    was present, not how much survived.
+    """
+    raw = candidate_phrases(text, drop_noise=False)
+    total = sum(raw.values())
+    if not total:
+        return 0.0
+    noisy = sum(count for phrase, count in raw.items() if is_noise_phrase(phrase))
+    return round(noisy / total, 4)
 
 
 def stemmed_ngrams(text: str, *, max_words: int = 3) -> set[str]:
