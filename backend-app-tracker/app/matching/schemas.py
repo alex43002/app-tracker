@@ -87,6 +87,7 @@ class ScoreResponse(BaseModel):
     confidence: str  # high | medium | low
     confidenceReason: str
     skillSignalAvailable: bool
+    contamination: str  # low | medium | high — scraped page-chrome leakage
     roleFamilies: list[str]
     coverage: CoverageModel
     strengths: list[TermMatchModel]

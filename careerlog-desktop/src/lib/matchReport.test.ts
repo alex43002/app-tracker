@@ -19,6 +19,7 @@ function makeScore(over: Partial<MatchScore> = {}): MatchScore {
     confidence: "high",
     confidenceReason: "Parsed 12 requirement terms from the posting.",
     skillSignalAvailable: true,
+    contamination: "low",
     roleFamilies: ["Software engineering"],
     coverage: { required: 0.6, responsibility: 0.5, preferred: 0.2, concept: 0.55, keyword: 0.4 },
     strengths: [

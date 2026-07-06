@@ -13,6 +13,7 @@ const SCORE: MatchScore = {
   confidence: "high",
   confidenceReason: "Parsed 12 requirement terms from the posting.",
   skillSignalAvailable: true,
+  contamination: "low",
   roleFamilies: ["Software engineering"],
   coverage: { required: 0.6, responsibility: 0.5, preferred: null, concept: 0.55, keyword: 0.4 },
   strengths: [

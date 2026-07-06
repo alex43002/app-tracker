@@ -47,6 +47,7 @@ describe("match api", () => {
       confidence: "high",
       confidenceReason: "Parsed 10 requirement terms.",
       skillSignalAvailable: true,
+      contamination: "low",
       roleFamilies: ["Software engineering"],
       coverage: { required: 0.8, responsibility: 0.6, preferred: null, concept: 0.7, keyword: 0.5 },
       strengths: [

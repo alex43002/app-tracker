@@ -19,6 +19,11 @@ export interface CoverageInfo {
 export type MatchStatus = "strong" | "partial" | "foundational" | "missing";
 export type MatchBucket = "required" | "responsibility" | "preferred";
 
+/** How much scraped page-chrome leaked into the scored terms (FEAT-31).
+ * `high` means some gaps may be page navigation/footer artifacts, so the
+ * score is only approximate. */
+export type Contamination = "low" | "medium" | "high";
+
 /** One evaluated job term with the résumé evidence that earned its status. */
 export interface TermMatch {
   term: string;
@@ -35,6 +40,7 @@ export interface MatchScore {
   confidence: "high" | "medium" | "low";
   confidenceReason: string;
   skillSignalAvailable: boolean;
+  contamination: Contamination;
   roleFamilies: string[];
   coverage: CoverageInfo;
   strengths: TermMatch[]; // strong / partial / foundational, best first

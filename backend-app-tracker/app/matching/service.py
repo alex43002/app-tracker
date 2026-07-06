@@ -121,6 +121,7 @@ def score(db, payload, user_id: str) -> dict:
         "confidence": result.confidence,
         "confidenceReason": result.confidence_reason,
         "skillSignalAvailable": result.skill_signal_available,
+        "contamination": result.contamination,
         "roleFamilies": result.role_families,
         "coverage": {
             "required": c.required,

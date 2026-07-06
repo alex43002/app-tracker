@@ -113,6 +113,17 @@ export function ScoreResult({ result }: { result: MatchScore }) {
         </div>
       </div>
 
+      {/* Approximate-score warning when scraped page-chrome leaked in (FEAT-31) */}
+      {result.contamination === "high" && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          <span className="font-semibold">This score is approximate.</span> Some
+          navigation, footer, or “related jobs” text from the posting page may
+          have leaked into the requirements, so a few gaps below might not be
+          real requirements. Pasting the job description text directly gives the
+          most accurate score.
+        </div>
+      )}
+
       {/* Coverage breakdown */}
       <div className="grid gap-3 sm:grid-cols-2">
         <CoverageBar label="Required" value={coverage.required} />
@@ -142,6 +153,10 @@ export function ScoreResult({ result }: { result: MatchScore }) {
               <div>
                 <p className="mb-1 text-xs font-medium text-amber-900">
                   Required, and missing:
+                </p>
+                <p className="mb-1.5 text-[11px] text-amber-700">
+                  No direct mention of these was found in your résumé — add them
+                  only where you genuinely have the experience.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {requiredGaps.map((g) => (

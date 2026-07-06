@@ -113,7 +113,12 @@ export function buildMatchReport(input: MatchReportInput): MatchReport {
     (covText ? ` Coverage — ${covText}.` : "") +
     (result.skillSignalAvailable
       ? ""
-      : " The recognized-skills signal is N/A for this field, so this is a keyword-based estimate.");
+      : " The recognized-skills signal is N/A for this field, so this is a keyword-based estimate.") +
+    (result.contamination === "high"
+      ? " Note: some page navigation/footer text may have leaked into the" +
+        " posting, so this score is approximate — a few listed gaps may not be" +
+        " real requirements."
+      : "");
 
   const coverage: CoverageLine[] = [
     { label: "Required", pct: pct(result.coverage.required) },
