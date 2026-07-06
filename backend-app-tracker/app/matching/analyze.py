@@ -12,7 +12,7 @@ invents a 100% where nothing was extracted.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.matching import keywords
 from app.matching.sections import (
