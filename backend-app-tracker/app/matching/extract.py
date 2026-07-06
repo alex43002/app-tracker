@@ -105,49 +105,116 @@ def extract_resume_text(
 
 
 class _TextHTMLParser(HTMLParser):
-    """Collect visible text, dropping script/style/head noise."""
+    """Collect *readable* text from a scraped page, dropping chrome.
 
-    # Note: <head> is *not* skipped wholesale — we still want its <title>. The
-    # noise inside head (script/style) is skipped by these tags directly.
-    _SKIP = {"script", "style", "noscript", "svg"}
+    Scraped job pages are mostly navigation, footers, cookie banners and
+    "related jobs" rails — text that leaks into the requirement list and drags
+    the match score down (FEAT-31). We drop it structurally, before any keyword
+    extraction, three ways:
+
+    * whole noise tags (``nav``/``footer``/``aside``/``form``/``button``/…) and
+      ``script``/``style`` are skipped along with everything nested inside them;
+    * containers are skipped by ARIA ``role`` (navigation/banner/contentinfo/
+      search) and by chrome hints in their ``class``/``id`` (nav, footer,
+      cookie, breadcrumb, sidebar, related, recommend, subscribe …);
+    * if the page marks its real content with ``<main>``/``<article>``, only
+      that region is returned — the single biggest win against page chrome.
+    """
+
+    # Always-noise tags: dropped with their whole subtree. <head> is not here so
+    # its <title> survives; script/style inside head are dropped by name.
+    _SKIP_TAGS = {
+        "script", "style", "noscript", "svg", "template",
+        "nav", "footer", "aside", "form", "button", "select", "option",
+    }
     _BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section"}
+    _MAIN_TAGS = {"main", "article"}
+    # Void elements never carry an end tag, so they must not go on the stack.
+    _VOID = {
+        "br", "img", "input", "hr", "meta", "link", "area", "base", "col",
+        "embed", "source", "track", "wbr",
+    }
+    _SKIP_ROLES = {"navigation", "banner", "contentinfo", "search"}
+    _CHROME_HINTS = (
+        "nav", "menu", "footer", "cookie", "banner", "breadcrumb", "sidebar",
+        "related", "recommend", "subscribe", "promo", "social", "share",
+    )
 
     def __init__(self) -> None:
         super().__init__()
         self._parts: list[str] = []
+        self._main_parts: list[str] = []
+        # Stack of (tag, starts_skip, starts_main) so we can unwind chrome
+        # regions even when the markup nests or is imperfectly closed.
+        self._stack: list[tuple[str, bool, bool]] = []
         self._skip_depth = 0
+        self._main_depth = 0
         self.title = ""
         self._in_title = False
 
+    @classmethod
+    def _is_chrome(cls, attrs) -> bool:
+        attr = {k: (v or "") for k, v in attrs}
+        if attr.get("role", "").lower() in cls._SKIP_ROLES:
+            return True
+        hint_text = f"{attr.get('class', '')} {attr.get('id', '')}".lower()
+        return any(h in hint_text for h in cls._CHROME_HINTS)
+
+    def _emit(self, text: str) -> None:
+        self._parts.append(text)
+        if self._main_depth and not self._skip_depth:
+            self._main_parts.append(text)
+
     def handle_starttag(self, tag, attrs):
-        if tag in self._SKIP:
-            self._skip_depth += 1
         if tag == "title":
             self._in_title = True
+        if tag in self._VOID:
+            return
+        starts_skip = tag in self._SKIP_TAGS or self._is_chrome(attrs)
+        starts_main = tag in self._MAIN_TAGS
+        self._stack.append((tag, starts_skip, starts_main))
+        if starts_skip:
+            self._skip_depth += 1
+        if starts_main:
+            self._main_depth += 1
         if tag in self._BLOCK:
-            self._parts.append("\n")
+            self._emit("\n")
 
     def handle_endtag(self, tag):
-        if tag in self._SKIP and self._skip_depth > 0:
-            self._skip_depth -= 1
         if tag == "title":
             self._in_title = False
         if tag in self._BLOCK:
-            self._parts.append("\n")
+            self._emit("\n")
+        # Unwind to the matching open tag (tolerating unclosed inner tags).
+        for i in range(len(self._stack) - 1, -1, -1):
+            if self._stack[i][0] == tag:
+                for _, was_skip, was_main in self._stack[i:]:
+                    if was_skip:
+                        self._skip_depth -= 1
+                    if was_main:
+                        self._main_depth -= 1
+                del self._stack[i:]
+                break
 
     def handle_data(self, data):
-        if self._skip_depth:
-            return
         if self._in_title and not self.title:
             self.title = data.strip()
-        self._parts.append(data)
+        if self._skip_depth:
+            return
+        self._emit(data)
 
-    def text(self) -> str:
-        joined = "".join(self._parts)
-        # Collapse runs of blank lines/whitespace introduced by block tags.
+    @staticmethod
+    def _collapse(parts: list[str]) -> str:
+        joined = "".join(parts)
         joined = re.sub(r"[ \t]+", " ", joined)
         joined = re.sub(r"\n\s*\n+", "\n", joined)
         return joined.strip()
+
+    def text(self) -> str:
+        # Prefer the <main>/<article> region when it carries real content;
+        # otherwise fall back to the whole (chrome-filtered) body.
+        main = self._collapse(self._main_parts)
+        return main if len(main) >= 40 else self._collapse(self._parts)
 
 
 def html_to_text(html: str) -> tuple[str, str]:
