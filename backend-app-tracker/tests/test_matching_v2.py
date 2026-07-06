@@ -7,7 +7,13 @@ vocabulary, and they pin the correctness rules the previous engine violated
 """
 
 from app.matching import scoring
-from app.matching.sections import split_sections, KIND_REQUIRED, KIND_PREFERRED
+from app.matching.extract import html_to_text
+from app.matching.sections import (
+    split_sections,
+    KIND_BOILERPLATE,
+    KIND_REQUIRED,
+    KIND_PREFERRED,
+)
 
 
 NURSING_JOB = """
@@ -135,3 +141,147 @@ def test_confidence_scales_with_extracted_signal():
     assert rich.confidence in ("high", "medium")
     thin = scoring.score_match("x", "About us:\nGreat benefits.")
     assert thin.confidence == "low"
+
+
+# --------------------------- scrape de-contamination (FEAT-31) --------------
+
+# A realistic scraped Network Operations posting: page chrome (nav/banner,
+# cookie bar, footer) plus a "Similar jobs" rail wrapping a real <main> body —
+# exactly the shape that used to leak `android`, `machine learning`,
+# `melbourne vic`, `alphabet inc`, `person_outline …` into the requirement list.
+SCRAPED_NETOPS_HTML = """
+<html><head><title>Network Operations Engineer</title></head><body>
+<header role="banner"><nav><ul>
+  <li>Careers</li><li>About</li><li>Login</li></ul></nav></header>
+<div class="cookie-banner">We use cookies. Accept</div>
+<main>
+  <h1>Network Operations Engineer</h1>
+  <h2>Minimum qualifications</h2>
+  <ul><li>Experience with LAN switching and TCP/IP.</li>
+      <li>Core routing protocols such as BGP and OSPF.</li></ul>
+  <h2>Responsibilities</h2>
+  <ul><li>Monitor network health and respond to incidents.</li></ul>
+  <h2>Preferred qualifications</h2>
+  <ul><li>MPLS VPN and Cisco platforms.</li></ul>
+</main>
+<aside class="related-jobs"><h2>Similar jobs</h2><ul>
+  <li>Android Developer - Machine Learning</li>
+  <li>Enterprise AI - San Jose</li>
+  <li>person_outline Your Career</li></ul></aside>
+<footer><p>Alphabet Inc. Melbourne VIC. All rights reserved.</p></footer>
+</body></html>
+"""
+# Unambiguous junk substrings (avoid short ones like "inc" that live inside
+# legitimate terms such as "incidents").
+_NETOPS_JUNK = (
+    "android", "machine learning", "melbourne", "alphabet",
+    "person_outline", "enterprise ai", "san jose", "careers", "cookie",
+)
+
+
+def test_scraped_chrome_stays_out_of_gaps_and_keywords():
+    text, _ = html_to_text(SCRAPED_NETOPS_HTML)
+    resume = "Network technician. LAN switching, VLAN, TCP/IP troubleshooting. Cisco IOS."
+    result = scoring.score_match(resume, text)
+
+    terms = {m.term.lower() for m in result.gaps} | {m.term.lower() for m in result.strengths}
+    terms |= {k.lower() for k in result.job_profile.keywords}
+    for junk in _NETOPS_JUNK:
+        assert not any(junk in t for t in terms), f"scraped chrome leaked: {junk}"
+    # The real <main> requirements survived and are scored.
+    strong = {m.term for m in result.strengths if m.status in ("strong", "partial")}
+    assert {"lan switching", "tcp/ip"} & strong
+    assert "Network & infrastructure" in result.role_families
+
+
+def test_network_ops_regression_sane_score_band():
+    """The motivating case: with junk gone, a partial-fit résumé lands in a
+    sane band instead of collapsing (was 26/100 from contamination)."""
+    text, _ = html_to_text(SCRAPED_NETOPS_HTML)
+    resume = "Network technician. LAN switching, VLAN, TCP/IP troubleshooting. Cisco IOS."
+    result = scoring.score_match(resume, text)
+    # Real gaps only (bgp/ospf/mpls), so a genuine partial fit isn't tanked.
+    assert 25 <= result.score <= 80
+    assert result.contamination == "low"  # clean extraction → not approximate
+    assert all(g.term.lower() not in _NETOPS_JUNK for g in result.gaps)
+
+
+def test_similar_jobs_block_is_boilerplate_boundary():
+    """A 'Similar jobs' header makes everything after it boilerplate, so a
+    related-jobs rail in plain text never becomes a requirement."""
+    job = (
+        "Minimum qualifications:\nExperience with Python and Django.\n"
+        "Similar jobs:\nAndroid Developer\nMachine Learning Engineer\n"
+    )
+    kinds = [s.kind for s in split_sections(job)]
+    assert KIND_BOILERPLATE in kinds
+    result = scoring.score_match("Python developer with Django.", job)
+    gap_terms = {m.term.lower() for m in result.gaps}
+    assert not any(j in " ".join(gap_terms) for j in ("android", "machine learning"))
+
+
+def test_high_contamination_caps_confidence_and_flags_approximate():
+    noisy = (
+        "Requirements:\nPython developer needed.\n"
+        "melbourne vic sydney nsw brisbane qld\n"
+        "alphabet inc google llc\n"
+        "person_outline arrow_forward location_on\n"
+    )
+    result = scoring.score_match("Python.", noisy)
+    assert result.contamination == "high"
+    assert result.confidence != "high"
+    assert "approximate" in result.confidence_reason
+
+
+def test_clean_posting_reports_low_contamination():
+    result = scoring.score_match(NURSING_RESUME, NURSING_JOB)
+    assert result.contamination == "low"
+
+
+def test_all_miss_preferred_list_does_not_tank_score():
+    """A long, entirely-unmatched preferred list weighs less than required, so
+    it can't collapse an otherwise strong required/responsibility fit."""
+    resume = "Python developer using Django. I build REST APIs and deploy services daily."
+    job = (
+        "Minimum qualifications:\nPython and Django.\n"
+        "Responsibilities:\nBuild REST APIs and deploy services.\n"
+        "Preferred qualifications:\nKubernetes, Terraform, Kafka, Snowflake, and Rust.\n"
+    )
+    result = scoring.score_match(resume, job)
+    assert result.coverage.preferred == 0.0  # nothing preferred matched
+    assert result.score >= 75  # required + responsibilities still carry it
+
+
+# --------------------------- expanded taxonomy (FEAT-31) --------------------
+
+def test_new_taxonomy_detects_cybersecurity_family():
+    job = (
+        "Requirements:\nExperience with SIEM, SOAR, EDR and IAM.\n"
+        "Responsibilities:\nLead incident response and threat hunting.\n"
+        "Preferred:\nZero trust and ISO 27001.\n"
+    )
+    resume = "SOC analyst with SIEM, EDR, incident response and vulnerability management."
+    result = scoring.score_match(resume, job)
+    assert result.role_families == ["Security"]
+    strong = {m.term for m in result.strengths if m.status in ("strong", "partial")}
+    assert {"edr", "siem", "incident response"} & strong
+
+
+def test_new_taxonomy_detects_finance_and_product_and_sales():
+    finance = scoring.score_match(
+        "Accountant experienced in FP&A, reconciliation, general ledger.",
+        "Requirements:\nFP&A, financial reporting, account reconciliation, SOX.",
+    )
+    assert finance.role_families == ["Finance"]
+
+    product = scoring.score_match(
+        "Product manager: roadmap ownership, backlog grooming, OKRs.",
+        "Requirements:\nOwn the product roadmap, manage the backlog, define OKRs.",
+    )
+    assert product.role_families == ["Product & project"]
+
+    sales = scoring.score_match(
+        "Account executive: CRM, sales pipeline, quota attainment, cold outreach.",
+        "Requirements:\nManage the sales pipeline, hit quota, prospecting. CRM.",
+    )
+    assert sales.role_families == ["Sales"]

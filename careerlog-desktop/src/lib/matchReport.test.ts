@@ -87,6 +87,15 @@ describe("buildMatchReport", () => {
     expect(report.coverage.find((c) => c.label === "Preferred")?.pct).toBeNull();
   });
 
+  it("adds an approximate-score note when contamination is high", () => {
+    const clean = buildMatchReport({ result: makeScore({ contamination: "low" }), ...CTX });
+    expect(clean.summary).not.toContain("approximate");
+
+    const noisy = buildMatchReport({ result: makeScore({ contamination: "high" }), ...CTX });
+    expect(noisy.summary).toContain("approximate");
+    expect(noisy.summary.toLowerCase()).toContain("navigation");
+  });
+
   it("gives a positive recommendation when nothing is missing", () => {
     const report = buildMatchReport({
       result: makeScore({ gaps: [], strengths: [term({ term: "python", evidence: ["python"] })] }),
