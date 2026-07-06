@@ -62,6 +62,15 @@ _HEADER_RULES: tuple[tuple[str, str], ...] = (
     (r"(about (us|the company|our)|who we are|why join|our (mission|team|company))", KIND_BOILERPLATE),
     (r"(equal opportunity|eeo|diversity|inclusion|accommodation|e-verify)", KIND_BOILERPLATE),
     (r"(how to apply|application (process|instructions)|to apply)", KIND_BOILERPLATE),
+    # Content boundaries: scraped page chrome that follows the real posting —
+    # related-job rails and careers-site navigation. Classifying these as
+    # boilerplate headers drops everything after them from scoring (FEAT-31).
+    (r"(similar|related|recommended|featured|more|other|suggested) (jobs|roles|positions|openings|opportunities)", KIND_BOILERPLATE),
+    (r"(jobs|roles|openings) (you might|for you|like this)", KIND_BOILERPLATE),
+    (r"careers?( home| at| with)?\b", KIND_BOILERPLATE),
+    (r"(life|working|work) (at|with|@)", KIND_BOILERPLATE),
+    (r"our (locations|offices|values|story)", KIND_BOILERPLATE),
+    (r"(follow us|connect with us|stay connected|join our talent)", KIND_BOILERPLATE),
 )
 _HEADER_RES: tuple[tuple[re.Pattern[str], str], ...] = tuple(
     (re.compile(pat, re.IGNORECASE), kind) for pat, kind in _HEADER_RULES
