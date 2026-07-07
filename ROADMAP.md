@@ -163,7 +163,9 @@ backend 293 tests green). AUD-15/16 remain open._
 
 ### Documentation
 
-- [ ] **AUD-17 — Refresh [`architecture.md`](architecture.md).** It's linked from
+_AUD-17 shipped 2026-07-07 on `docs/refresh-architecture`. AUD-18 remains open._
+
+- [x] **AUD-17 — Refresh [`architecture.md`](architecture.md).** It's linked from
       the README as "the full design" but is substantially stale: it documents
       ~6 of ~17 backend modules (missing `matching`, `discovery`, `preferences`,
       `job_alerts`, `email_tracking`, `company_research`, `interview_prep`,
