@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from bson import ObjectId
-from bson.errors import InvalidId
-from fastapi import status
 from pymongo.database import Database
 
-from app.common.errors import raise_error
+from app.common.crud import (
+    clean_str_list,
+    object_id_or_404,
+    owned_delete,
+    owned_update,
+)
 
 _TEXT_FIELDS = ("situation", "task", "action", "result")
 
@@ -28,30 +30,6 @@ def _serialize(doc: dict) -> dict:
     }
 
 
-def _object_id(story_id: str):
-    try:
-        return ObjectId(story_id)
-    except (InvalidId, TypeError):
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Story not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
-
-
-def _clean_tags(tags: list[str]) -> list[str]:
-    """Trim, drop blanks, de-dupe (case-insensitive) preserving order."""
-    seen: set[str] = set()
-    out: list[str] = []
-    for tag in tags:
-        item = (tag or "").strip()
-        key = item.lower()
-        if item and key not in seen:
-            seen.add(key)
-            out.append(item)
-    return out
-
-
 def create_story(db: Database, payload, user_id: str) -> dict:
     now = datetime.now(tz=timezone.utc)
     doc = {
@@ -61,7 +39,7 @@ def create_story(db: Database, payload, user_id: str) -> dict:
         "task": payload.task,
         "action": payload.action,
         "result": payload.result,
-        "tags": _clean_tags(payload.tags),
+        "tags": clean_str_list(payload.tags),
         "createdAt": now,
         "updatedAt": now,
     }
@@ -76,7 +54,7 @@ def list_stories(db: Database, user_id: str) -> dict:
 
 
 def update_story(db: Database, story_id: str, user_id: str, payload) -> dict:
-    object_id = _object_id(story_id)
+    object_id = object_id_or_404(story_id, message="Story not found")
     updates: dict = {}
     if payload.title is not None:
         updates["title"] = payload.title.strip()
@@ -85,36 +63,14 @@ def update_story(db: Database, story_id: str, user_id: str, payload) -> dict:
         if value is not None:
             updates[field] = value
     if payload.tags is not None:
-        updates["tags"] = _clean_tags(payload.tags)
+        updates["tags"] = clean_str_list(payload.tags)
 
-    if not updates:
-        raise_error(
-            code="VALIDATION_ERROR",
-            message="No fields provided for update",
-            http_status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    updates["updatedAt"] = datetime.now(tz=timezone.utc)
-    doc = db.star_stories.find_one_and_update(
-        {"_id": object_id, "userId": user_id},
-        {"$set": updates},
-        return_document=True,
+    doc = owned_update(
+        db.star_stories, object_id, user_id, updates, message="Story not found"
     )
-    if not doc:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Story not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
     return _serialize(doc)
 
 
 def delete_story(db: Database, story_id: str, user_id: str) -> None:
-    object_id = _object_id(story_id)
-    result = db.star_stories.delete_one({"_id": object_id, "userId": user_id})
-    if result.deleted_count == 0:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Story not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
+    object_id = object_id_or_404(story_id, message="Story not found")
+    owned_delete(db.star_stories, object_id, user_id, message="Story not found")

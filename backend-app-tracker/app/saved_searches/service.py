@@ -8,11 +8,10 @@ this is safe to build on the hardened filter mechanism (SEC-1).
 
 from datetime import datetime, timezone
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import status
 from pymongo.collection import Collection
 
+from app.common.crud import object_id_or_404, owned_delete, owned_update
 from app.common.errors import raise_error
 from app.common.query import validate_client_filters
 from app.jobs.service import JOB_FILTERABLE_FIELDS, JOB_SORTABLE_FIELDS
@@ -51,17 +50,6 @@ def _serialize(doc: dict) -> dict:
     }
 
 
-def _object_id(search_id: str):
-    try:
-        return ObjectId(search_id)
-    except (InvalidId, TypeError):
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Saved search not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
-
-
 def create_saved_search(searches: Collection, payload, user_id: str) -> dict:
     filters = _validate_filters(payload.filters)
     _validate_sort(payload.sortBy, payload.sortOrder)
@@ -89,7 +77,7 @@ def list_saved_searches(searches: Collection, user_id: str) -> dict:
 def update_saved_search(
     searches: Collection, search_id: str, user_id: str, payload
 ) -> dict:
-    object_id = _object_id(search_id)
+    object_id = object_id_or_404(search_id, message="Saved search not found")
 
     update_fields: dict = {}
     if payload.name is not None:
@@ -114,34 +102,12 @@ def update_saved_search(
         update_fields["sortBy"] = sort_by
         update_fields["sortOrder"] = sort_order
 
-    if not update_fields:
-        raise_error(
-            code="VALIDATION_ERROR",
-            message="No fields provided for update",
-            http_status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    update_fields["updatedAt"] = datetime.now(tz=timezone.utc)
-    doc = searches.find_one_and_update(
-        {"_id": object_id, "userId": user_id},
-        {"$set": update_fields},
-        return_document=True,
+    doc = owned_update(
+        searches, object_id, user_id, update_fields, message="Saved search not found"
     )
-    if not doc:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Saved search not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
     return _serialize(doc)
 
 
 def delete_saved_search(searches: Collection, search_id: str, user_id: str) -> None:
-    object_id = _object_id(search_id)
-    result = searches.delete_one({"_id": object_id, "userId": user_id})
-    if result.deleted_count == 0:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Saved search not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
+    object_id = object_id_or_404(search_id, message="Saved search not found")
+    owned_delete(searches, object_id, user_id, message="Saved search not found")
