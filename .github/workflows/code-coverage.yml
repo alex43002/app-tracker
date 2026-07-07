@@ -1,11 +1,12 @@
 name: Code Coverage
 
-# Runs the backend + desktop suites with coverage and (best-effort) uploads
-# Cobertura to GitHub Code Quality. Code Quality is only available to orgs on
-# Team/Enterprise plans — not personal repos — so on this repo the upload no-ops
-# (HTTP 404) and `fail-on-error: false` keeps the jobs green. The `code_coverage`
-# ruleset rule is therefore NOT enforced here; this workflow is kept so coverage
-# still runs on every PR and is ready to gate if the repo ever moves into an org.
+# Runs the backend + desktop suites with coverage and uploads Cobertura to
+# GitHub Code Quality. Code Quality is only available to orgs on Team/Enterprise
+# plans — not personal repos — so on this repo the upload 404s and these jobs
+# fail (fail-on-error: true, so the failure is surfaced rather than hidden). That
+# is non-blocking: `code_coverage` is NOT a required ruleset rule here, so red
+# coverage jobs don't stop merges. The suites + Cobertura still run every PR, so
+# it's ready to gate if the repo ever moves into an org.
 # See .github/CODE_QUALITY_SETUP.md.
 
 on:
@@ -54,9 +55,7 @@ jobs:
           file: backend-app-tracker/coverage.xml
           language: Python
           label: code-coverage/pytest
-          # Code Quality is unavailable on personal repos → upload 404s; don't
-          # fail the job over it.
-          fail-on-error: false
+          fail-on-error: true
 
   desktop:
     name: Desktop coverage (vitest)
@@ -91,6 +90,4 @@ jobs:
           file: careerlog-desktop/coverage/cobertura-coverage.xml
           language: TypeScript
           label: code-coverage/vitest
-          # Code Quality is unavailable on personal repos → upload 404s; don't
-          # fail the job over it.
-          fail-on-error: false
+          fail-on-error: true
