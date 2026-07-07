@@ -1,0 +1,57 @@
+# Pre-commit hooks for the CareerLog monorepo.
+#
+# One-time setup per clone:
+#   pip install pre-commit      # or: pipx install pre-commit
+#   pre-commit install          # wires the git pre-commit hook
+#
+# Run across the whole repo on demand:
+#   pre-commit run --all-files
+#
+# These mirror the backend/desktop CI checks (ruff; tsc + eslint) and also run
+# in CI via .github/workflows/pre-commit.yml, so a skipped local hook can't slip
+# past review.
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  # --- Generic hygiene -----------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-yaml
+      - id: check-json
+        # tsconfig*.json are JSONC (comments allowed) — not strict JSON.
+        exclude: '(^|/)tsconfig[.\w-]*\.json$'
+      - id: check-toml
+
+  # --- Backend: Ruff (pyflakes + syntax + C901 complexity) -----------------
+  # Pinned to the ruff version in backend-app-tracker/requirements.txt so local,
+  # pre-commit, and CI all lint identically. Uses backend-app-tracker/ruff.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.19
+    hooks:
+      - id: ruff
+        name: ruff (backend)
+        files: ^backend-app-tracker/.*\.py$
+
+  # --- Desktop: typecheck + lint (mirror careerlog-desktop CI) -------------
+  # Local hooks reuse the project's own node_modules (no version drift), and run
+  # on the whole desktop project when any TS/JS file is staged.
+  - repo: local
+    hooks:
+      - id: tsc-desktop
+        name: tsc typecheck (desktop)
+        entry: bash -c 'cd careerlog-desktop && node_modules/.bin/tsc --noEmit -p tsconfig.app.json'
+        language: system
+        files: ^careerlog-desktop/.*\.(ts|tsx)$
+        pass_filenames: false
+      - id: eslint-desktop
+        name: eslint (desktop)
+        entry: bash -c 'cd careerlog-desktop && node_modules/.bin/eslint .'
+        language: system
+        files: ^careerlog-desktop/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false

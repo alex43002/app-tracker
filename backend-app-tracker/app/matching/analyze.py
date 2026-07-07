@@ -109,6 +109,38 @@ def _concept_alias_tokens(concept_hits) -> set[str]:
     return tokens
 
 
+def _select_phrases(section_text: str, concept_hits) -> list[str]:
+    """Salient keyphrases for one section, capped at ``_MAX_PHRASES_PER_SECTION``.
+
+    Prefers multi-word phrases, then fills with unigrams a chosen phrase doesn't
+    already cover — so "patient assessment" doesn't also spawn redundant
+    "patient"/"assessment" terms that dilute the score — and drops any phrase
+    that merely echoes a matched concept's aliases.
+    """
+    echo_tokens = _concept_alias_tokens(concept_hits)
+    ranked = sorted(
+        (
+            (term, freq)
+            for term, freq in keywords.candidate_phrases(section_text).items()
+            if len(term) > 2
+            and not all(tok in echo_tokens for tok in term.split(" "))
+        ),
+        key=lambda kv: (-kv[1], -len(kv[0].split(" ")), kv[0]),
+    )
+    selected: list[str] = []
+    covered: set[str] = set()
+    for term, _freq in ranked:
+        if " " in term and len(selected) < _MAX_PHRASES_PER_SECTION:
+            selected.append(term)
+            covered.update(term.split(" "))
+    for term, _freq in ranked:
+        if len(selected) >= _MAX_PHRASES_PER_SECTION:
+            break
+        if " " not in term and term not in covered:
+            selected.append(term)
+    return selected
+
+
 def analyze_job(text: str) -> JobAnalysis:
     """Extract weighted, bucketed terms + a data-driven role family from a JD."""
     sections = split_sections(text)
@@ -153,32 +185,7 @@ def analyze_job(text: str) -> JobAnalysis:
             )
             category_weight[c.category] += weight
 
-        echo_tokens = _concept_alias_tokens(concept_hits)
-        ranked = sorted(
-            (
-                (term, freq)
-                for term, freq in keywords.candidate_phrases(section.text).items()
-                if len(term) > 2
-                and not all(tok in echo_tokens for tok in term.split(" "))
-            ),
-            key=lambda kv: (-kv[1], -len(kv[0].split(" ")), kv[0]),
-        )
-        # Prefer multi-word phrases, then fill with unigrams that a chosen phrase
-        # doesn't already cover — so "patient assessment" doesn't also spawn
-        # redundant "patient"/"assessment" terms that dilute the score.
-        selected: list[str] = []
-        covered: set[str] = set()
-        for term, _freq in ranked:
-            if " " in term and len(selected) < _MAX_PHRASES_PER_SECTION:
-                selected.append(term)
-                covered.update(term.split(" "))
-        for term, _freq in ranked:
-            if len(selected) >= _MAX_PHRASES_PER_SECTION:
-                break
-            if " " not in term and term not in covered:
-                selected.append(term)
-
-        for term in selected:
+        for term in _select_phrases(section.text, concept_hits):
             add(
                 JobTerm(
                     key=keywords.stem_term(term),

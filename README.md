@@ -167,10 +167,17 @@ Contributions are welcome. The two repositories are versioned against the **Care
 3. **Match existing conventions:**
    - **Backend** — keep the feature-sliced layout (each domain has `routes.py`, `service.py`, `schemas.py`). HTTP logic in routes, data/business logic in services, Pydantic models in schemas. Always derive `userId` from the JWT, never from the request body. Return the `success()` / `failure()` envelope.
    - **Desktop** — keep the renderer typed; route all HTTP through [careerlog-desktop/src/api/client.ts](careerlog-desktop/src/api/client.ts). No Node APIs in the renderer; privileged access goes through `electron/preload.ts` only.
-4. **Test & lint:**
+4. **Install the pre-commit hooks** (one-time per clone) so each commit is checked automatically:
+   ```bash
+   pip install pre-commit            # or: pipx install pre-commit
+   pre-commit install                # wire the git hook
+   pre-commit run --all-files        # optional: check everything now
+   ```
+   The hooks ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run **Ruff** on the backend (pyflakes + syntax + **C901** cyclomatic-complexity, so an over-complex new function is flagged before it lands), **tsc** + **ESLint** on the desktop, and generic hygiene checks (trailing whitespace, end-of-file, merge markers, JSON/YAML/TOML validity). The same hooks run in CI — [.github/workflows/pre-commit.yml](.github/workflows/pre-commit.yml).
+5. **Test & lint:**
    - Backend: `pytest` (CI also runs this against a `mongo:7` service on every push/PR to `main` — see [.github/workflows/ci.yml](backend-app-tracker/.github/workflows/ci.yml)).
    - Desktop: `npx eslint .` and ensure `npm run build` succeeds.
-5. **Open a PR** against `main` with a clear description. Keep PRs scoped to a single concern.
+6. **Open a PR** against `main` with a clear description. Keep PRs scoped to a single concern.
 
 ### Reference docs
 

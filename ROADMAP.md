@@ -132,10 +132,13 @@ ruff clean, backend 293 tests green). AUD-08/09 remain open._
       largest and most stateful file in the renderer. Split into a filters panel,
       results list, alerts panel, and preferences child components, and lift the
       query/filter state into a `useDiscovery` hook.
-- [ ] **AUD-11 — Simplify `analyze_job`** (C901 12) in
+- [x] **AUD-11 — Simplify `analyze_job`** (was C901 12) in
       [`app/matching/analyze.py`](backend-app-tracker/app/matching/analyze.py) by
       extracting the phrase-selection block (multi-word-first selection, then
-      unigram fill) into a helper.
+      unigram fill) into a helper. _(Shipped 2026-07-07 on `chore/pre-commit`
+      alongside enabling `C901` in `ruff.toml` — the phrase selection moved to
+      `_select_phrases`, and `_build_query` gained `_location_clause` /
+      `_range_clauses` helpers, so all functions pass `max-complexity = 10`.)_
 
 ### Low-risk hygiene
 

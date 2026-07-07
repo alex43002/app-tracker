@@ -40,7 +40,7 @@ export function JobStatsGrid({
   if (stats.total === 0) {
     return (
       <div className="rounded-md border border-dashed p-6 text-sm text-gray-500">
-        You haven’t added any jobs yet.  
+        You haven’t added any jobs yet.
         Start tracking applications to see your progress here.
       </div>
     );
