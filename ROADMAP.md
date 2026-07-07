@@ -107,15 +107,18 @@ ruff clean, backend 293 tests green). AUD-08/09 remain open._
       (star_stories) and `_clean_list`
       ([`preferences`](backend-app-tracker/app/preferences/service.py)) are the
       same trim/de-dupe function — hoist to one shared helper.
-- [ ] **AUD-08 — Collapse the discovery filter parameter list.** The ~14-field
-      filter set is spelled out three times: the `/discovery/jobs` route query
+- [x] **AUD-08 — Collapse the discovery filter parameter list.** The ~14-field
+      filter set was spelled out three times: the `/discovery/jobs` route query
       params ([`routes.py`](backend-app-tracker/app/discovery/routes.py)), the
       `service.list_jobs` signature, and `_build_query`
       ([`service.py`](backend-app-tracker/app/discovery/service.py)), with a
-      hand-written 1:1 forwarding block between them. Introduce a
-      `DiscoveryFilters` dataclass/model passed through the layers. This also
-      resolves the only real backend complexity flag (`_build_query`: C901 18 /
-      PLR0912 17).
+      hand-written 1:1 forwarding block between them. _(Shipped 2026-07-07 on
+      `refactor/discovery-filters`: a `DiscoveryFilters` dataclass now flows
+      route → `list_jobs` → `_build_query`, eliminating the `list_jobs` 18-param
+      signature and its forwarding block. `_build_query` was also made
+      data-driven (equality-filter tables + extracted company/employment-type
+      clause helpers), cutting complexity C901 18→13 and clearing PLR0912
+      (17 branches → under the limit). ruff clean; backend 293 tests green.)_
 - [ ] **AUD-09 — De-duplicate the desktop CRUD pages.** `Offers`, `Stories`,
       `Alerts`, and `Jobs` repeat the same list + form-modal + delete-confirm +
       toast scaffolding. Consider a shared `useCrudResource` hook / generic
