@@ -57,16 +57,18 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       current resume fit). Applying a filter must use the full set of active
       filters together with the selected resume fit, rather than resetting or
       ignoring the existing ranking/filter state.
-- [ ] **BUG-26 — Bare "Required:" header not recognized by the section splitter.**
+- [x] **BUG-26 — Bare "Required:" header not recognized by the section splitter.**
       [`sections.py`](backend-app-tracker/app/matching/sections.py) recognizes
       "Requirements:" (via the `(qualification|requirement)s?` rule) but a bare
-      "Required:" line matches no `KIND_REQUIRED` rule (the "required" pattern
+      "Required:" line matched no `KIND_REQUIRED` rule (the "required" pattern
       needs a following noun like "required qualifications"). A posting whose
-      header is just "Required:" therefore lands its must-have terms in the
+      header is just "Required:" therefore landed its must-have terms in the
       lower-weighted `context`/`responsibility` buckets instead of `required`,
-      skewing the score. Add a whole-line rule for bare
-      "Required:" / "Requirements" (and symmetrically confirm "Preferred:" /
-      "Responsibilities:" bare forms). Surfaced while building FEAT-31.
+      skewing the score. _(Fixed — added a start-anchored bare "Required:" /
+      "Essential:" rule (anchored so a trailing "…required" bullet isn't a false
+      header), and `split_sections` now keeps inline content after a
+      `Header: items` colon instead of dropping it. Surfaced while building
+      FEAT-31.)_
 
 ### Discover tab
 
