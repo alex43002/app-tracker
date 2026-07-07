@@ -8,10 +8,10 @@ import React from "react";
  * for file-based logging or telemetry.
  */
 type CrashReport = {
-  message: string;         // Error message for quick triage
-  stack?: string;          // Stack trace (if available)
-  route: string;           // Current route at time of crash
-  occurredAt: string;      // ISO timestamp of crash occurrence
+  message: string; // Error message for quick triage
+  stack?: string; // Stack trace (if available)
+  route: string; // Current route at time of crash
+  occurredAt: string; // ISO timestamp of crash occurrence
 };
 
 /**

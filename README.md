@@ -173,10 +173,10 @@ Contributions are welcome. The two repositories are versioned against the **Care
    pre-commit install                # wire the git hook
    pre-commit run --all-files        # optional: check everything now
    ```
-   The hooks ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run **Ruff** on the backend (pyflakes + syntax + **C901** cyclomatic-complexity, so an over-complex new function is flagged before it lands), **tsc** + **ESLint** on the desktop, and generic hygiene checks (trailing whitespace, end-of-file, merge markers, JSON/YAML/TOML validity). The same hooks run in CI — [.github/workflows/pre-commit.yml](.github/workflows/pre-commit.yml).
+   The hooks ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run **Ruff** on the backend (pyflakes + syntax + **C901** cyclomatic-complexity, so an over-complex new function is flagged before it lands), **Prettier** + **tsc** + **ESLint** on the desktop, and generic hygiene checks (trailing whitespace, end-of-file, merge markers, JSON/YAML/TOML validity). The same hooks run in CI — [.github/workflows/pre-commit.yml](.github/workflows/pre-commit.yml).
 5. **Test & lint:**
    - Backend: `pytest` (CI also runs this against a `mongo:7` service on every push/PR to `main` — see [.github/workflows/ci.yml](backend-app-tracker/.github/workflows/ci.yml)).
-   - Desktop: `npx eslint .` and ensure `npm run build` succeeds.
+   - Desktop: `npm run format` (Prettier), `npx eslint .`, and ensure `npm run build` succeeds.
 6. **Open a PR** against `main` with a clear description. Keep PRs scoped to a single concern.
 
 ### Reference docs

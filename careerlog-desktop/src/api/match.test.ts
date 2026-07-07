@@ -49,11 +49,31 @@ describe("match api", () => {
       skillSignalAvailable: true,
       contamination: "low",
       roleFamilies: ["Software engineering"],
-      coverage: { required: 0.8, responsibility: 0.6, preferred: null, concept: 0.7, keyword: 0.5 },
+      coverage: {
+        required: 0.8,
+        responsibility: 0.6,
+        preferred: null,
+        concept: 0.7,
+        keyword: 0.5,
+      },
       strengths: [
-        { term: "python", status: "strong", bucket: "required", isConcept: true, evidence: ["python"] },
+        {
+          term: "python",
+          status: "strong",
+          bucket: "required",
+          isConcept: true,
+          evidence: ["python"],
+        },
       ],
-      gaps: [{ term: "aws", status: "missing", bucket: "required", isConcept: true, evidence: [] }],
+      gaps: [
+        {
+          term: "aws",
+          status: "missing",
+          bucket: "required",
+          isConcept: true,
+          evidence: [],
+        },
+      ],
       resume: { skills: ["python"], keywords: [] },
       job: { skills: ["python", "aws"], keywords: [] },
     });
@@ -84,7 +104,9 @@ describe("match api", () => {
       text: "Python developer",
     });
 
-    const file = new File(["Python developer"], "cv.txt", { type: "text/plain" });
+    const file = new File(["Python developer"], "cv.txt", {
+      type: "text/plain",
+    });
     const res = await extractResume(file);
     expect(res.text).toBe("Python developer");
     expect(res.filename).toBe("cv.txt");

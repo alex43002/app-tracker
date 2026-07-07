@@ -5,7 +5,13 @@ import { renderMatchReportPdf } from "./matchReportPdf";
 import type { MatchScore, TermMatch } from "../types/match";
 
 function term(over: Partial<TermMatch> & { term: string }): TermMatch {
-  return { status: "strong", bucket: "required", isConcept: true, evidence: [], ...over };
+  return {
+    status: "strong",
+    bucket: "required",
+    isConcept: true,
+    evidence: [],
+    ...over,
+  };
 }
 
 const SCORE: MatchScore = {
@@ -15,7 +21,13 @@ const SCORE: MatchScore = {
   skillSignalAvailable: true,
   contamination: "low",
   roleFamilies: ["Software engineering"],
-  coverage: { required: 0.6, responsibility: 0.5, preferred: null, concept: 0.55, keyword: 0.4 },
+  coverage: {
+    required: 0.6,
+    responsibility: 0.5,
+    preferred: null,
+    concept: 0.55,
+    keyword: 0.4,
+  },
   strengths: [
     term({ term: "python", status: "strong", evidence: ["python developer"] }),
     term({ term: "django", status: "partial", bucket: "responsibility" }),
@@ -44,7 +56,9 @@ describe("renderMatchReportPdf", () => {
   });
 
   it("emits a PDF header signature", () => {
-    const out = renderMatchReportPdf(report()).output("arraybuffer") as ArrayBuffer;
+    const out = renderMatchReportPdf(report()).output(
+      "arraybuffer",
+    ) as ArrayBuffer;
     const head = String.fromCharCode(...new Uint8Array(out).slice(0, 5));
     expect(head).toBe("%PDF-");
   });
@@ -57,7 +71,7 @@ describe("renderMatchReportPdf", () => {
 
   it("paginates when there are many gaps", () => {
     const many = Array.from({ length: 250 }, (_, i) =>
-      term({ term: `gap-${i}`, status: "missing", bucket: "preferred" })
+      term({ term: `gap-${i}`, status: "missing", bucket: "preferred" }),
     );
     const doc = renderMatchReportPdf(report({ gaps: many }));
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);

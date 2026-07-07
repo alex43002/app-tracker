@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMatchReport, matchReportFilename, scoreVerdict } from "./matchReport";
+import {
+  buildMatchReport,
+  matchReportFilename,
+  scoreVerdict,
+} from "./matchReport";
 import type { MatchScore, TermMatch } from "../types/match";
 
 function term(over: Partial<TermMatch> & { term: string }): TermMatch {
@@ -21,10 +25,21 @@ function makeScore(over: Partial<MatchScore> = {}): MatchScore {
     skillSignalAvailable: true,
     contamination: "low",
     roleFamilies: ["Software engineering"],
-    coverage: { required: 0.6, responsibility: 0.5, preferred: 0.2, concept: 0.55, keyword: 0.4 },
+    coverage: {
+      required: 0.6,
+      responsibility: 0.5,
+      preferred: 0.2,
+      concept: 0.55,
+      keyword: 0.4,
+    },
     strengths: [
       term({ term: "python", status: "strong", evidence: ["python"] }),
-      term({ term: "django", status: "partial", bucket: "responsibility", evidence: ["django dev"] }),
+      term({
+        term: "django",
+        status: "partial",
+        bucket: "responsibility",
+        evidence: ["django dev"],
+      }),
     ],
     gaps: [
       term({ term: "aws", status: "missing", bucket: "required" }),
@@ -73,35 +88,58 @@ describe("buildMatchReport", () => {
   it("flags required gaps distinctly from other gaps", () => {
     const report = buildMatchReport({ result: makeScore(), ...CTX });
     expect(report.gaps.find((g) => g.term === "aws")?.required).toBe(true);
-    expect(report.gaps.find((g) => g.term === "kubernetes")?.required).toBe(false);
+    expect(report.gaps.find((g) => g.term === "kubernetes")?.required).toBe(
+      false,
+    );
   });
 
   it("reports N/A skills and a keyword-based note when no concepts were recognized", () => {
     const noConcepts = makeScore({
       skillSignalAvailable: false,
-      coverage: { required: 0.5, responsibility: 0.4, preferred: null, concept: null, keyword: 0.3 },
+      coverage: {
+        required: 0.5,
+        responsibility: 0.4,
+        preferred: null,
+        concept: null,
+        keyword: 0.3,
+      },
     });
     const report = buildMatchReport({ result: noConcepts, ...CTX });
     expect(report.summary).toContain("N/A");
-    expect(report.coverage.find((c) => c.label === "Recognized skills")?.pct).toBeNull();
-    expect(report.coverage.find((c) => c.label === "Preferred")?.pct).toBeNull();
+    expect(
+      report.coverage.find((c) => c.label === "Recognized skills")?.pct,
+    ).toBeNull();
+    expect(
+      report.coverage.find((c) => c.label === "Preferred")?.pct,
+    ).toBeNull();
   });
 
   it("adds an approximate-score note when contamination is high", () => {
-    const clean = buildMatchReport({ result: makeScore({ contamination: "low" }), ...CTX });
+    const clean = buildMatchReport({
+      result: makeScore({ contamination: "low" }),
+      ...CTX,
+    });
     expect(clean.summary).not.toContain("approximate");
 
-    const noisy = buildMatchReport({ result: makeScore({ contamination: "high" }), ...CTX });
+    const noisy = buildMatchReport({
+      result: makeScore({ contamination: "high" }),
+      ...CTX,
+    });
     expect(noisy.summary).toContain("approximate");
     expect(noisy.summary.toLowerCase()).toContain("navigation");
   });
 
   it("gives a positive recommendation when nothing is missing", () => {
     const report = buildMatchReport({
-      result: makeScore({ gaps: [], strengths: [term({ term: "python", evidence: ["python"] })] }),
+      result: makeScore({
+        gaps: [],
+        strengths: [term({ term: "python", evidence: ["python"] })],
+      }),
       ...CTX,
     });
-    expect(report.recommendations[0].toLowerCase()).toContain("covers what the posting");
+    expect(report.recommendations[0].toLowerCase()).toContain(
+      "covers what the posting",
+    );
   });
 
   it("carries role family and confidence into the metadata", () => {
@@ -124,7 +162,9 @@ describe("matchReportFilename", () => {
   });
 
   it("still produces a valid name with no position", () => {
-    const name = matchReportFilename({ generatedAt: new Date("2026-07-05T00:00:00Z") });
+    const name = matchReportFilename({
+      generatedAt: new Date("2026-07-05T00:00:00Z"),
+    });
     expect(name).toBe("match-report-2026-07-05.pdf");
   });
 });

@@ -73,7 +73,7 @@ export function Offers() {
 
   const maxComp = useMemo(
     () => offers.reduce((m, o) => Math.max(m, o.totalComp), 0),
-    [offers]
+    [offers],
   );
   const scores = useMemo(() => {
     const map: Record<string, number> = {};
@@ -115,7 +115,9 @@ export function Offers() {
     try {
       if (editingId) {
         const updated = await updateOffer(editingId, form);
-        setOffers((prev) => prev.map((o) => (o.id === editingId ? updated : o)));
+        setOffers((prev) =>
+          prev.map((o) => (o.id === editingId ? updated : o)),
+        );
         toast.success("Offer updated");
       } else {
         const created = await createOffer(form);
@@ -154,7 +156,7 @@ export function Offers() {
   const numField = (
     key: keyof OfferInput,
     label: string,
-    opts?: { min?: number; max?: number; step?: number }
+    opts?: { min?: number; max?: number; step?: number },
   ) => (
     <label className="block text-sm">
       <span className="mb-1 block font-medium text-gray-700">{label}</span>
@@ -175,17 +177,53 @@ export function Offers() {
     </label>
   );
 
-  const compareRows: { label: string; render: (o: Offer) => string; best?: (o: Offer) => number }[] = [
+  const compareRows: {
+    label: string;
+    render: (o: Offer) => string;
+    best?: (o: Offer) => number;
+  }[] = [
     { label: "Status", render: (o) => o.status },
     { label: "Location", render: (o) => o.location || "—" },
-    { label: "Base salary", render: (o) => money(o.baseSalary), best: (o) => o.baseSalary ?? -1 },
-    { label: "Bonus", render: (o) => money(o.bonus), best: (o) => o.bonus ?? -1 },
-    { label: "Equity / yr", render: (o) => money(o.equityPerYear), best: (o) => o.equityPerYear ?? -1 },
-    { label: "Sign-on", render: (o) => money(o.signOnBonus), best: (o) => o.signOnBonus ?? -1 },
-    { label: "Total comp / yr", render: (o) => money(o.totalComp), best: (o) => o.totalComp },
-    { label: "Benefits", render: (o) => rating(o.benefitsRating), best: (o) => o.benefitsRating ?? -1 },
-    { label: "Flexibility", render: (o) => rating(o.flexibilityRating), best: (o) => o.flexibilityRating ?? -1 },
-    { label: "Long-term fit", render: (o) => rating(o.fitRating), best: (o) => o.fitRating ?? -1 },
+    {
+      label: "Base salary",
+      render: (o) => money(o.baseSalary),
+      best: (o) => o.baseSalary ?? -1,
+    },
+    {
+      label: "Bonus",
+      render: (o) => money(o.bonus),
+      best: (o) => o.bonus ?? -1,
+    },
+    {
+      label: "Equity / yr",
+      render: (o) => money(o.equityPerYear),
+      best: (o) => o.equityPerYear ?? -1,
+    },
+    {
+      label: "Sign-on",
+      render: (o) => money(o.signOnBonus),
+      best: (o) => o.signOnBonus ?? -1,
+    },
+    {
+      label: "Total comp / yr",
+      render: (o) => money(o.totalComp),
+      best: (o) => o.totalComp,
+    },
+    {
+      label: "Benefits",
+      render: (o) => rating(o.benefitsRating),
+      best: (o) => o.benefitsRating ?? -1,
+    },
+    {
+      label: "Flexibility",
+      render: (o) => rating(o.flexibilityRating),
+      best: (o) => o.flexibilityRating ?? -1,
+    },
+    {
+      label: "Long-term fit",
+      render: (o) => rating(o.fitRating),
+      best: (o) => o.fitRating ?? -1,
+    },
   ];
 
   // The highest value per "best" row, so we can highlight the winner.
@@ -213,10 +251,14 @@ export function Offers() {
             {editingId ? "Edit offer" : "Add an offer"}
           </h2>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Company</span>
+            <span className="mb-1 block font-medium text-gray-700">
+              Company
+            </span>
             <input
               value={form.company}
-              onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, company: e.target.value }))
+              }
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             />
           </label>
@@ -229,7 +271,9 @@ export function Offers() {
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Location</span>
+            <span className="mb-1 block font-medium text-gray-700">
+              Location
+            </span>
             <input
               value={form.location ?? ""}
               onChange={(e) =>
@@ -242,14 +286,28 @@ export function Offers() {
           {numField("bonus", "Bonus")}
           {numField("equityPerYear", "Equity / yr")}
           {numField("signOnBonus", "Sign-on bonus")}
-          {numField("benefitsRating", "Benefits (1-5)", { min: 1, max: 5, step: 1 })}
-          {numField("flexibilityRating", "Flexibility (1-5)", { min: 1, max: 5, step: 1 })}
-          {numField("fitRating", "Long-term fit (1-5)", { min: 1, max: 5, step: 1 })}
+          {numField("benefitsRating", "Benefits (1-5)", {
+            min: 1,
+            max: 5,
+            step: 1,
+          })}
+          {numField("flexibilityRating", "Flexibility (1-5)", {
+            min: 1,
+            max: 5,
+            step: 1,
+          })}
+          {numField("fitRating", "Long-term fit (1-5)", {
+            min: 1,
+            max: 5,
+            step: 1,
+          })}
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-gray-700">Status</span>
             <select
               value={form.status}
-              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, status: e.target.value }))
+              }
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             >
               {OFFER_STATUSES.map((s) => (
@@ -263,7 +321,9 @@ export function Offers() {
             <span className="mb-1 block font-medium text-gray-700">Notes</span>
             <textarea
               value={form.notes ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, notes: e.target.value }))
+              }
               rows={2}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             />
@@ -290,7 +350,9 @@ export function Offers() {
 
         {/* Comparison */}
         {loading ? (
-          <div className="rounded border p-6 text-sm text-gray-500">Loading…</div>
+          <div className="rounded border p-6 text-sm text-gray-500">
+            Loading…
+          </div>
         ) : offers.length === 0 ? (
           <div className="rounded border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
             Add a couple of offers above to compare them side by side.
@@ -349,7 +411,9 @@ export function Offers() {
                           <td
                             key={o.id}
                             className={`px-4 py-2.5 ${
-                              isBest ? "font-semibold text-green-700" : "text-gray-700"
+                              isBest
+                                ? "font-semibold text-green-700"
+                                : "text-gray-700"
                             }`}
                           >
                             {row.render(o)}
@@ -365,12 +429,15 @@ export function Offers() {
                     Overall score
                   </td>
                   {offers.map((o) => {
-                    const isBest = scores[o.id] === bestScore && offers.length > 1;
+                    const isBest =
+                      scores[o.id] === bestScore && offers.length > 1;
                     return (
                       <td
                         key={o.id}
                         className={`px-4 py-3 ${
-                          isBest ? "font-bold text-green-700" : "font-medium text-gray-700"
+                          isBest
+                            ? "font-bold text-green-700"
+                            : "font-medium text-gray-700"
                         }`}
                       >
                         {scores[o.id]}

@@ -54,7 +54,9 @@ function Pill({
     info: "bg-blue-100 text-blue-800",
   }[tone];
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${styles}`}>
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${styles}`}
+    >
       {children}
     </span>
   );
@@ -126,14 +128,16 @@ export function JobCard({
         )}
         {job.experienceLevel && <Pill tone="info">{job.experienceLevel}</Pill>}
         {job.requiresDegree && <Pill>degree</Pill>}
-        {job.sponsorshipAvailable === true && <Pill tone="good">sponsors visa</Pill>}
-        {job.sponsorshipAvailable === false && <Pill tone="warn">no sponsorship</Pill>}
+        {job.sponsorshipAvailable === true && (
+          <Pill tone="good">sponsors visa</Pill>
+        )}
+        {job.sponsorshipAvailable === false && (
+          <Pill tone="warn">no sponsorship</Pill>
+        )}
         {job.clearanceRequired && <Pill tone="warn">clearance</Pill>}
         <Pill tone={fresh.stale ? "warn" : "neutral"}>{fresh.text}</Pill>
         {job.duplicateCount && job.duplicateCount > 1 && (
-          <Pill tone="info">
-            {job.duplicateCount} sources
-          </Pill>
+          <Pill tone="info">{job.duplicateCount} sources</Pill>
         )}
         {!job.duplicateCount && <Pill>{job.source}</Pill>}
         {job.qualityScore < 60 && (
@@ -143,7 +147,8 @@ export function JobCard({
 
       {job.qualityFlags.length > 0 && (
         <p className="mt-2 text-xs text-amber-700">
-          ⚠ {job.qualityFlags.map((f) => QUALITY_FLAG_LABELS[f] ?? f).join(" · ")}
+          ⚠{" "}
+          {job.qualityFlags.map((f) => QUALITY_FLAG_LABELS[f] ?? f).join(" · ")}
         </p>
       )}
     </div>

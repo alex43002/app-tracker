@@ -18,7 +18,7 @@ export interface UserContextValue {
 }
 
 export const UserContext = createContext<UserContextValue | undefined>(
-  undefined
+  undefined,
 );
 
 export function useCurrentUser(): UserContextValue {

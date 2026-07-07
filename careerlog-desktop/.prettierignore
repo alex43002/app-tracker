@@ -1,0 +1,12 @@
+# Build output & deps
+dist
+electron-dist
+release-artifacts
+node_modules
+
+# Generated / vendored
+package-lock.json
+
+# Assets Prettier shouldn't touch
+public/vite.svg
+src/assets

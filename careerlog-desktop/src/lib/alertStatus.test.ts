@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Alert } from "../types/alert";
-import { isAlertSent, isAlertScheduledFuture, partitionAlerts } from "./alertStatus";
+import {
+  isAlertSent,
+  isAlertScheduledFuture,
+  partitionAlerts,
+} from "./alertStatus";
 
 function alert(over: Partial<Alert>): Alert {
   return {
@@ -24,8 +28,8 @@ describe("alert status (FEAT-27)", () => {
         alert({
           scheduledAlert: "2026-01-01T00:00:00Z",
           lastAlertAt: "2026-01-01T00:05:00Z",
-        })
-      )
+        }),
+      ),
     ).toBe(true);
   });
 
@@ -35,8 +39,8 @@ describe("alert status (FEAT-27)", () => {
         alert({
           scheduledAlert: "2026-12-01T00:00:00Z",
           lastAlertAt: "2026-01-01T00:00:00Z", // fired the old schedule only
-        })
-      )
+        }),
+      ),
     ).toBe(false);
   });
 

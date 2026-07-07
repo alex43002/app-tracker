@@ -33,7 +33,6 @@ export type UpdateJobPayload = Partial<
   resume?: File | null;
 };
 
-
 /* ============================================================
    Read (List)
 ============================================================ */
@@ -50,7 +49,7 @@ export function fetchJobs(
   pageSize = 25,
   sortBy = "createdAt",
   sortOrder: "asc" | "desc" = "asc",
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
 ) {
   const params = new URLSearchParams({
     page: String(page),
@@ -64,7 +63,7 @@ export function fetchJobs(
   }
 
   return apiClient.get<PaginatedResponse<Job>>(
-    `/api/jobs?${params.toString()}`
+    `/api/jobs?${params.toString()}`,
   );
 }
 
@@ -79,7 +78,7 @@ export function fetchJobs(
 export async function fetchAllJobs(
   sortBy = "createdAt",
   sortOrder: "asc" | "desc" = "asc",
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
 ): Promise<Job[]> {
   const pageSize = 200;
   const first = await fetchJobs(1, pageSize, sortBy, sortOrder, filters);
@@ -102,19 +101,14 @@ export async function fetchAllJobs(
  * - Injects Authorization header
  * - Returns a real File
  */
-export async function fetchJobResume(
-  resumeId: string
-): Promise<File | null> {
-  const token =
-    localStorage.getItem("careerlog_token");
+export async function fetchJobResume(resumeId: string): Promise<File | null> {
+  const token = localStorage.getItem("careerlog_token");
 
   const response = await fetch(
     `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${resumeId}`,
     {
-      headers: token
-        ? { Authorization: `Bearer ${token}` }
-        : undefined,
-    }
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    },
   );
 
   // HARD GUARDS (prevents this bug forever)
@@ -123,14 +117,10 @@ export async function fetchJobResume(
     return null;
   }
 
-  const contentType =
-    response.headers.get("content-type") ?? "";
+  const contentType = response.headers.get("content-type") ?? "";
 
   if (!contentType.startsWith("application/")) {
-    console.error(
-      "Invalid resume content type",
-      contentType
-    );
+    console.error("Invalid resume content type", contentType);
     return null;
   }
 
@@ -139,14 +129,12 @@ export async function fetchJobResume(
   const filename =
     response.headers
       .get("content-disposition")
-      ?.match(/filename="(.+)"/)?.[1] ??
-    "resume.pdf";
+      ?.match(/filename="(.+)"/)?.[1] ?? "resume.pdf";
 
   return new File([blob], filename, {
     type: blob.type,
   });
 }
-
 
 /* ============================================================
    Multiple résumés per job (FEAT-10)
@@ -155,7 +143,7 @@ export async function fetchJobResume(
 /** List the résumés attached to a job. */
 export async function fetchJobResumes(jobId: string): Promise<JobResume[]> {
   const res = await apiClient.get<{ resumes: JobResume[] }>(
-    `/api/jobs/${jobId}/resumes`
+    `/api/jobs/${jobId}/resumes`,
   );
   return res.resumes;
 }
@@ -181,7 +169,7 @@ export function deleteJobResume(jobId: string, resumeId: string) {
  * `URL.revokeObjectURL` it when done. Returns null on failure.
  */
 export async function fetchResumePreviewUrl(
-  resumeId: string
+  resumeId: string,
 ): Promise<string | null> {
   const token = localStorage.getItem("careerlog_token");
 
@@ -189,7 +177,7 @@ export async function fetchResumePreviewUrl(
     `${import.meta.env.VITE_API_BASE_URL}/api/resumes/${resumeId}?disposition=inline`,
     {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }
+    },
   );
 
   if (!response.ok) {
@@ -238,10 +226,7 @@ export function createJob(payload: CreateJobPayload) {
 export function updateJob(id: string, payload: UpdateJobPayload) {
   const body = buildUpdatePayload(payload);
 
-  return apiClient.put<{ updatedAt: string }>(
-    `/api/jobs/${id}`,
-    body
-  );
+  return apiClient.put<{ updatedAt: string }>(`/api/jobs/${id}`, body);
 }
 
 function buildUpdatePayload(payload: UpdateJobPayload) {
@@ -264,7 +249,6 @@ function buildUpdatePayload(payload: UpdateJobPayload) {
   // No file → safe JSON
   return payload;
 }
-
 
 /* ============================================================
    Delete

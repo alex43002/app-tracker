@@ -15,12 +15,8 @@ export function JobFormSection({
 }) {
   return (
     <section>
-      <h3 className="mb-4 text-sm font-semibold text-gray-700">
-        {title}
-      </h3>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {children}
-      </div>
+      <h3 className="mb-4 text-sm font-semibold text-gray-700">{title}</h3>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }

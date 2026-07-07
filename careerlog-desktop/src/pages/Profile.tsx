@@ -97,8 +97,10 @@ export function Profile() {
 
   // Only the fields that actually changed.
   const changed: UpdateUserPayload = {};
-  if (form.firstName.trim() !== user.firstName) changed.firstName = form.firstName.trim();
-  if (form.lastName.trim() !== user.lastName) changed.lastName = form.lastName.trim();
+  if (form.firstName.trim() !== user.firstName)
+    changed.firstName = form.firstName.trim();
+  if (form.lastName.trim() !== user.lastName)
+    changed.lastName = form.lastName.trim();
   if (form.phoneNumber.trim() !== user.phoneNumber)
     changed.phoneNumber = form.phoneNumber.trim();
   if (form.email.trim().toLowerCase() !== user.email.toLowerCase())
@@ -130,7 +132,7 @@ export function Profile() {
       }
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to save profile"
+        err instanceof ApiError ? err.displayMessage : "Failed to save profile",
       );
     } finally {
       setSaving(false);

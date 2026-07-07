@@ -66,8 +66,7 @@ export function Jobs() {
   const [filters, setFilters] = useState<Record<string, unknown>>({});
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] =
-    useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [offline, setOffline] = useState(false);
   // Bumped to remount the toolbar with fresh state when a saved search is applied.
   const [toolbarKey, setToolbarKey] = useState(0);
@@ -96,7 +95,7 @@ export function Jobs() {
     return jobs.filter(
       (j) =>
         j.company.toLowerCase().includes(q) ||
-        j.jobTitle.toLowerCase().includes(q)
+        j.jobTitle.toLowerCase().includes(q),
     );
   }, [jobs, search]);
 
@@ -113,7 +112,7 @@ export function Jobs() {
     const cacheKey = `jobs:${page}:${sortBy}:${sortOrder}:${JSON.stringify(filters)}`;
 
     withOfflineCache<PaginatedResponse<Job>>(cacheKey, () =>
-      fetchJobs(page, PAGE_SIZE, sortBy, sortOrder, filterArg)
+      fetchJobs(page, PAGE_SIZE, sortBy, sortOrder, filterArg),
     )
       .then(({ data, stale }) => {
         if (!active) return;
@@ -139,9 +138,7 @@ export function Jobs() {
   if (!user) {
     return (
       <AppLayout>
-        <div className="p-6 text-sm text-gray-500">
-          Loading jobs…
-        </div>
+        <div className="p-6 text-sm text-gray-500">Loading jobs…</div>
       </AppLayout>
     );
   }
@@ -230,14 +227,12 @@ export function Jobs() {
               onClose={() => setModalOpen(false)}
               onSave={async (payload) => {
                 if (editingJob) {
-                  const updatePayload =
-                    payload as UpdateJobPayload;
+                  const updatePayload = payload as UpdateJobPayload;
 
-                  const { updatedAt } =
-                    await updateJob(
-                      editingJob.id,
-                      updatePayload
-                    );
+                  const { updatedAt } = await updateJob(
+                    editingJob.id,
+                    updatePayload,
+                  );
 
                   setJobs((prev) =>
                     prev.map((job) =>
@@ -247,54 +242,35 @@ export function Jobs() {
                             ...updatePayload,
                             updatedAt,
                           }
-                        : job
-                    )
+                        : job,
+                    ),
                   );
                 } else {
-                  const createPayload =
-                    payload as CreateJobPayload;
+                  const createPayload = payload as CreateJobPayload;
 
-                  const created =
-                    await createJob(createPayload);
+                  const created = await createJob(createPayload);
 
                   const newJob: Job = {
                     id: created.id,
                     userId: user.id,
 
-                    jobId:
-                      createPayload.jobId ?? null,
+                    jobId: createPayload.jobId ?? null,
                     url: createPayload.url,
-                    jobTitle:
-                      createPayload.jobTitle,
-                    company:
-                      createPayload.company,
-                    salaryTarget:
-                      createPayload.salaryTarget,
-                    salaryRange:
-                      createPayload.salaryRange ??
-                      null,
-                    status:
-                      createPayload.status,
-                    resume:
-                      createPayload.resume,
-                    location:
-                      createPayload.location,
-                    employmentType:
-                      createPayload.employmentType,
+                    jobTitle: createPayload.jobTitle,
+                    company: createPayload.company,
+                    salaryTarget: createPayload.salaryTarget,
+                    salaryRange: createPayload.salaryRange ?? null,
+                    status: createPayload.status,
+                    resume: createPayload.resume,
+                    location: createPayload.location,
+                    employmentType: createPayload.employmentType,
 
-                    createdAt:
-                      created.createdAt,
-                    updatedAt:
-                      created.updatedAt,
+                    createdAt: created.createdAt,
+                    updatedAt: created.updatedAt,
                   };
 
-                  setJobs((prev) => [
-                    newJob,
-                    ...prev,
-                  ]);
-                  setTotalItems(
-                    (prev) => prev + 1
-                  );
+                  setJobs((prev) => [newJob, ...prev]);
+                  setTotalItems((prev) => prev + 1);
                 }
 
                 setModalOpen(false);

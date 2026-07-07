@@ -36,7 +36,9 @@ describe("VerifyEmail", () => {
     await user.click(screen.getByRole("button", { name: /verify email/i }));
 
     expect(mocked.confirmEmailVerification).toHaveBeenCalledWith("vtok");
-    expect(await screen.findByText(/your email is verified/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/your email is verified/i),
+    ).toBeInTheDocument();
   });
 
   it("resends a code with a neutral message", async () => {
@@ -49,14 +51,21 @@ describe("VerifyEmail", () => {
       screen.getByRole("button", { name: /resend verification code/i }),
     );
 
-    expect(mocked.requestEmailVerification).toHaveBeenCalledWith("a@example.com");
-    expect(await screen.findByText(/if an account exists/i)).toBeInTheDocument();
+    expect(mocked.requestEmailVerification).toHaveBeenCalledWith(
+      "a@example.com",
+    );
+    expect(
+      await screen.findByText(/if an account exists/i),
+    ).toBeInTheDocument();
   });
 
   it("surfaces an API error on a bad code", async () => {
     mocked.confirmEmailVerification.mockRejectedValueOnce(
       new ApiError(
-        { code: "AUTH_TOKEN_INVALID", message: "Verification token is invalid" },
+        {
+          code: "AUTH_TOKEN_INVALID",
+          message: "Verification token is invalid",
+        },
         400,
       ),
     );
@@ -69,6 +78,8 @@ describe("VerifyEmail", () => {
     expect(
       await screen.findByText(/verification token is invalid/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/your email is verified/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/your email is verified/i),
+    ).not.toBeInTheDocument();
   });
 });

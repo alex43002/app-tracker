@@ -70,13 +70,16 @@ export function Compare() {
   }, []);
 
   const selected = useMemo(
-    () => selectedIds.map((id) => jobs.find((j) => j.id === id)).filter(Boolean) as Job[],
-    [selectedIds, jobs]
+    () =>
+      selectedIds
+        .map((id) => jobs.find((j) => j.id === id))
+        .filter(Boolean) as Job[],
+    [selectedIds, jobs],
   );
 
   function toggle(id: string) {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 

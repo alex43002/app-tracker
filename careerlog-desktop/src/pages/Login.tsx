@@ -17,8 +17,7 @@ export default function Login() {
   const location = useLocation();
 
   // One-off notice passed via navigation state (e.g. after a password reset).
-  const notice =
-    (location.state as { notice?: string } | null)?.notice ?? null;
+  const notice = (location.state as { notice?: string } | null)?.notice ?? null;
 
   const [isSignup, setIsSignup] = useState(false);
 

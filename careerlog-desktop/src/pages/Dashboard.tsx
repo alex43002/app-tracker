@@ -76,9 +76,7 @@ export function Dashboard() {
     return (
       <AppLayout>
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-sm text-gray-500">
-            Loading dashboard…
-          </div>
+          <div className="text-sm text-gray-500">Loading dashboard…</div>
         </div>
       </AppLayout>
     );
@@ -100,10 +98,10 @@ export function Dashboard() {
             <DashboardHeader />
 
             {/* KPI Cards should now use analytics data, not full job list */}
-            <JobStatsGrid stats={jobStats} isLoading={loadingStats}/>
+            <JobStatsGrid stats={jobStats} isLoading={loadingStats} />
 
             {/* Pipeline visualization still relies on actual jobs */}
-            <PipelineVisualization stats={jobStats} isLoading={loadingStats}/>
+            <PipelineVisualization stats={jobStats} isLoading={loadingStats} />
 
             {/* Richer analytics (FEAT-7-UI) */}
             <AnalyticsInsights />

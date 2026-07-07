@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { confirmEmailVerification, requestEmailVerification } from "../api/auth";
+import {
+  confirmEmailVerification,
+  requestEmailVerification,
+} from "../api/auth";
 import { ApiError } from "../api/client";
 
-import { AuthLayout, AuthCard, AuthError, AuthNotice } from "../components/auth";
+import {
+  AuthLayout,
+  AuthCard,
+  AuthError,
+  AuthNotice,
+} from "../components/auth";
 
 export default function VerifyEmail() {
   const [token, setToken] = useState("");
@@ -15,7 +23,9 @@ export default function VerifyEmail() {
   const [verified, setVerified] = useState(false);
 
   function describe(err: unknown): string {
-    return err instanceof ApiError ? err.displayMessage : "Something went wrong";
+    return err instanceof ApiError
+      ? err.displayMessage
+      : "Something went wrong";
   }
 
   async function handleConfirm(e: React.FormEvent) {

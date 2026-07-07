@@ -18,10 +18,10 @@ export function fetchAlerts(
   page = 1,
   pageSize = 25,
   sortBy = "scheduledAlert",
-  sortOrder: "asc" | "desc" = "asc"
+  sortOrder: "asc" | "desc" = "asc",
 ) {
   return apiClient.get<PaginatedResponse<Alert>>(
-    `/api/alerts/?page=${page}&pageSize=${pageSize}&sortBy=${sortBy}&sortOrder=${sortOrder}`
+    `/api/alerts/?page=${page}&pageSize=${pageSize}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
   );
 }
 
@@ -29,7 +29,7 @@ export function fetchAlerts(
 export function createAlert(payload: CreateAlertPayload) {
   return apiClient.post<{ id: string; createdAt: string; updatedAt: string }>(
     "/api/alerts/",
-    payload
+    payload,
   );
 }
 

@@ -1,9 +1,7 @@
 export function AuthBrandPanel() {
   return (
     <div className="hidden lg:flex flex-col justify-center bg-white px-16">
-      <h1 className="text-3xl font-semibold mb-4">
-        CareerLog
-      </h1>
+      <h1 className="text-3xl font-semibold mb-4">CareerLog</h1>
 
       <p className="text-gray-700 text-lg mb-6">
         Take control of your job search.
@@ -17,8 +15,8 @@ export function AuthBrandPanel() {
       </ul>
 
       <p className="mt-10 text-sm text-gray-500 max-w-md">
-        Your data is private, encrypted, and never shared. CareerLog
-        exists to help you stay organized—not to sell your information.
+        Your data is private, encrypted, and never shared. CareerLog exists to
+        help you stay organized—not to sell your information.
       </p>
     </div>
   );

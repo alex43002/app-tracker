@@ -24,7 +24,7 @@ describe("auth store", () => {
 
     expect(localStorage.getItem(TOKEN_KEY)).toBe("jwt-abc");
     expect(localStorage.getItem(EXPIRY_KEY)).toBe(
-      String(new Date(expiresAt).getTime())
+      String(new Date(expiresAt).getTime()),
     );
     // The old bug produced "NaN" here from a non-existent expiresIn.
     expect(localStorage.getItem(EXPIRY_KEY)).not.toBe("NaN");

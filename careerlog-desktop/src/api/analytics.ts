@@ -25,9 +25,7 @@ import { apiClient } from "./client";
  * - Scoped to current authenticated user
  */
 export function fetchJobStatusCounts() {
-  return apiClient.get<JobStatusCounts>(
-    "/api/analytics/status-counts"
-  );
+  return apiClient.get<JobStatusCounts>("/api/analytics/status-counts");
 }
 
 /* ============================================================
@@ -43,7 +41,7 @@ export function fetchFunnel() {
 export function fetchApplicationsOverTime(interval?: AnalyticsInterval) {
   const query = interval ? `?interval=${interval}` : "";
   return apiClient.get<ApplicationsOverTime>(
-    `/api/analytics/applications-over-time${query}`
+    `/api/analytics/applications-over-time${query}`,
   );
 }
 
@@ -59,9 +57,7 @@ export function fetchCompanyFunnels() {
 
 /** Per-source funnel + conversion rates (which channels produce results). */
 export function fetchSourcePerformance() {
-  return apiClient.get<SourcePerformance>(
-    "/api/analytics/source-performance"
-  );
+  return apiClient.get<SourcePerformance>("/api/analytics/source-performance");
 }
 
 /* ============================================================

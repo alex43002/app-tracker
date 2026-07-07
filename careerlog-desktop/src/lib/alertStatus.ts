@@ -17,7 +17,10 @@ export function isAlertSent(alert: Alert): boolean {
 }
 
 /** True when a pending alert's scheduled time is still in the future. */
-export function isAlertScheduledFuture(alert: Alert, now: Date = new Date()): boolean {
+export function isAlertScheduledFuture(
+  alert: Alert,
+  now: Date = new Date(),
+): boolean {
   return new Date(alert.scheduledAlert).getTime() > now.getTime();
 }
 
@@ -37,12 +40,13 @@ export function partitionAlerts(alerts: Alert[]): {
   }
   pending.sort(
     (a, b) =>
-      new Date(a.scheduledAlert).getTime() - new Date(b.scheduledAlert).getTime()
+      new Date(a.scheduledAlert).getTime() -
+      new Date(b.scheduledAlert).getTime(),
   );
   sent.sort(
     (a, b) =>
       new Date(b.lastAlertAt ?? 0).getTime() -
-      new Date(a.lastAlertAt ?? 0).getTime()
+      new Date(a.lastAlertAt ?? 0).getTime(),
   );
   return { pending, sent };
 }

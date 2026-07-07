@@ -48,9 +48,7 @@ export function JobFormField({
 
       {children}
 
-      {error && (
-        <span className="text-xs text-red-600">{error}</span>
-      )}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </label>
   );
 }

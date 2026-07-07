@@ -1,7 +1,5 @@
 import { useCallback, useState } from "react";
-import {
-  VALIDATION_RULES,
-} from "../config/validationRules";
+import { VALIDATION_RULES } from "../config/validationRules";
 import type { Job } from "../../../../types/job";
 import type {
   JobFormErrors,
@@ -60,36 +58,28 @@ function valuesFromJob(job: Job | null): JobFormValues {
  * - Know about animations
  * - Know about modal lifecycle
  */
-export function useJobForm(
-  options: JobFormInitOptions
-): UseJobFormResult {
+export function useJobForm(options: JobFormInitOptions): UseJobFormResult {
   const { job } = options;
 
   // Initialize directly from the job prop. The form is remounted (keyed on the
   // job id) when the edited job changes, so there's no prefill effect to sync
   // state to props — initial state derives from the prop on mount.
-  const [values, setValues] =
-    useState<JobFormValues>(() => valuesFromJob(job));
-  const [errors, setErrors] =
-    useState<JobFormErrors>({});
-  const [touched, setTouched] =
-    useState<UseJobFormResult["touched"]>({});
+  const [values, setValues] = useState<JobFormValues>(() => valuesFromJob(job));
+  const [errors, setErrors] = useState<JobFormErrors>({});
+  const [touched, setTouched] = useState<UseJobFormResult["touched"]>({});
 
   /* ============================
      Field Setters
   ============================ */
 
   const setFieldValue = useCallback(
-    <K extends keyof JobFormValues>(
-      key: K,
-      value: JobFormValues[K]
-    ) => {
+    <K extends keyof JobFormValues>(key: K, value: JobFormValues[K]) => {
       setValues((prev) => ({
         ...prev,
         [key]: value,
       }));
     },
-    []
+    [],
   );
 
   const setFieldTouched = useCallback((key: keyof JobFormValues) => {
@@ -102,15 +92,12 @@ export function useJobForm(
   const touchAllFields = useCallback(() => {
     const allTouched: typeof touched = {};
 
-    (Object.keys(values) as Array<keyof typeof values>).forEach(
-        (key) => {
-        allTouched[key] = true;
-        }
-    );
+    (Object.keys(values) as Array<keyof typeof values>).forEach((key) => {
+      allTouched[key] = true;
+    });
 
     setTouched(allTouched);
   }, [values]);
-
 
   /* ============================
      Validation
@@ -128,7 +115,7 @@ export function useJobForm(
         if (error) {
           nextErrors[key] = error;
         }
-      }
+      },
     );
 
     setErrors(nextErrors);

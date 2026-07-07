@@ -3,7 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { confirmPasswordReset, requestPasswordReset } from "../api/auth";
 import { ApiError } from "../api/client";
 
-import { AuthLayout, AuthCard, AuthError, AuthNotice } from "../components/auth";
+import {
+  AuthLayout,
+  AuthCard,
+  AuthError,
+  AuthNotice,
+} from "../components/auth";
 
 type Phase = "request" | "confirm";
 
@@ -20,7 +25,9 @@ export default function ResetPassword() {
   const [notice, setNotice] = useState<string | null>(null);
 
   function describe(err: unknown): string {
-    return err instanceof ApiError ? err.displayMessage : "Something went wrong";
+    return err instanceof ApiError
+      ? err.displayMessage
+      : "Something went wrong";
   }
 
   async function handleRequest(e: React.FormEvent) {

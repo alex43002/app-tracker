@@ -11,7 +11,7 @@ function mockFetch(status: number, body: unknown) {
       ok: status >= 200 && status < 300,
       status,
       json: async () => body,
-    }))
+    })),
   );
 }
 
@@ -51,14 +51,15 @@ describe("apiClient", () => {
         message: "Request validation failed",
         details: [
           { field: "email", message: "value is not a valid email address" },
-          { field: "password", message: "String should have at least 8 characters" },
+          {
+            field: "password",
+            message: "String should have at least 8 characters",
+          },
         ],
       },
     });
 
-    const err = (await apiClient
-      .get("/api/x")
-      .catch((e) => e)) as ApiError;
+    const err = (await apiClient.get("/api/x").catch((e) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.details).toHaveLength(2);
     expect(err.displayMessage).toContain("email:");
@@ -107,9 +108,17 @@ describe("apiClient", () => {
     const fetchMock = vi
       .fn()
       // 1) original protected request -> 401
-      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => unauthorized })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => unauthorized,
+      })
       // 2) POST /api/auth/refresh -> new session
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshed })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => refreshed,
+      })
       // 3) retried protected request -> success
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ok });
     vi.stubGlobal("fetch", fetchMock);

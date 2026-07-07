@@ -40,7 +40,9 @@ describe("ResetPassword", () => {
 
     expect(mocked.requestPasswordReset).toHaveBeenCalledWith("a@example.com");
     // Neutral, enumeration-safe message + confirm form now visible.
-    expect(await screen.findByText(/if an account exists/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/if an account exists/i),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Reset code")).toBeInTheDocument();
   });
 
@@ -50,7 +52,9 @@ describe("ResetPassword", () => {
     renderPage();
 
     // Jump straight to the confirm step.
-    await user.click(screen.getByRole("button", { name: /already have a code/i }));
+    await user.click(
+      screen.getByRole("button", { name: /already have a code/i }),
+    );
     await user.type(screen.getByPlaceholderText("Reset code"), "tok123");
     await user.type(
       screen.getByPlaceholderText(/new password/i),
@@ -75,9 +79,14 @@ describe("ResetPassword", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /already have a code/i }));
+    await user.click(
+      screen.getByRole("button", { name: /already have a code/i }),
+    );
     await user.type(screen.getByPlaceholderText("Reset code"), "bad");
-    await user.type(screen.getByPlaceholderText(/new password/i), "whatever123");
+    await user.type(
+      screen.getByPlaceholderText(/new password/i),
+      "whatever123",
+    );
     await user.click(screen.getByRole("button", { name: /set new password/i }));
 
     expect(

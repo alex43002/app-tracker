@@ -59,14 +59,17 @@ export function CompanyResearch() {
           <h1 className="text-2xl font-semibold">Company research</h1>
           <p className="text-sm text-gray-500">
             A snapshot built from a company's public postings: open roles,
-            locations, ATS platforms, seniority, pay range, and tech-stack clues.
+            locations, ATS platforms, seniority, pay range, and tech-stack
+            clues.
           </p>
         </div>
 
         {/* Picker */}
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
           <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Company</span>
+            <span className="mb-1 block font-medium text-gray-700">
+              Company
+            </span>
             <input
               list="research-companies"
               value={query}
@@ -77,7 +80,11 @@ export function CompanyResearch() {
             />
             <datalist id="research-companies">
               {companies.map((c) => (
-                <option key={c.name} value={c.name} label={`${c.openRoles} roles`} />
+                <option
+                  key={c.name}
+                  value={c.name}
+                  label={`${c.openRoles} roles`}
+                />
               ))}
             </datalist>
           </label>

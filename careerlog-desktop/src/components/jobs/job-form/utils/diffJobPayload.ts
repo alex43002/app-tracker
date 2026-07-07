@@ -14,7 +14,7 @@ import type { JobFormValues } from "../types";
  */
 export function diffJobPayload(
   original: Job,
-  values: JobFormValues
+  values: JobFormValues,
 ): UpdateJobPayload {
   const payload: UpdateJobPayload = {};
 
