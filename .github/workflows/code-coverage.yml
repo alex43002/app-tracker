@@ -1,10 +1,12 @@
 name: Code Coverage
 
-# Uploads Cobertura coverage to GitHub Code Quality so the repository ruleset's
-# `code_coverage` rule can gate PRs. Requires GitHub Code Quality to be enabled
-# in repo Settings (Settings → Security → Code quality) — until then the upload
-# step will fail. Both push (default-branch baseline) and pull_request (the PR to
-# compare) triggers are needed; Code Quality aggregates the two uploads below.
+# Runs the backend + desktop suites with coverage and (best-effort) uploads
+# Cobertura to GitHub Code Quality. Code Quality is only available to orgs on
+# Team/Enterprise plans — not personal repos — so on this repo the upload no-ops
+# (HTTP 404) and `fail-on-error: false` keeps the jobs green. The `code_coverage`
+# ruleset rule is therefore NOT enforced here; this workflow is kept so coverage
+# still runs on every PR and is ready to gate if the repo ever moves into an org.
+# See .github/CODE_QUALITY_SETUP.md.
 
 on:
   push:
@@ -52,6 +54,9 @@ jobs:
           file: backend-app-tracker/coverage.xml
           language: Python
           label: code-coverage/pytest
+          # Code Quality is unavailable on personal repos → upload 404s; don't
+          # fail the job over it.
+          fail-on-error: false
 
   desktop:
     name: Desktop coverage (vitest)
@@ -86,3 +91,6 @@ jobs:
           file: careerlog-desktop/coverage/cobertura-coverage.xml
           language: TypeScript
           label: code-coverage/vitest
+          # Code Quality is unavailable on personal repos → upload 404s; don't
+          # fail the job over it.
+          fail-on-error: false
