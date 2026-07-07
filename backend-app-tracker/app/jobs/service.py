@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -8,6 +9,8 @@ from gridfs import GridFS
 from app.common.errors import raise_error
 from app.common.query import parse_filters, paginate
 from fastapi import status
+
+logger = logging.getLogger("careerlog.jobs")
 
 # Fields a client is allowed to filter / sort jobs by.
 JOB_FILTERABLE_FIELDS = ("status", "employmentType", "company", "location")
@@ -193,7 +196,9 @@ def delete_job(jobs: Collection, job_id: str, user_id: str):
             try:
                 fs.delete(ObjectId(rid))
             except Exception:
-                pass
+                # Best-effort orphan cleanup — a failed GridFS delete must not
+                # block deleting the job, but shouldn't vanish silently either.
+                logger.debug("Failed to delete résumé file %s", rid, exc_info=True)
 
     jobs.delete_one(
         {"_id": ObjectId(job_id), "userId": user_id}
@@ -316,7 +321,8 @@ def delete_job_resume(db, job_id: str, user_id: str, resume_id: str) -> None:
         try:
             fs.delete(ObjectId(resume_id))
         except Exception:
-            pass
+            # Best-effort orphan cleanup; keep going even if the file is gone.
+            logger.debug("Failed to delete résumé file %s", resume_id, exc_info=True)
 
     now = datetime.now(tz=timezone.utc)
     set_fields = {"updatedAt": now}

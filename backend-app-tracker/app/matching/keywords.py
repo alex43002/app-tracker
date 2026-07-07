@@ -377,7 +377,7 @@ def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
     counts.update(t for t in toks if len(t) > 1)
 
     # Bigrams from the *content* token stream (stopwords already removed).
-    for a, b in zip(toks, toks[1:]):
+    for a, b in zip(toks, toks[1:], strict=False):
         if len(a) > 1 and len(b) > 1:
             counts[f"{a} {b}"] += 1
 
@@ -451,7 +451,7 @@ def vocabulary(text: str) -> set[str]:
     ]
     stems = [stem(t) for t in toks]
     vocab: set[str] = set(stems)
-    for a, b in zip(stems, stems[1:]):
+    for a, b in zip(stems, stems[1:], strict=False):
         vocab.add(f"{a} {b}")
     # Fold in canonical skills so a job keyword that is really a skill still
     # matches even though skills are stored unstemmed.
