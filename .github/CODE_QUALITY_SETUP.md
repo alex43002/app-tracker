@@ -1,64 +1,40 @@
-# Branch-protection ruleset — provider setup
+# Branch-protection ruleset — providers
 
-The `main` branch ruleset ("Default", active, no bypass actors) enforces six
-rules. Four need a signal from CI/GitHub; this repo now wires up all of them, but
-**two require a one-time action in repo Settings that can't be done from the CLI**
-(there is no REST API for GitHub Code Quality yet).
+The `main` branch ruleset ("Default", active) gates PRs. Its rules and the CI
+that satisfies them:
 
-| Ruleset rule | Provider | Status |
+| Rule | Provider | Status |
 | --- | --- | --- |
-| Required status check: `pre-commit` | [`pre-commit.yml`](workflows/pre-commit.yml) | ✅ working |
-| `code_scanning` (CodeQL) | CodeQL **default setup** | ⚙️ enable in Settings / API |
-| `code_coverage` (≥50%, ≤5% drop) | [`code-coverage.yml`](workflows/code-coverage.yml) → GitHub Code Quality | ⚙️ needs Code Quality enabled |
-| `code_quality` (severity: errors) | GitHub **Code Quality** | ⚙️ enable in Settings (UI only) |
+| Required status check: `pre-commit` | [`pre-commit.yml`](workflows/pre-commit.yml) — ruff (+C901), Prettier, tsc, eslint, hygiene | ✅ |
+| `code_scanning` (CodeQL) | CodeQL **default setup** (Settings → Code security) | ✅ |
 | `deletion`, `non_fast_forward` | built-in | ✅ |
 
-## What you need to do (once)
+Both required signals work on a personal repo, so PRs merge normally when
+`pre-commit` and CodeQL pass — no bypass needed.
 
-### 1. Enable GitHub Code Quality — **required for `code_quality` and `code_coverage`**
+## Why `code_quality` / `code_coverage` are not enforced
 
-Settings → **Security → Code quality → Enable code quality** → pick languages
-(Python + JavaScript/TypeScript) → Save.
+The ruleset originally also required `code_quality` and `code_coverage`. Those are
+powered by **GitHub Code Quality**, which is only available to **organizations on
+Team/Enterprise plans** — it is *not available on personal (user-owned) repos*
+(public preview, GA 2026-07-20). `alex43002/app-tracker` is a personal repo, so
+there is no "Code quality" toggle in Settings and the rules could never be
+satisfied. They were removed from the ruleset on 2026-07-07.
 
-This produces the **"CodeQL - Code Quality"** check (satisfies `code_quality`) and
-turns on the coverage ingestion that [`code-coverage.yml`](workflows/code-coverage.yml)
-uploads to. There is **no REST API** for this (it's in public preview, GA
-2026-07-20), so it must be done in the UI. Until it's on, the coverage upload
-step fails.
+## Coverage is still measured (best-effort)
 
-### 2. Enable CodeQL code scanning — for `code_scanning`
+[`code-coverage.yml`](workflows/code-coverage.yml) still runs the backend
+(`pytest --cov`) and desktop (`vitest --coverage`) suites on every PR and emits
+Cobertura XML. It *attempts* to upload to GitHub Code Quality, but that endpoint
+404s on a personal repo, so `fail-on-error: false` keeps the jobs green. Measured
+2026-07-07: backend **90%**, desktop **~24%**, aggregate **~63%**.
 
-Either Settings → **Security → Code scanning → Set up → Default**, or via API:
+## If you ever move this repo into an org (Team/Enterprise)
 
-```bash
-gh api -X PATCH repos/alex43002/app-tracker/code-scanning/default-setup \
-  -f state=configured
-```
+To turn the coverage/quality gates back on:
 
-### 3. Land this PR past the ruleset (bootstrap)
-
-This PR is blocked by the very ruleset it configures (the required checks don't
-exist on `main` yet, and there's no coverage baseline). Break the cycle **once**:
-
-- **Recommended:** Settings → Rules → **"Default"** → set **Enforcement:
-  Evaluate** (or **Disabled**), merge this PR, then set it back to **Active**. The
-  first push to `main` then establishes the CodeQL results + coverage baseline, so
-  every later PR is gated normally.
-- Or add yourself to the ruleset's **Bypass list**, merge, remove.
-
-After the first merge to `main`, subsequent PRs will have all four checks and can
-merge without any bypass.
-
-## Coverage reality (measured 2026-07-07)
-
-`code_coverage` gates the **aggregate** across uploads, not per-language:
-
-| Suite | Coverage | Statements |
-| --- | --- | --- |
-| Backend (pytest) | **90%** | 3040 / 3379 |
-| Desktop (vitest, all files) | **~24%** | 535 / 2259 |
-| **Aggregate** | **~63%** | 3575 / 5638 |
-
-~63% clears the 50% floor, so the rule should pass today — but the desktop share
-is low (many pages have no tests). Keep growing desktop tests, and watch the
-`max_coverage_drop: 5` rule (a PR that removes tests can trip it).
+1. Transfer the repo into the org and enable **Settings → Code quality**.
+2. In [`code-coverage.yml`](workflows/code-coverage.yml), drop the two
+   `fail-on-error: false` lines so a failed upload is surfaced again.
+3. Re-add the `code_quality` and `code_coverage` rules to the "Default" ruleset,
+   then run the Code Coverage workflow once on `main` to set the baseline.
