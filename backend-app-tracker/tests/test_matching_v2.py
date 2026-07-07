@@ -136,6 +136,21 @@ def test_sections_split_required_and_preferred():
     assert KIND_PREFERRED in kinds
 
 
+def test_bare_required_header_is_recognized():
+    """BUG-26: a bare 'Required:' heading (no trailing 'qualifications') must
+    land its terms in the required bucket, not context/responsibility."""
+    job = (
+        "Required:\nPython and Django.\n"
+        "Preferred:\nKubernetes.\n"
+    )
+    sections = {s.kind: s.text for s in split_sections(job)}
+    assert KIND_REQUIRED in sections
+    assert "Python and Django" in sections[KIND_REQUIRED]
+    # And it scores through the required bucket.
+    result = scoring.score_match("Python and Django developer.", job)
+    assert result.coverage.required is not None
+
+
 def test_confidence_scales_with_extracted_signal():
     rich = scoring.score_match(NETWORKING_RESUME, NETWORKING_JOB)
     assert rich.confidence in ("high", "medium")

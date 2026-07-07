@@ -44,6 +44,11 @@ _HEADER_RULES: tuple[tuple[str, str], ...] = (
     # Required.
     (r"(minimum|basic|required|essential) (qualification|requirement|skill)", KIND_REQUIRED),
     (r"(qualification|requirement)s?\b", KIND_REQUIRED),
+    # Bare "Required:" / "Essential:" heading — the requirement noun is implied
+    # (BUG-26). Anchored to the line start so a trailing "... required" bullet
+    # ("Bachelor's degree required") isn't mistaken for a heading. Preferred
+    # lines are matched above, so this can't steal a "preferred" heading.
+    (r"^\W*(required|essentials?)\b", KIND_REQUIRED),
     (r"what (you'll|you will) need", KIND_REQUIRED),
     (r"who you are", KIND_REQUIRED),
     (r"must[- ]have", KIND_REQUIRED),
@@ -127,6 +132,11 @@ def split_sections(text: str) -> list[Section]:
         if kind is not None:
             current = kind
             saw_header = True
+            # "Header: inline items" (e.g. "Required: Python, SQL") carries real
+            # content after the colon — keep it in the section, don't drop it.
+            remainder = line.split(":", 1)[1].strip() if ":" in line else ""
+            if remainder:
+                buckets.setdefault(current, []).append(remainder)
             continue
         if line.strip():
             buckets.setdefault(current, []).append(line)
