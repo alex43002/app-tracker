@@ -26,15 +26,17 @@ satisfied. They were removed from the ruleset on 2026-07-07.
 [`code-coverage.yml`](workflows/code-coverage.yml) still runs the backend
 (`pytest --cov`) and desktop (`vitest --coverage`) suites on every PR and emits
 Cobertura XML. It *attempts* to upload to GitHub Code Quality, but that endpoint
-404s on a personal repo, so `fail-on-error: false` keeps the jobs green. Measured
-2026-07-07: backend **90%**, desktop **~24%**, aggregate **~63%**.
+404s on a personal repo, so those upload steps fail (`fail-on-error: true` — the
+failure is surfaced, not hidden). The coverage jobs therefore show **red**, but
+that is **non-blocking**: `code_coverage` is not a required ruleset check, so it
+doesn't stop merges. Measured 2026-07-07: backend **90%**, desktop **~24%**,
+aggregate **~63%**.
 
 ## If you ever move this repo into an org (Team/Enterprise)
 
 To turn the coverage/quality gates back on:
 
-1. Transfer the repo into the org and enable **Settings → Code quality**.
-2. In [`code-coverage.yml`](workflows/code-coverage.yml), drop the two
-   `fail-on-error: false` lines so a failed upload is surfaced again.
-3. Re-add the `code_quality` and `code_coverage` rules to the "Default" ruleset,
+1. Transfer the repo into the org and enable **Settings → Code quality**. The
+   uploads (already `fail-on-error: true`) then succeed and the jobs go green.
+2. Re-add the `code_quality` and `code_coverage` rules to the "Default" ruleset,
    then run the Code Coverage workflow once on `main` to set the baseline.
