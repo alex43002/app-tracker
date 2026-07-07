@@ -21,7 +21,7 @@ Everything stays editable, so it works even on pages it can't fully parse.
 
 ## Loading it (Chrome / Edge)
 
-1. Run the backend locally (default `http://localhost:8000`).
+1. Run the backend locally (default `http://127.0.0.1:8000`).
 2. Open `chrome://extensions`, enable **Developer mode**.
 3. **Load unpacked** → select this `browser-extension/` folder.
 4. Open a job posting, click the CareerLog icon, sign in, and save.
@@ -34,7 +34,7 @@ Everything stays editable, so it works even on pages it can't fully parse.
 - `host_permissions` cover `http://*/*` and `https://*/*` so the popup can both
   scrape the active tab and reach your API host. The API calls use a bearer
   token (no cookies), so they aren't subject to the backend's CORS allowlist.
-- The API URL field defaults to `http://localhost:8000`; point it at your
+- The API URL field defaults to `http://127.0.0.1:8000`; point it at your
   deployed backend in production.
 - Saved jobs default `salaryTarget` to `0` — edit them in the app afterwards if
   you want to set a target.

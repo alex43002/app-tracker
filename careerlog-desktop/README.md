@@ -195,7 +195,7 @@ release. The macOS hardened-runtime entitlements live in
 ## Versioning
 
 This client targets **CareerLog API v1/v2**. Breaking frontend changes must align
-with backend versioning. See [`../backend-app-tracker/API_CONTRACT_V2.MD`](../backend-app-tracker/API_CONTRACT_V2.MD).
+with backend versioning. See [`../backend-app-tracker/API_CONTRACT.md`](../backend-app-tracker/API_CONTRACT.md).
 
 ---
 

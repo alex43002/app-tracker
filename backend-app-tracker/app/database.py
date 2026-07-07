@@ -23,7 +23,7 @@ def get_db() -> Database:
 
 
 def ensure_indexes(db: Database) -> None:
-    """Create the indexes documented in MONGO_SCHEMA.MD.
+    """Create the indexes documented in MONGO_SCHEMA.md.
 
     Idempotent — safe to call on every startup.
     """

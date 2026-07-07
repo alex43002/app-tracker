@@ -28,7 +28,7 @@ owns all data persistence and business logic; the desktop client in
   ingested matches (driven by the same background scheduler).
 
 The authoritative API and data contracts live in
-[`API_CONTRACT_V2.MD`](API_CONTRACT_V2.MD) and [`MONGO_SCHEMA.MD`](MONGO_SCHEMA.MD).
+[`API_CONTRACT.md`](API_CONTRACT.md) and [`MONGO_SCHEMA.md`](MONGO_SCHEMA.md).
 
 ---
 
@@ -199,8 +199,8 @@ backend-app-tracker/
 ├── tests/                 # pytest suite (mongomock-backed, runs offline)
 ├── requirements.txt
 ├── ruff.toml
-├── API_CONTRACT_V2.MD     # authoritative REST contract
-├── MONGO_SCHEMA.MD        # document schemas + indexes
+├── API_CONTRACT.md        # authoritative REST contract
+├── MONGO_SCHEMA.md        # document schemas + indexes
 └── .github/workflows/     # CI (ruff + pytest)
 ```
 
