@@ -2,280 +2,175 @@
 
 _Last updated: 2026-07-06_
 
-All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, and **feature
-(FEAT-\*)** roadmap items are complete, including the batch of product issues
-found in manual testing (BUG-14/15/16, FEAT-17/18/19/20), plus the
-**résumé ↔ job matching** epic (FEAT-21) and the **job discovery & aggregation**
-epic (FEAT-22). This file lists the **work that is still open**.
+All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, **feature (FEAT-\*)**,
+and **bug (BUG-\*)** roadmap items are complete — including the résumé ↔ job
+matching epic (FEAT-21), job discovery & aggregation (FEAT-22), interview &
+research prep, tracking & integrations, and the match-score de-contamination
+work (FEAT-31). The completed history has been pruned from this file; it lives in
+git and in the PR record.
+
+What remains is: a few **manual, outward-facing release steps**, and a fresh
+batch of **codebase-audit cleanups (AUD-\*)** logged 2026-07-06.
 
 ---
 
-## ⬜ Release prep (FEAT-8 follow-up)
+## ⬜ Release prep (manual / outward-facing)
 
-The cross-platform build + tag-driven release workflow is wired, but a first
-branded, signed release still needs:
+The cross-platform build + tag-driven release workflow is wired and an on-theme
+placeholder app icon is in place. The remaining steps need your credentials and a
+real tag push, so they can't be automated here:
 
-- [x] Add a 1024×1024 `careerlog-desktop/assets/icon.png` (app icon). _(On-theme
-      placeholder added; replace with final branding before a public release.)_
-- [ ] Configure the signing / notarization secrets in GitHub Actions
-      (per-OS: Windows code-signing cert, macOS Developer ID + notarization
-      credentials). Builds succeed unsigned when these are absent. _(Manual —
-      needs your certificates; secret names documented in
+- [ ] **Configure signing / notarization secrets in GitHub Actions** (per-OS:
+      Windows code-signing cert, macOS Developer ID + notarization credentials).
+      Builds succeed unsigned when these are absent. _(Manual — needs your
+      certificates; secret names documented in
       [`careerlog-desktop/RELEASING.md`](careerlog-desktop/RELEASING.md).)_
-- [ ] Cut the first cross-platform tagged release and verify auto-update.
+- [ ] **Cut the first cross-platform tagged release and verify auto-update.**
       _(Manual / outward-facing — tag-push steps in
       [`careerlog-desktop/RELEASING.md`](careerlog-desktop/RELEASING.md). Note:
       the release workflow is nested under `careerlog-desktop/.github/` and must
       live at the repo root to trigger.)_
+- [ ] **Replace placeholder branding before a public release** — the app icon
+      ([`careerlog-desktop/assets/icon.png`](careerlog-desktop/assets/icon.png))
+      is an on-theme placeholder, and the renderer favicon is still the default
+      Vite logo (see AUD-02).
 
 ---
 
-## ⬜ Improvements & fixes from manual testing (2026-06-30)
+## ⬜ Codebase audit (2026-07-06)
 
-Follow-ups to the shipped **Match** (FEAT-21) and **Discover/Compare/Alerts**
-(FEAT-22) work, found while exercising the desktop app end-to-end. _Same
-constraint as below: no generative AI — classic NLP/ML is fine._
+Findings from a multi-pass audit of the whole monorepo (backend, desktop
+renderer, Electron shell, browser extension, docs/config). **No functional code
+was changed** — this section only records the work. Tooling baseline at audit
+time: `ruff` (F, E9) **clean**, `tsc --noEmit` **clean**, `eslint` **clean**; the
+items below came from deeper reads plus `ruff` extended rules and a `ts-prune`
+unused-export scan.
 
-### Bugs
+### Dead code & unused files (safe removals)
 
-- [x] **BUG-23 — Compare tab fails to load jobs (422).** The Compare tab requests
-      `GET /api/jobs/?page=1&pageSize=200&...`, but the endpoint caps `pageSize`
-      at `le=100` ([`app/jobs/routes.py`](backend-app-tracker/app/jobs/routes.py)),
-      so the request is rejected with `VALIDATION_ERROR`. Fix by raising the cap
-      (or removing it for this view) and/or having the desktop client page within
-      the allowed bounds. _(Cap already raised to 200; Compare now pages through
-      all jobs via `fetchAllJobs` so >200 tracked jobs all load.)_
-- [x] **BUG-24 — Discover employment-type filter returns 0 results.** Reproduced
-      with the Stripe board token: filtering by `employmentType` returns nothing
-      for every option, even though employment type is shown on the linked
-      posting page. Audit ingestion/normalization so `employmentType` is reliably
-      extracted and stored on `discovered_jobs`, and confirm the filter matches
-      the normalized values.
-- [x] **BUG-25 — Filtering after ranking by fit drops the active filter set.** In
-      the Discover tab, if you rank jobs by résumé fit and *then* apply a filter,
-      the filter doesn't combine with all currently-active filters (including the
-      current resume fit). Applying a filter must use the full set of active
-      filters together with the selected resume fit, rather than resetting or
-      ignoring the existing ranking/filter state.
-- [x] **BUG-26 — Bare "Required:" header not recognized by the section splitter.**
-      [`sections.py`](backend-app-tracker/app/matching/sections.py) recognizes
-      "Requirements:" (via the `(qualification|requirement)s?` rule) but a bare
-      "Required:" line matched no `KIND_REQUIRED` rule (the "required" pattern
-      needs a following noun like "required qualifications"). A posting whose
-      header is just "Required:" therefore landed its must-have terms in the
-      lower-weighted `context`/`responsibility` buckets instead of `required`,
-      skewing the score. _(Fixed — added a start-anchored bare "Required:" /
-      "Essential:" rule (anchored so a trailing "…required" bullet isn't a false
-      header), and `split_sections` now keeps inline content after a
-      `Header: items` colon instead of dropping it. Surfaced while building
-      FEAT-31.)_
+- [ ] **AUD-01 — Delete unused desktop components.**
+      [`components/common/Button.tsx`](careerlog-desktop/src/components/common/Button.tsx)
+      and
+      [`components/common/Loader.tsx`](careerlog-desktop/src/components/common/Loader.tsx)
+      are imported nowhere (confirmed via `ts-prune` + repo-wide grep for both
+      the import path and JSX usage).
+- [ ] **AUD-02 — Remove leftover Vite template files.**
+      [`src/App.css`](careerlog-desktop/src/App.css) is never imported (only
+      `index.css` is, in `main.tsx`), and
+      [`src/assets/react.svg`](careerlog-desktop/src/assets/react.svg) is
+      unreferenced. The default `public/vite.svg` is still wired as the renderer
+      favicon in `index.html` — replace with real branding (tracked with the
+      Release-prep branding item above).
+- [ ] **AUD-03 — Drop the unused `react-confirm` dependency.** It's declared in
+      [`careerlog-desktop/package.json`](careerlog-desktop/package.json) but
+      imported nowhere — confirmation dialogs are hand-rolled in
+      [`confirmController.ts`](careerlog-desktop/src/components/common/dialogs/confirmController.ts).
+      Remove the dep (and its mention in the architecture doc — see AUD-17).
+- [ ] **AUD-04 — Remove dead code in the matching engine.** In
+      [`app/matching/analyze.py`](backend-app-tracker/app/matching/analyze.py)
+      the module-level `_KIND_RANK` constant is referenced nowhere, and the local
+      `add()` closure inside `analyze_job` takes a `kind` parameter that every
+      call passes (`section.kind`) but the body never reads. Drop both.
+- [ ] **AUD-05 — Remove the unused `HelpTextKey` type export** in
+      [`job-form/config/helpText.ts`](careerlog-desktop/src/components/jobs/job-form/config/helpText.ts)
+      (exported, used nowhere).
 
-### Discover tab
+### Build hygiene / gitignore
 
-- [x] **FEAT-23 — Friendlier board-token discovery.** Board tokens are opaque:
-      users don't know what they are, where to find them, or how to use them.
-      Add a user-friendly way to locate/select the correct board token (e.g. a
-      searchable company picker, "paste a careers URL and we extract the token"
-      helper, and inline guidance/examples).
-- [x] **FEAT-24 — Location filtering.** Let users narrow discovered jobs by
-      city, state, remote status, or region.
-- [x] **FEAT-25 — Broader ATS source coverage.** Add support for more ATS
-      platforms beyond Greenhouse/Lever to improve discovery coverage across
-      companies.
-- [x] **FEAT-30 — Guided city/state/region location filter.** The location
-      filter (FEAT-24) currently takes free-form input, but job postings store
-      specific location values (or none at all), so arbitrary user text rarely
-      matches. Make the filter guided — e.g. suggest/autocomplete from the
-      locations actually present in discovered jobs, normalize input, and handle
-      postings with no location — so users select from valid options instead of
-      guessing.
+- [ ] **AUD-06 — Stop tracking compiled Electron output.**
+      `careerlog-desktop/electron-dist/main.js` and `preload.js` are build
+      artifacts of `electron/main.ts` / `electron/preload.ts` (produced by
+      `npm run build:electron:ts`) yet are committed. Add `electron-dist/` to
+      [`careerlog-desktop/.gitignore`](careerlog-desktop/.gitignore) (which
+      currently ignores `dist` but not `electron-dist`) and `git rm --cached`
+      the two files.
 
-### Match tab
+### Duplication / reuse
 
-- [x] **FEAT-26 — Improve keyword coverage.** Keyword coverage in the Match tab
-      needs significant improvement (still no AI — expand the
-      taxonomy/extraction with classic NLP/ML).
-- [x] **FEAT-31 — De-contaminate the match score (scrape cleaning, taxonomy
-      breadth, contamination signals).** _(Done — structural HTML cleaning +
-      content-boundary truncation + a residual noise-phrase filter keep scraped
-      page-chrome out of the requirement list; a `contamination` signal caps
-      confidence and calibrates the score; the taxonomy gained security/data/
-      product/sales/finance jargon; the API/UI/PDF surface an "approximate score"
-      warning. The Network Ops case now yields clean gaps and a sane band.)_
-      The domain-agnostic parser now detects
-      role family and extracts required/responsibility/preferred terms, but the
-      score is **not reliable** because scraped page chrome leaks into the
-      requirement list. A Network Operations posting produced gaps like `android`,
-      `machine learning`, `careers careers careers skip`, `melbourne vic`,
-      `person_outlineyour career`, `enterprise ai san jose`, `alphabet inc` — nav,
-      footer, legal, and related-job artifacts, not requirements. Because they
-      enter `gaps` as "missing", they drag every bucket's coverage down and a real
-      ~48% required fit collapses to 26/100. The root cause is a
-      cleaning/filtering gap, traced through
-      [`extract.py`](backend-app-tracker/app/matching/extract.py) →
-      [`sections.py`](backend-app-tracker/app/matching/sections.py) →
-      [`keywords.py`](backend-app-tracker/app/matching/keywords.py). Fix
-      deterministically (still no generative AI):
-  - [x] **Structural HTML cleaning** (`extract.py`): prefer `<main>`/`<article>`
-        content; skip `nav`/`footer`/`aside`/`form`/`button`/`select`; skip
-        elements by `role` (navigation/banner/contentinfo/search) and chrome
-        class/id hints (nav, menu, footer, cookie, banner, breadcrumb, sidebar,
-        related, recommend, subscribe). Biggest single win.
-  - [x] **Content-boundary truncation** (`sections.py`): classify "Similar/Related/
-        Recommended/Featured jobs", "Careers home", "Life/Working at", "Our
-        locations" as boilerplate headers so everything after them is dropped from
-        scoring (`analyze_job` already skips `KIND_BOILERPLATE`).
-  - [x] **Residual noise-phrase filter** (`keywords.py` `is_noise_phrase` +
-        expanded `STOPWORDS`): reject repeated-token phrases, Material-icon
-        ligatures (`person_outline`), geo/location chips (`melbourne vic` via a
-        region-abbrev set), and company/legal tokens (alphabet, inc, careers,
-        agency, criminal, histories…). Applied in `analyze_job` keyphrase
-        selection and in `extract_keywords`/`profile`. Concepts are untouched.
-  - [x] **Contamination-aware confidence + score calibration** (`analyze.py`,
-        `scoring.py`): compute a `noise_rate`, cap confidence at `medium` when it
-        is high, map it to a `contamination` level (low/medium/high), and lower
-        preferred's bucket weight (0.20 → 0.15) so an all-miss nice-to-have list
-        no longer tanks the score.
-  - [x] **Taxonomy expansion** (`taxonomy.py` + `analyze.py` `_CATEGORY_FAMILY`):
-        add curated concept sets (acronym/jargon normalizers only) for
-        cybersecurity (SIEM/SOAR/EDR/IAM/incident response…), data
-        (Spark/dbt/Airflow/ETL/warehouse…), product/project (roadmap/backlog/OKRs/
-        discovery…), sales (CRM/pipeline/quota/forecasting…), and finance
-        (GAAP/FP&A/reconciliation/audit…), with matching role-family labels.
-        Reuse existing concepts to avoid alias collisions.
-  - [x] **API + UI signals**: add `contamination` (+ optional `noiseFiltered`) to
-        `ScoreResponse`/`MatchScore`
-        ([`schemas.py`](backend-app-tracker/app/matching/schemas.py),
-        [`service.py`](backend-app-tracker/app/matching/service.py),
-        [`types/match.ts`](careerlog-desktop/src/types/match.ts)); render a
-        "score is approximate" warning banner and a "no direct mention in your
-        résumé" note on required gaps in
-        [`ScoreResult.tsx`](careerlog-desktop/src/components/match/ScoreResult.tsx),
-        and fold the contamination note into
-        [`matchReport.ts`](careerlog-desktop/src/lib/matchReport.ts)/`matchReportPdf.ts`.
-        Junk recommendations disappear automatically once gaps are clean.
-  - [x] **Tests**: a realistic scraped-page HTML fixture (nav/footer/main +
-        "Similar jobs" block) asserting junk stays out of `gaps`/`job.keywords`
-        while `<main>` content survives; `is_noise_phrase` unit tests; section-
-        boundary and contamination-confidence tests; new-taxonomy detection +
-        role-family tests; and a regression on the Network Ops case (clean gaps,
-        sane score band) — extending
-        [`test_matching_engine.py`](backend-app-tracker/tests/test_matching_engine.py),
-        [`test_matching_v2.py`](backend-app-tracker/tests/test_matching_v2.py), and
-        the desktop `matchReport.test.ts`.
+- [ ] **AUD-07 — Extract shared CRUD helpers on the backend.** The per-user CRUD
+      services duplicate the same boilerplate almost verbatim:
+      [`star_stories`](backend-app-tracker/app/star_stories/service.py),
+      [`offers`](backend-app-tracker/app/offers/service.py),
+      [`saved_searches`](backend-app-tracker/app/saved_searches/service.py), and
+      [`job_alerts`](backend-app-tracker/app/job_alerts/service.py) each carry an
+      identical `_object_id()` (ObjectId-or-404), an ownership-scoped
+      `find_one_and_update` / `delete_one` with the same 404 and "No fields
+      provided for update" blocks. Factor these into e.g.
+      `app/common/crud.py` (`object_id_or_404`, `owned_update`, `owned_delete`)
+      — removes ~30–40 lines per module. Separately, `_clean_tags`
+      (star_stories) and `_clean_list`
+      ([`preferences`](backend-app-tracker/app/preferences/service.py)) are the
+      same trim/de-dupe function — hoist to one shared helper.
+- [ ] **AUD-08 — Collapse the discovery filter parameter list.** The ~14-field
+      filter set is spelled out three times: the `/discovery/jobs` route query
+      params ([`routes.py`](backend-app-tracker/app/discovery/routes.py)), the
+      `service.list_jobs` signature, and `_build_query`
+      ([`service.py`](backend-app-tracker/app/discovery/service.py)), with a
+      hand-written 1:1 forwarding block between them. Introduce a
+      `DiscoveryFilters` dataclass/model passed through the layers. This also
+      resolves the only real backend complexity flag (`_build_query`: C901 18 /
+      PLR0912 17).
+- [ ] **AUD-09 — De-duplicate the desktop CRUD pages.** `Offers`, `Stories`,
+      `Alerts`, and `Jobs` repeat the same list + form-modal + delete-confirm +
+      toast scaffolding. Consider a shared `useCrudResource` hook / generic
+      list-page wrapper. _(Lower priority — pages are readable as-is.)_
 
-### Alerts tab
+### Complexity / oversized modules
 
-- [x] **FEAT-27 — Distinguish pending vs. sent alerts.** Alerts scheduled for a
-      future date/time should be visually marked as not-yet-sent, and alerts that
-      have already fired should move into a separate **Sent Alerts** section.
+- [ ] **AUD-10 — Decompose `pages/Discovery.tsx`.** At **975 lines with 29
+      `useState` hooks** in one component
+      ([`Discovery.tsx`](careerlog-desktop/src/pages/Discovery.tsx)), it's the
+      largest and most stateful file in the renderer. Split into a filters panel,
+      results list, alerts panel, and preferences child components, and lift the
+      query/filter state into a `useDiscovery` hook.
+- [ ] **AUD-11 — Simplify `analyze_job`** (C901 12) in
+      [`app/matching/analyze.py`](backend-app-tracker/app/matching/analyze.py) by
+      extracting the phrase-selection block (multi-word-first selection, then
+      unigram fill) into a helper.
 
----
+### Low-risk hygiene
 
-## ⬜ Account & app experience
+- [ ] **AUD-12 — Add exception chaining in
+      [`app/common/auth.py`](backend-app-tracker/app/common/auth.py).** Three
+      `raise HTTPException` sites inside `except` clauses omit `from err` /
+      `from None` (ruff B904), muddying tracebacks.
+- [ ] **AUD-13 — Pass `strict=` to the two `zip()` calls** in
+      [`app/matching/keywords.py`](backend-app-tracker/app/matching/keywords.py)
+      (ruff B905, ~lines 380 and 454).
+- [ ] **AUD-14 — Make best-effort GridFS cleanup observable.** Orphan/old-file
+      deletes in [`jobs/service.py`](backend-app-tracker/app/jobs/service.py) and
+      [`users/service.py`](backend-app-tracker/app/users/service.py) swallow all
+      errors with bare `except: pass`; log at debug so a real failure isn't
+      silent (behavior can stay best-effort).
+- [ ] **AUD-15 — Formatting consistency.** `request()` in
+      [`api/client.ts`](careerlog-desktop/src/api/client.ts) mixes 2- and 4-space
+      indentation (~lines 203–221); adopting Prettier would prevent this class of
+      drift. Minor: the browser extension defaults to `http://localhost:8000`
+      while the desktop app + docs use `http://127.0.0.1:8000` — unify.
+- [ ] **AUD-16 — Avoid redundant tokenization in scoring** (efficiency only, not
+      a hot path). [`scoring.py`](backend-app-tracker/app/matching/scoring.py)
+      `score_match` tokenizes the same job text via `keywords.profile` in both
+      `_keyword_coverage` and for `job_profile`, and re-analyzes the résumé across
+      `analyze_resume` + `keywords.profile`/`vocabulary`. A single shared
+      tokenization pass would remove the repeats.
 
-New work focused on the user's account and the desktop app itself (outside the
-no-generative-AI matching/discovery constraint below).
+### Documentation
 
-- [x] **FEAT-28 — Expanded profile settings.** Extend the profile settings so
-      users can view and modify their basic user information (e.g. name, email,
-      and other core account details) from within the app, with validation and
-      persistence to the backend.
-- [x] **FEAT-29 — Automatic desktop app updates.** Make the desktop app
-      auto-update from the latest published GitHub releases, similar to
-      platforms like Discord: check for updates in the background, download new
-      versions, and install them seamlessly (prompt or apply on next launch).
-      Builds on the existing tag-driven release workflow (see _Release prep_
-      above) and the auto-update verification step.
-
----
-
-## ⬜ Proposed features (resume matching, job discovery & prep)
-
-_Constraint: no generative AI. Classic ML (NLP, TF-IDF, embeddings, classic
-classifiers, etc.) is acceptable for the matching/scoring work below._
-
-### ✅ Resume ↔ job matching (FEAT-21 — shipped)
-
-_Backend `app/matching` engine (extraction, keyword/skill taxonomy, scoring,
-SSRF-guarded URL scrape) + the desktop **Match** tab._
-
-- [x] Scan uploaded resumes from a job record for keywords (No AI; ML OK).
-- [x] Scrape a designated job URL for the most relevant skills/keywords
-      (No AI; ML OK).
-- [x] Compare a resume to a job posting and produce a detailed score based on
-      keyword matching and other metrics estimating interview likelihood
-      (No AI; ML OK).
-- [x] New dedicated tab for the above so job seekers can see their score before
-      submitting.
-- [x] Resume-to-job gap analysis.
-
-### ✅ Job discovery & aggregation (FEAT-22 — shipped)
-
-- [x] Unified job discovery + resume-matching tab: collects public job postings
-      in the backend from supported company career pages / ATS systems,
-      normalizes them into one searchable format, and lets users filter or rank
-      jobs by salary, location, employment type, company, ATS source, and
-      resume fit. _(FEAT-22: Greenhouse/Lever ingestion + the Discover tab with
-      résumé-fit ranking that reuses FEAT-21.)_
-- [x] Duplicate detection that merges repeated postings across different job
-      boards and ATS sources into one clean listing.
-- [x] Saved searches and job alerts that notify users when new roles match their
-      preferred title, salary, location, and work arrangement. _(FEAT-22: saved
-      discovery searches + background notifications on newly-ingested matches.)_
-- [x] Job posting quality checks that flag unclear, misleading, underpaid, or
-      potentially low-quality opportunities.
-- [x] Eligibility filters that help users identify jobs matching their degree
-      status, work authorization, and experience level. _(FEAT-22: degree
-      status, experience level, and work-authorization/sponsorship + clearance.)_
-- [x] Side-by-side comparison view to evaluate multiple jobs by compensation,
-      fit, location, requirements, and application status. _(FEAT-22: Compare
-      tab over tracked jobs.)_
-- [x] Posting freshness tracking to help users avoid stale, repeatedly reposted,
-      or low-signal listings.
-- [x] Company preference controls to prioritize target employers and hide
-      companies or job types users want to avoid. _(FEAT-22: per-user
-      preferred/hidden companies + hidden job types, applied in Discover.)_
-
-### ⬜ Interview & research prep
-
-- [x] Interview preparation workspace that turns a job description into
-      role-specific prep notes, likely topics, and practice questions.
-      _(Backend `app/interview_prep` deterministic generator reusing the
-      FEAT-21 skill/keyword extraction + a curated question bank; desktop
-      **Interview prep** tab that can pull from a tracked job.)_
-- [x] Company research snapshots covering: what the company does, industry,
-      size, location, hiring trends, tech-stack clues, recent news,
-      Glassdoor-style notes (if integrated legally), and known ATS platform.
-      _(Backend `app/company_research` aggregates a company's ingested postings
-      into a snapshot — open roles, locations, ATS platforms, seniority mix,
-      pay range, and tech-stack clues via the FEAT-21 skill taxonomy — surfaced
-      in a desktop **Company research** tab. Recent-news/Glassdoor are
-      intentionally omitted as they need external/scraped data.)_
-- [x] STAR story library to organize reusable interview stories for behavioral
-      questions. _(Backend `app/star_stories` per-user CRUD + desktop **STAR
-      stories** tab with tags and search.)_
-- [x] Offer comparison tool to evaluate compensation, benefits, flexibility, and
-      long-term fit. _(Backend `app/offers` per-user CRUD with computed total
-      comp + desktop **Offers** tab: editor and a side-by-side comparison that
-      highlights the best value per metric and an overall blended score.)_
-
-### ⬜ Tracking & integrations
-
-- [x] Browser extension to save jobs from any supported career page directly
-      into the application tracker. _(Manifest V3 extension in
-      `browser-extension/` that scrapes the page (JSON-LD JobPosting → Open
-      Graph fallback) and saves via the existing `/api/auth/login` +
-      `/api/jobs`; no backend changes.)_
-- [x] Email-based application tracking that automatically detects confirmations,
-      interviews, rejections, and recruiter messages. _(Backend
-      `app/email_tracking` classifies pasted email text into
-      confirmation/interview/rejection/offer/recruiter via deterministic
-      heuristics, matches it to tracked jobs by company, and suggests a status;
-      desktop **Email tracking** tab applies the suggested status in one click.
-      Full inbox auto-ingest would need an external mail integration.)_
-- [x] Source performance analytics showing which job boards, recruiters, and
-      referral channels produce the best results. _(Backend
-      `/api/analytics/source-performance` derives a channel from each job's URL
-      host and reports a per-source funnel + conversion rates; desktop
-      **Sources** tab highlights the best-converting channel.)_
+- [ ] **AUD-17 — Refresh [`architecture.md`](architecture.md).** It's linked from
+      the README as "the full design" but is substantially stale: it documents
+      ~6 of ~17 backend modules (missing `matching`, `discovery`, `preferences`,
+      `job_alerts`, `email_tracking`, `company_research`, `interview_prep`,
+      `offers`, `star_stories`, `saved_searches`, `notifications`), says "Three
+      collections" (now many), lists renderer pages as only "Login, Dashboard,
+      Jobs, Alerts" (missing ~12), describes the preload as exposing "just
+      `appVersion`" (it now also exposes the `updates` API), states 401 "clears
+      the token and redirects" (the client now does a single-flight refresh
+      first), lists the now-unused `react-confirm`, and carries a "no offline
+      mode" non-goal that
+      [`api/offlineCache.ts`](careerlog-desktop/src/api/offlineCache.ts) (used by
+      `Jobs` + the auth store) contradicts.
+- [ ] **AUD-18 — Reconcile doc naming.** Backend contract docs use uppercase
+      `.MD` (`README.MD`, `MONGO_SCHEMA.MD`, `API_CONTRACT_V2.MD`) while the rest
+      of the repo uses `.md`, and the file is `API_CONTRACT_V2` while
+      README/architecture refer to "API v1". Pick one version label and one
+      extension casing. _(Minor.)_
