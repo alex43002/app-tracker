@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from app.matching import keywords
 from app.matching.sections import (
     KIND_BOILERPLATE,
-    KIND_CONTEXT,
     KIND_PREFERRED,
     KIND_REQUIRED,
     KIND_RESPONSIBILITY,
@@ -38,16 +37,6 @@ _TIER_WEIGHT = {TIER_CORE: 1.0, TIER_FOUNDATIONAL: 0.8, TIER_ADVANCED: 0.6}
 # section, since concepts carry normalization/synonymy the phrase doesn't.
 _PHRASE_WEIGHT = 0.7
 _MAX_PHRASES_PER_SECTION = 8
-
-# Ordering of section kinds when the same term appears in several (keep the
-# strongest context).
-_KIND_RANK = {
-    KIND_REQUIRED: 4,
-    KIND_RESPONSIBILITY: 3,
-    KIND_PREFERRED: 2,
-    KIND_CONTEXT: 1,
-    KIND_BOILERPLATE: 0,
-}
 
 # Map concept categories to human role-family labels. Data-driven: whatever
 # categories dominate the posting name the family; unknown → "General".
@@ -129,7 +118,7 @@ def analyze_job(text: str) -> JobAnalysis:
     category_weight: Counter[str] = Counter()
     scored_text: list[str] = []  # non-boilerplate text, for the noise estimate
 
-    def add(term: JobTerm, kind: str) -> None:
+    def add(term: JobTerm) -> None:
         existing = merged.get(term.key)
         if existing is None:
             merged[term.key] = term
@@ -160,8 +149,7 @@ def analyze_job(text: str) -> JobAnalysis:
                     preferred=preferred,
                     category=c.category,
                     tier=c.tier,
-                ),
-                section.kind,
+                )
             )
             category_weight[c.category] += weight
 
@@ -199,8 +187,7 @@ def analyze_job(text: str) -> JobAnalysis:
                     is_concept=False,
                     required=required,
                     preferred=preferred,
-                ),
-                section.kind,
+                )
             )
 
     role_families = _role_families(category_weight)

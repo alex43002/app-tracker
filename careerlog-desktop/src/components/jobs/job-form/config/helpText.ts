@@ -43,5 +43,3 @@ export const HELP_TEXT = {
   notes:
     "Optional free-text notes for this application — e.g. referral name, recruiter contact, or follow-up reminders.",
 } as const;
-
-export type HelpTextKey = keyof typeof HELP_TEXT;

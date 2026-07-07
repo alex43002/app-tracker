@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Compiled Electron main/preload output (tsc → electron/*.ts)
+electron-dist
+
 # electron-builder output
 release-artifacts
 
