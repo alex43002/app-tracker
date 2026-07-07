@@ -8,6 +8,7 @@ duplicating them. Listing is global (postings are public) but auth-gated.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from fastapi import status
@@ -31,6 +32,36 @@ NO_LOCATION = "__no_location__"
 
 # Hard cap on how many distinct locations the guided picker will surface.
 LOCATION_FACET_CAP = 200
+
+
+@dataclass
+class DiscoveryFilters:
+    """Every filterable dimension of the discovered-jobs feed.
+
+    Carried as one object through the route → ``list_jobs`` → ``_build_query``
+    path so the ~14-field list isn't spelled out (and forwarded by hand) at each
+    layer. Field names are the snake_case keys the saved-alert ``CRITERIA_FIELDS``
+    map already targets.
+    """
+
+    q: str | None = None
+    company: str | None = None
+    location: str | None = None
+    work_arrangement: str | None = None
+    employment_type: str | None = None
+    source: str | None = None
+    salary_min: int | None = None
+    experience_level: str | None = None
+    requires_degree: bool | None = None
+    sponsorship_available: bool | None = None
+    clearance_required: bool | None = None
+    max_age_days: int | None = None
+    min_quality: int | None = None
+    # Preference overlay (applied only when no explicit company/type filter wins).
+    preferred_companies: list[str] | None = None
+    hidden_companies: list[str] | None = None
+    hidden_employment_types: list[str] | None = None
+    preferred_only: bool = False
 
 
 def _serialize(doc: dict) -> dict:
@@ -149,80 +180,87 @@ def location_facets(db, *, q: str | None = None, limit: int = 50) -> dict:
     return {"locations": options, "noLocationCount": no_location}
 
 
-def _build_query(
-    *,
-    q: str | None,
-    company: str | None,
-    location: str | None,
-    work_arrangement: str | None,
-    employment_type: str | None,
-    source: str | None,
-    salary_min: int | None,
-    experience_level: str | None,
-    requires_degree: bool | None,
-    sponsorship_available: bool | None,
-    clearance_required: bool | None,
-    max_age_days: int | None,
-    min_quality: int | None,
-    preferred_companies: list[str] | None = None,
-    hidden_companies: list[str] | None = None,
-    hidden_employment_types: list[str] | None = None,
-    preferred_only: bool = False,
-) -> dict:
+# String filters that map to an exact match on a field (skipped when blank).
+_STR_EQUALITY_FILTERS = {
+    "work_arrangement": "workArrangement",
+    "source": "source",
+    "experience_level": "experienceLevel",
+}
+# Tri-state boolean filters (False is meaningful, so only None is skipped).
+_BOOL_EQUALITY_FILTERS = {
+    "requires_degree": "requiresDegree",
+    "sponsorship_available": "sponsorshipAvailable",
+    "clearance_required": "clearanceRequired",
+}
+
+
+def _company_clause(f: DiscoveryFilters):
+    """Company match: an explicit search wins; else apply the user's preferences
+    (preferred-only, then hide-list). Returns None when unconstrained."""
+    if f.company:
+        return _escape_regex(f.company)
+    if f.preferred_only and f.preferred_companies:
+        return {"$in": f.preferred_companies}
+    if f.hidden_companies:
+        return {"$nin": f.hidden_companies}
+    return None
+
+
+def _employment_type_clause(f: DiscoveryFilters):
+    """Employment type: an explicit filter wins; else drop hidden types."""
+    if f.employment_type:
+        return f.employment_type
+    if f.hidden_employment_types:
+        return {"$nin": f.hidden_employment_types}
+    return None
+
+
+def _build_query(f: DiscoveryFilters) -> dict:
     """Build a safe Mongo filter — every operator is server-constructed."""
     query: dict = {}
-    if q:
-        query["title"] = _escape_regex(q)
-    if location == NO_LOCATION:
+    if f.q:
+        query["title"] = _escape_regex(f.q)
+
+    if f.location == NO_LOCATION:
         # Postings with no location listed (FEAT-30).
         query["$or"] = [
             {"location": {"$in": [None, ""]}},
             {"location": {"$exists": False}},
         ]
-    elif location:
-        query["location"] = _escape_regex(location)
-    if work_arrangement:
-        query["workArrangement"] = work_arrangement
-    if source:
-        query["source"] = source
-    if salary_min is not None:
+    elif f.location:
+        query["location"] = _escape_regex(f.location)
+
+    for attr, field in _STR_EQUALITY_FILTERS.items():
+        value = getattr(f, attr)
+        if value:
+            query[field] = value
+    for attr, field in _BOOL_EQUALITY_FILTERS.items():
+        value = getattr(f, attr)
+        if value is not None:
+            query[field] = value
+
+    if f.salary_min is not None:
         # A posting qualifies if the top of its range meets the floor.
-        query["salaryMax"] = {"$gte": salary_min}
-    if experience_level:
-        query["experienceLevel"] = experience_level
-    if requires_degree is not None:
-        query["requiresDegree"] = requires_degree
-    if sponsorship_available is not None:
-        query["sponsorshipAvailable"] = sponsorship_available
-    if clearance_required is not None:
-        query["clearanceRequired"] = clearance_required
-    if max_age_days is not None:
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=max_age_days)
+        query["salaryMax"] = {"$gte": f.salary_min}
+    if f.max_age_days is not None:
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=f.max_age_days)
         query["postedAt"] = {"$gte": cutoff}
-    if min_quality is not None:
-        query["qualityScore"] = {"$gte": min_quality}
+    if f.min_quality is not None:
+        query["qualityScore"] = {"$gte": f.min_quality}
 
-    # Company filter precedence: an explicit search wins; otherwise apply the
-    # user's preferences (preferred-only, then hide-list).
-    if company:
-        query["company"] = _escape_regex(company)
-    elif preferred_only and preferred_companies:
-        query["company"] = {"$in": preferred_companies}
-    elif hidden_companies:
-        query["company"] = {"$nin": hidden_companies}
-
-    # Employment type: explicit filter wins; otherwise drop hidden types.
-    if employment_type:
+    company = _company_clause(f)
+    if company is not None:
+        query["company"] = company
+    employment_type = _employment_type_clause(f)
+    if employment_type is not None:
         query["employmentType"] = employment_type
-    elif hidden_employment_types:
-        query["employmentType"] = {"$nin": hidden_employment_types}
 
     return query
 
 
 # Discovery filter criteria (camelCase, as the client sends them) → the
-# _build_query keyword args. Used by saved job alerts to reuse the exact same
-# filtering as the live Discover query.
+# matching ``DiscoveryFilters`` field. Used by saved job alerts to reuse the
+# exact same filtering as the live Discover query.
 CRITERIA_FIELDS = {
     "q": "q",
     "company": "company",
@@ -251,10 +289,8 @@ def clean_criteria(criteria: dict) -> dict:
 
 def criteria_query(criteria: dict) -> dict:
     """Build the Mongo filter for a saved alert's criteria (no preferences)."""
-    kwargs = {arg: None for arg in CRITERIA_FIELDS.values()}
-    for key, value in clean_criteria(criteria).items():
-        kwargs[CRITERIA_FIELDS[key]] = value
-    return _build_query(**kwargs)
+    kwargs = {CRITERIA_FIELDS[key]: value for key, value in clean_criteria(criteria).items()}
+    return _build_query(DiscoveryFilters(**kwargs))
 
 
 def _collapse(docs: list[dict], page: int, page_size: int) -> tuple[list[dict], int]:
@@ -290,49 +326,15 @@ def _collapse(docs: list[dict], page: int, page_size: int) -> tuple[list[dict], 
 
 def list_jobs(
     db,
+    filters: DiscoveryFilters,
     *,
     page: int,
     page_size: int,
     sort_by: str,
     sort_order: str,
     collapse: bool = True,
-    q: str | None = None,
-    company: str | None = None,
-    location: str | None = None,
-    work_arrangement: str | None = None,
-    employment_type: str | None = None,
-    source: str | None = None,
-    salary_min: int | None = None,
-    experience_level: str | None = None,
-    requires_degree: bool | None = None,
-    sponsorship_available: bool | None = None,
-    clearance_required: bool | None = None,
-    max_age_days: int | None = None,
-    min_quality: int | None = None,
-    preferred_companies: list[str] | None = None,
-    hidden_companies: list[str] | None = None,
-    hidden_employment_types: list[str] | None = None,
-    preferred_only: bool = False,
 ) -> dict:
-    query = _build_query(
-        q=q,
-        company=company,
-        location=location,
-        work_arrangement=work_arrangement,
-        employment_type=employment_type,
-        source=source,
-        salary_min=salary_min,
-        experience_level=experience_level,
-        requires_degree=requires_degree,
-        sponsorship_available=sponsorship_available,
-        clearance_required=clearance_required,
-        max_age_days=max_age_days,
-        min_quality=min_quality,
-        preferred_companies=preferred_companies,
-        hidden_companies=hidden_companies,
-        hidden_employment_types=hidden_employment_types,
-        preferred_only=preferred_only,
-    )
+    query = _build_query(filters)
     if sort_by not in set(SORTABLE_FIELDS):
         sort_by = "postedAt"
 

@@ -125,13 +125,7 @@ def list_jobs(
         hidden = prefs["hiddenCompanies"]
         hidden_types = prefs["hiddenEmploymentTypes"]
 
-    result = service.list_jobs(
-        db,
-        page=page,
-        page_size=pageSize,
-        sort_by=sortBy,
-        sort_order=sortOrder,
-        collapse=collapse,
+    filters = service.DiscoveryFilters(
         q=q,
         company=company,
         location=location,
@@ -149,5 +143,14 @@ def list_jobs(
         hidden_companies=hidden,
         hidden_employment_types=hidden_types,
         preferred_only=preferredOnly,
+    )
+    result = service.list_jobs(
+        db,
+        filters,
+        page=page,
+        page_size=pageSize,
+        sort_by=sortBy,
+        sort_order=sortOrder,
+        collapse=collapse,
     )
     return success(data=result)
