@@ -124,7 +124,7 @@ async def update_job(
             )
 
         resume: UploadFile | None = form.get("resume")
-        
+
         if resume:
             existing_resume = existing.get("resume")
 

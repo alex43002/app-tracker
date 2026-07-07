@@ -215,20 +215,41 @@ def _employment_type_clause(f: DiscoveryFilters):
     return None
 
 
+def _location_clause(location: str | None) -> dict:
+    """Location filter fragment. The ``NO_LOCATION`` sentinel matches postings
+    with no location listed (FEAT-30); otherwise a case-insensitive substring."""
+    if location == NO_LOCATION:
+        return {
+            "$or": [
+                {"location": {"$in": [None, ""]}},
+                {"location": {"$exists": False}},
+            ]
+        }
+    if location:
+        return {"location": _escape_regex(location)}
+    return {}
+
+
+def _range_clauses(f: DiscoveryFilters) -> dict:
+    """Numeric/date range fragments: salary floor, freshness, and quality floor."""
+    clauses: dict = {}
+    if f.salary_min is not None:
+        # A posting qualifies if the top of its range meets the floor.
+        clauses["salaryMax"] = {"$gte": f.salary_min}
+    if f.max_age_days is not None:
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=f.max_age_days)
+        clauses["postedAt"] = {"$gte": cutoff}
+    if f.min_quality is not None:
+        clauses["qualityScore"] = {"$gte": f.min_quality}
+    return clauses
+
+
 def _build_query(f: DiscoveryFilters) -> dict:
     """Build a safe Mongo filter — every operator is server-constructed."""
     query: dict = {}
     if f.q:
         query["title"] = _escape_regex(f.q)
-
-    if f.location == NO_LOCATION:
-        # Postings with no location listed (FEAT-30).
-        query["$or"] = [
-            {"location": {"$in": [None, ""]}},
-            {"location": {"$exists": False}},
-        ]
-    elif f.location:
-        query["location"] = _escape_regex(f.location)
+    query.update(_location_clause(f.location))
 
     for attr, field in _STR_EQUALITY_FILTERS.items():
         value = getattr(f, attr)
@@ -239,14 +260,7 @@ def _build_query(f: DiscoveryFilters) -> dict:
         if value is not None:
             query[field] = value
 
-    if f.salary_min is not None:
-        # A posting qualifies if the top of its range meets the floor.
-        query["salaryMax"] = {"$gte": f.salary_min}
-    if f.max_age_days is not None:
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=f.max_age_days)
-        query["postedAt"] = {"$gte": cutoff}
-    if f.min_quality is not None:
-        query["qualityScore"] = {"$gte": f.min_quality}
+    query.update(_range_clauses(f))
 
     company = _company_clause(f)
     if company is not None:

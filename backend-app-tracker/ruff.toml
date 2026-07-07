@@ -1,6 +1,11 @@
 # Conservative ruff config: catch real bugs (pyflakes + syntax) without
-# imposing broad style churn on the existing codebase.
+# imposing broad style churn on the existing codebase. C901 (cyclomatic
+# complexity) is enforced so newly-added over-complex functions are flagged by
+# pre-commit and CI before they land.
 line-length = 100
 
 [lint]
-select = ["F", "E9"]
+select = ["F", "E9", "C901"]
+
+[lint.mccabe]
+max-complexity = 10
