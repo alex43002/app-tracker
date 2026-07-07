@@ -13,6 +13,7 @@ from app.matching.sections import (
     KIND_BOILERPLATE,
     KIND_REQUIRED,
     KIND_PREFERRED,
+    KIND_RESPONSIBILITY,
 )
 
 
@@ -149,6 +150,28 @@ def test_bare_required_header_is_recognized():
     # And it scores through the required bucket.
     result = scoring.score_match("Python and Django developer.", job)
     assert result.coverage.required is not None
+
+
+def test_trailing_required_bullet_is_not_a_header():
+    """BUG-26 guard: the bare-'Required' rule is start-anchored, so a *trailing*
+    '... required' bullet is content, not a heading — its text must survive and
+    it must not spawn a spurious required section."""
+    job = "Responsibilities:\nBuild services.\nBachelor's degree required.\n"
+    sections = {s.kind: s.text for s in split_sections(job)}
+    assert KIND_REQUIRED not in sections
+    assert "Bachelor's degree required" in sections[KIND_RESPONSIBILITY]
+
+
+def test_inline_header_items_are_kept():
+    """BUG-26 guard: 'Required: a, b, c' on one line keeps the items after the
+    colon in the required bucket (they used to be dropped with the header)."""
+    job = "Required: Python, SQL, and Kubernetes.\nResponsibilities:\nBuild things.\n"
+    sections = {s.kind: s.text for s in split_sections(job)}
+    assert "Python" in sections[KIND_REQUIRED]
+    assert "Kubernetes" in sections[KIND_REQUIRED]
+    # The inline items are scored: Kubernetes, absent from the résumé, is a gap.
+    result = scoring.score_match("Python and SQL developer.", job)
+    assert "kubernetes" in {m.term for m in result.gaps}
 
 
 def test_confidence_scales_with_extracted_signal():
