@@ -10,6 +10,7 @@ from bson.errors import InvalidId
 from fastapi import status
 from pymongo.database import Database
 
+from app.common.crud import object_id_or_404, owned_delete, owned_update
 from app.common.errors import raise_error
 from app.discovery.service import clean_criteria, criteria_query
 from app.notifications.notifier import EMAIL, Notifier
@@ -29,17 +30,6 @@ def _serialize(doc: dict) -> dict:
         "createdAt": doc["createdAt"],
         "updatedAt": doc["updatedAt"],
     }
-
-
-def _object_id(alert_id: str):
-    try:
-        return ObjectId(alert_id)
-    except (InvalidId, TypeError):
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Job alert not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
 
 
 def create_job_alert(db: Database, payload, user_id: str) -> dict:
@@ -66,7 +56,7 @@ def list_job_alerts(db: Database, user_id: str) -> dict:
 
 
 def update_job_alert(db: Database, alert_id: str, user_id: str, payload) -> dict:
-    object_id = _object_id(alert_id)
+    object_id = object_id_or_404(alert_id, message="Job alert not found")
     updates: dict = {}
     if payload.name is not None:
         updates["name"] = payload.name
@@ -75,37 +65,15 @@ def update_job_alert(db: Database, alert_id: str, user_id: str, payload) -> dict
     if payload.notify is not None:
         updates["notify"] = payload.notify
 
-    if not updates:
-        raise_error(
-            code="VALIDATION_ERROR",
-            message="No fields provided for update",
-            http_status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    updates["updatedAt"] = datetime.now(tz=timezone.utc)
-    doc = db.job_alerts.find_one_and_update(
-        {"_id": object_id, "userId": user_id},
-        {"$set": updates},
-        return_document=True,
+    doc = owned_update(
+        db.job_alerts, object_id, user_id, updates, message="Job alert not found"
     )
-    if not doc:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Job alert not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
     return _serialize(doc)
 
 
 def delete_job_alert(db: Database, alert_id: str, user_id: str) -> None:
-    object_id = _object_id(alert_id)
-    result = db.job_alerts.delete_one({"_id": object_id, "userId": user_id})
-    if result.deleted_count == 0:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Job alert not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
+    object_id = object_id_or_404(alert_id, message="Job alert not found")
+    owned_delete(db.job_alerts, object_id, user_id, message="Job alert not found")
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +121,7 @@ def check_alert(
     Notifies the owner when ``notify`` is set and there are new matches.
     """
     now = now or datetime.now(tz=timezone.utc)
-    object_id = _object_id(alert_id)
+    object_id = object_id_or_404(alert_id, message="Job alert not found")
     alert = db.job_alerts.find_one({"_id": object_id, "userId": user_id})
     if not alert:
         raise_error(

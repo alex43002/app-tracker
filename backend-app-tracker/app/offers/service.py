@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import status
 from pymongo.database import Database
 
+from app.common.crud import object_id_or_404, owned_delete, owned_update
 from app.common.errors import raise_error
 from app.offers.schemas import OFFER_STATUSES
 
@@ -55,17 +54,6 @@ def _serialize(doc: dict) -> dict:
     }
 
 
-def _object_id(offer_id: str):
-    try:
-        return ObjectId(offer_id)
-    except (InvalidId, TypeError):
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Offer not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
-
-
 def _validate_status(value: str) -> str:
     if value not in OFFER_STATUSES:
         raise_error(
@@ -101,7 +89,7 @@ def list_offers(db: Database, user_id: str) -> dict:
 
 
 def update_offer(db: Database, offer_id: str, user_id: str, payload) -> dict:
-    object_id = _object_id(offer_id)
+    object_id = object_id_or_404(offer_id, message="Offer not found")
     updates: dict = {}
     for field in _STRING_FIELDS:
         value = getattr(payload, field)
@@ -114,34 +102,10 @@ def update_offer(db: Database, offer_id: str, user_id: str, payload) -> dict:
     if payload.status is not None:
         updates["status"] = _validate_status(payload.status)
 
-    if not updates:
-        raise_error(
-            code="VALIDATION_ERROR",
-            message="No fields provided for update",
-            http_status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    updates["updatedAt"] = datetime.now(tz=timezone.utc)
-    doc = db.offers.find_one_and_update(
-        {"_id": object_id, "userId": user_id},
-        {"$set": updates},
-        return_document=True,
-    )
-    if not doc:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Offer not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
+    doc = owned_update(db.offers, object_id, user_id, updates, message="Offer not found")
     return _serialize(doc)
 
 
 def delete_offer(db: Database, offer_id: str, user_id: str) -> None:
-    object_id = _object_id(offer_id)
-    result = db.offers.delete_one({"_id": object_id, "userId": user_id})
-    if result.deleted_count == 0:
-        raise_error(
-            code="RESOURCE_NOT_FOUND",
-            message="Offer not found",
-            http_status=status.HTTP_404_NOT_FOUND,
-        )
+    object_id = object_id_or_404(offer_id, message="Offer not found")
+    owned_delete(db.offers, object_id, user_id, message="Offer not found")

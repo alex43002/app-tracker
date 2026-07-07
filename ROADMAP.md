@@ -90,7 +90,10 @@ backend 293 + desktop 82 tests green)._
 
 ### Duplication / reuse
 
-- [ ] **AUD-07 — Extract shared CRUD helpers on the backend.** The per-user CRUD
+_AUD-07 shipped 2026-07-07 on `refactor/crud-helpers` (new `app/common/crud.py`;
+ruff clean, backend 293 tests green). AUD-08/09 remain open._
+
+- [x] **AUD-07 — Extract shared CRUD helpers on the backend.** The per-user CRUD
       services duplicate the same boilerplate almost verbatim:
       [`star_stories`](backend-app-tracker/app/star_stories/service.py),
       [`offers`](backend-app-tracker/app/offers/service.py),
