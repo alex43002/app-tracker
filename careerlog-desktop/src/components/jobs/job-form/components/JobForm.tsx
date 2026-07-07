@@ -49,11 +49,13 @@ export interface JobFormHandle {
  * - Handle modal lifecycle
  * - Handle animations
  */
-export const JobForm = forwardRef<JobFormHandle, {
-  job: Job | null;
-  onSave: (payload: JobFormSavePayload) => void | Promise<void>;
-}>(function JobForm({ job, onSave }, ref) {
-
+export const JobForm = forwardRef<
+  JobFormHandle,
+  {
+    job: Job | null;
+    onSave: (payload: JobFormSavePayload) => void | Promise<void>;
+  }
+>(function JobForm({ job, onSave }, ref) {
   const {
     values,
     errors,
@@ -68,8 +70,8 @@ export const JobForm = forwardRef<JobFormHandle, {
   async function handleSave() {
     const isValid = validateForm();
     if (!isValid) {
-        touchAllFields();
-        return;
+      touchAllFields();
+      return;
     }
 
     const payload = job
@@ -89,7 +91,7 @@ export const JobForm = forwardRef<JobFormHandle, {
         }
       }
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to save job"
+        err instanceof ApiError ? err.displayMessage : "Failed to save job",
       );
     }
   }
@@ -100,14 +102,12 @@ export const JobForm = forwardRef<JobFormHandle, {
 
   return (
     <div className="space-y-8">
-      {(Object.keys(JOB_FORM_SECTIONS) as Array<
-        keyof typeof JOB_FORM_SECTIONS
-      >).map((sectionKey) => {
+      {(
+        Object.keys(JOB_FORM_SECTIONS) as Array<keyof typeof JOB_FORM_SECTIONS>
+      ).map((sectionKey) => {
         const sectionTitle = JOB_FORM_SECTIONS[sectionKey];
 
-        const fields = JOB_FORM_FIELDS.filter(
-          (f) => f.section === sectionKey
-        );
+        const fields = JOB_FORM_FIELDS.filter((f) => f.section === sectionKey);
 
         return (
           <JobFormSection key={sectionKey} title={sectionTitle}>
@@ -116,8 +116,7 @@ export const JobForm = forwardRef<JobFormHandle, {
                 fieldKey: field.key,
                 label: field.label,
                 required: field.required,
-                error:
-                  touched[field.key] ? errors[field.key] : undefined,
+                error: touched[field.key] ? errors[field.key] : undefined,
                 onBlur: () => setFieldTouched(field.key),
               };
 
@@ -149,9 +148,7 @@ export const JobForm = forwardRef<JobFormHandle, {
                       key={field.key}
                       {...commonProps}
                       value={values.salaryTarget}
-                      onChange={(v) =>
-                        setFieldValue("salaryTarget", v)
-                      }
+                      onChange={(v) => setFieldValue("salaryTarget", v)}
                     />
                   );
 
@@ -161,9 +158,7 @@ export const JobForm = forwardRef<JobFormHandle, {
                       key={field.key}
                       {...commonProps}
                       value={values.resume}
-                      onChange={(v) =>
-                        setFieldValue("resume", v)
-                      }
+                      onChange={(v) => setFieldValue("resume", v)}
                     />
                   );
 

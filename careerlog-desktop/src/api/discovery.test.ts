@@ -69,7 +69,9 @@ describe("discovery api", () => {
 
   it("fetchCompanyDirectory unwraps companies and forwards the query", async () => {
     const fetchMock = stub({
-      companies: [{ name: "Stripe", source: "greenhouse", boardToken: "stripe" }],
+      companies: [
+        { name: "Stripe", source: "greenhouse", boardToken: "stripe" },
+      ],
     });
     const out = await fetchCompanyDirectory("stri");
     expect(out).toEqual([
@@ -79,7 +81,10 @@ describe("discovery api", () => {
   });
 
   it("fetchDiscoveredJobs serializes only the set filters into the query", async () => {
-    const fetchMock = stub({ items: [], meta: { page: 1, pageSize: 25, totalItems: 0, totalPages: 0 } });
+    const fetchMock = stub({
+      items: [],
+      meta: { page: 1, pageSize: 25, totalItems: 0, totalPages: 0 },
+    });
     await fetchDiscoveredJobs({
       q: "engineer",
       salaryMin: 100000,

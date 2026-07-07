@@ -32,8 +32,8 @@ export function UpdateBanner() {
         <span>Downloading update… {status.percent}%</span>
       ) : (
         <span>
-          A new version{status.version ? ` (${status.version})` : ""} is ready to
-          install.
+          A new version{status.version ? ` (${status.version})` : ""} is ready
+          to install.
         </span>
       )}
 

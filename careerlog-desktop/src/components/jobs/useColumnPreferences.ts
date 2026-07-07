@@ -46,8 +46,8 @@ function loadPrefs(): ColumnPref[] {
     return reconcile(
       parsed.filter(
         (p): p is ColumnPref =>
-          p && typeof p.key === "string" && typeof p.visible === "boolean"
-      )
+          p && typeof p.key === "string" && typeof p.visible === "boolean",
+      ),
     );
   } catch {
     return DEFAULT_PREFS;
@@ -65,10 +65,7 @@ export function useColumnPreferences() {
     }
   }, [prefs]);
 
-  const byKey = useMemo(
-    () => new Map(ALL_COLUMNS.map((c) => [c.key, c])),
-    []
-  );
+  const byKey = useMemo(() => new Map(ALL_COLUMNS.map((c) => [c.key, c])), []);
 
   /** Resolved, ordered, visible column definitions for rendering. */
   const orderedVisible: JobColumn[] = useMemo(
@@ -77,12 +74,12 @@ export function useColumnPreferences() {
         .filter((p) => p.visible)
         .map((p) => byKey.get(p.key))
         .filter((c): c is JobColumn => Boolean(c)),
-    [prefs, byKey]
+    [prefs, byKey],
   );
 
   const toggle = useCallback((key: string) => {
     setPrefs((prev) =>
-      prev.map((p) => (p.key === key ? { ...p, visible: !p.visible } : p))
+      prev.map((p) => (p.key === key ? { ...p, visible: !p.visible } : p)),
     );
   }, []);
 
@@ -102,7 +99,7 @@ export function useColumnPreferences() {
   /** Label lookup for the picker UI. */
   const labelOf = useCallback(
     (key: string) => byKey.get(key)?.label ?? key,
-    [byKey]
+    [byKey],
   );
 
   return { prefs, orderedVisible, toggle, move, reset, labelOf };

@@ -27,7 +27,11 @@ const EMPTY: StarStoryInput = {
   tags: [],
 };
 
-const STAR_FIELDS: { key: keyof StarStoryInput; label: string; hint: string }[] = [
+const STAR_FIELDS: {
+  key: keyof StarStoryInput;
+  label: string;
+  hint: string;
+}[] = [
   { key: "situation", label: "Situation", hint: "Set the scene and context" },
   { key: "task", label: "Task", hint: "What you were responsible for" },
   { key: "action", label: "Action", hint: "What you actually did" },
@@ -56,7 +60,7 @@ export function Stories() {
     return stories.filter(
       (s) =>
         s.title.toLowerCase().includes(q) ||
-        s.tags.some((t) => t.toLowerCase().includes(q))
+        s.tags.some((t) => t.toLowerCase().includes(q)),
     );
   }, [stories, search]);
 
@@ -99,7 +103,7 @@ export function Stories() {
       if (editingId) {
         const updated = await updateStarStory(editingId, payload);
         setStories((prev) =>
-          prev.map((s) => (s.id === editingId ? updated : s))
+          prev.map((s) => (s.id === editingId ? updated : s)),
         );
         toast.success("Story updated");
       } else {
@@ -155,7 +159,9 @@ export function Stories() {
           />
 
           {loading ? (
-            <div className="rounded border p-6 text-sm text-gray-500">Loading…</div>
+            <div className="rounded border p-6 text-sm text-gray-500">
+              Loading…
+            </div>
           ) : filtered.length === 0 ? (
             <div className="rounded border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
               {stories.length === 0
@@ -170,7 +176,9 @@ export function Stories() {
                   className="rounded-lg border border-gray-200 bg-white p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-gray-900">{story.title}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {story.title}
+                    </h3>
                     <div className="flex shrink-0 gap-2 text-xs">
                       <button
                         onClick={() => startEdit(story)}
@@ -209,7 +217,7 @@ export function Stories() {
                             {story[key] as string}
                           </dd>
                         </div>
-                      ) : null
+                      ) : null,
                     )}
                   </dl>
                 </li>
@@ -230,7 +238,9 @@ export function Stories() {
             <span className="mb-1 block font-medium text-gray-700">Title</span>
             <input
               value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
               placeholder="e.g. Resolved a production outage"
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             />
@@ -254,7 +264,9 @@ export function Stories() {
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-gray-700">
               Tags{" "}
-              <span className="font-normal text-gray-400">(comma-separated)</span>
+              <span className="font-normal text-gray-400">
+                (comma-separated)
+              </span>
             </span>
             <input
               value={tagText}

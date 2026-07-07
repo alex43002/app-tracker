@@ -41,7 +41,7 @@ export function ConfirmDialogHost() {
 
   const trapFocus = useCallback((e: KeyboardEvent) => {
     const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
     );
     if (!focusable || focusable.length === 0) return;
 
@@ -132,6 +132,6 @@ export function ConfirmDialogHost() {
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

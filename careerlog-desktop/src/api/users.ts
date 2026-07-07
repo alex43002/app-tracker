@@ -21,7 +21,7 @@ export interface UpdateUserPayload {
 export function updateUser(userId: string, payload: UpdateUserPayload) {
   return apiClient.put<{ updatedAt: string; emailVerified: boolean }>(
     `/api/users/${userId}`,
-    payload
+    payload,
   );
 }
 
@@ -38,7 +38,7 @@ export function uploadProfilePicture(userId: string, file: File) {
   form.append("pfp", file);
   return apiClient.put<{ pfp: string; updatedAt: string }>(
     `/api/users/${userId}/pfp`,
-    form
+    form,
   );
 }
 
@@ -52,7 +52,7 @@ export function uploadProfilePicture(userId: string, file: File) {
  */
 export async function fetchProfilePicture(
   userId: string,
-  version?: string | null
+  version?: string | null,
 ): Promise<string | null> {
   const token = localStorage.getItem("careerlog_token");
   const query = version ? `?v=${encodeURIComponent(version)}` : "";
@@ -62,7 +62,7 @@ export async function fetchProfilePicture(
     {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       cache: "no-store",
-    }
+    },
   );
 
   if (!response.ok) return null;

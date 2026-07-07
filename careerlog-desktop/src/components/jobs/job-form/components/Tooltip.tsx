@@ -27,14 +27,13 @@ export function Tooltip({
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
 
-    let left =
-      triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+    let left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
 
     // Clamp horizontally to viewport
     const padding = 8;
     left = Math.max(
       padding,
-      Math.min(left, window.innerWidth - tooltipRect.width - padding)
+      Math.min(left, window.innerWidth - tooltipRect.width - padding),
     );
 
     const top = triggerRect.top - tooltipRect.height - 8;

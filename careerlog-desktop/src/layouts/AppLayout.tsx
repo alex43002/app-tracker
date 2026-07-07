@@ -33,12 +33,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       >
         {/* Branding */}
         <div className="border-b border-gray-200 px-4 py-5">
-          <h2 className="text-base font-semibold text-gray-900">
-            CareerLog
-          </h2>
-          <p className="text-xs text-gray-500">
-            Job application tracker
-          </p>
+          <h2 className="text-base font-semibold text-gray-900">CareerLog</h2>
+          <p className="text-xs text-gray-500">Job application tracker</p>
         </div>
 
         {/* Navigation */}
@@ -132,9 +128,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <UpdateBanner />
 
         {/* Scroll Container */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
     </div>
   );

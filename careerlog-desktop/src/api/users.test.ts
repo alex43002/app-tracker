@@ -37,8 +37,9 @@ describe("profile picture api", () => {
       vi.fn(async () => ({
         ok: true,
         status: 200,
-        blob: async () => new Blob([new Uint8Array([1])], { type: "image/png" }),
-      }))
+        blob: async () =>
+          new Blob([new Uint8Array([1])], { type: "image/png" }),
+      })),
     );
     const createObjectURL = vi.fn(() => "blob:fake-url");
     vi.stubGlobal("URL", { ...URL, createObjectURL });
@@ -51,7 +52,11 @@ describe("profile picture api", () => {
   it("fetchProfilePicture returns null when there is no picture", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ ok: false, status: 404, blob: async () => new Blob() }))
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        blob: async () => new Blob(),
+      })),
     );
     expect(await fetchProfilePicture("user-1")).toBeNull();
   });

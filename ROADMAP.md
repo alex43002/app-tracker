@@ -143,7 +143,7 @@ ruff clean, backend 293 tests green). AUD-08/09 remain open._
 ### Low-risk hygiene
 
 _AUD-12…14 shipped 2026-07-07 on `chore/lint-hygiene` (ruff clean incl. B904/B905;
-backend 293 tests green). AUD-15/16 remain open._
+backend 293 tests green). AUD-16 remains open._
 
 - [x] **AUD-12 — Add exception chaining in
       [`app/common/auth.py`](backend-app-tracker/app/common/auth.py).** The two
@@ -158,11 +158,16 @@ backend 293 tests green). AUD-15/16 remain open._
       [`users/service.py`](backend-app-tracker/app/users/service.py) swallowed all
       errors with bare `except: pass`; now log at debug (behavior stays
       best-effort).
-- [ ] **AUD-15 — Formatting consistency.** `request()` in
-      [`api/client.ts`](careerlog-desktop/src/api/client.ts) mixes 2- and 4-space
-      indentation (~lines 203–221); adopting Prettier would prevent this class of
-      drift. Minor: the browser extension defaults to `http://localhost:8000`
-      while the desktop app + docs use `http://127.0.0.1:8000` — unify.
+- [x] **AUD-15 — Formatting consistency (Prettier).** `request()` in
+      [`api/client.ts`](careerlog-desktop/src/api/client.ts) mixed 2- and 4-space
+      indentation; formatting drift like this could recur. _(Shipped 2026-07-07 on
+      `chore/prettier`: added Prettier + `eslint-config-prettier`, a
+      `.prettierrc.json`/`.prettierignore`, `npm run format`, and a
+      `prettier (desktop)` pre-commit hook, then reformatted the desktop codebase
+      once. tsc/eslint/prettier --check clean; 82 desktop tests green.)_ **Leftover
+      (trivial):** the browser extension still defaults to `http://localhost:8000`
+      vs the desktop/docs `http://127.0.0.1:8000` — unify (deferred to keep this a
+      single-concern formatting PR).
 - [ ] **AUD-16 — Avoid redundant tokenization in scoring** (efficiency only, not
       a hot path). [`scoring.py`](backend-app-tracker/app/matching/scoring.py)
       `score_match` tokenizes the same job text via `keywords.profile` in both

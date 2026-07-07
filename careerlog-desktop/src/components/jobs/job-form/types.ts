@@ -37,7 +37,7 @@ export interface UseJobFormResult {
 
   setFieldValue: <K extends JobFormFieldKey>(
     key: K,
-    value: JobFormValues[K]
+    value: JobFormValues[K],
   ) => void;
 
   setFieldTouched: (key: JobFormFieldKey) => void;
@@ -53,9 +53,7 @@ export interface UseJobFormResult {
 /**
  * Helper types for save behavior.
  */
-export type JobFormSavePayload =
-  | CreateJobPayload
-  | UpdateJobPayload;
+export type JobFormSavePayload = CreateJobPayload | UpdateJobPayload;
 
 /**
  * Explicit mapping helper for edit mode.

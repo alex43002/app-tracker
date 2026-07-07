@@ -4,10 +4,10 @@ export function StatusBadge({ status }: { status: string }) {
     status === "offer"
       ? "bg-green-100 text-green-800"
       : status === "interviewing"
-      ? "bg-blue-100 text-blue-800"
-      : status === "rejected"
-      ? "bg-red-100 text-red-800"
-      : "bg-gray-100 text-gray-800";
+        ? "bg-blue-100 text-blue-800"
+        : status === "rejected"
+          ? "bg-red-100 text-red-800"
+          : "bg-gray-100 text-gray-800";
 
   return (
     <span

@@ -18,7 +18,14 @@ function stubAll({
   points = [{ period: "2026-06", count: 3 }],
   offers = 2,
   companies = [
-    { company: "BigCo", applied: 1, interviewing: 1, offer: 1, rejected: 0, total: 3 },
+    {
+      company: "BigCo",
+      applied: 1,
+      interviewing: 1,
+      offer: 1,
+      rejected: 0,
+      total: 3,
+    },
   ],
 } = {}) {
   mocked.fetchFunnel.mockResolvedValue({
@@ -76,8 +83,15 @@ describe("AnalyticsInsights", () => {
 
   it("shows an error state when a request fails", async () => {
     mocked.fetchFunnel.mockRejectedValue(new Error("boom"));
-    mocked.fetchApplicationsOverTime.mockResolvedValue({ interval: "month", points: [] });
-    mocked.fetchTimeToOffer.mockResolvedValue({ offers: 0, averageDays: null, medianDays: null });
+    mocked.fetchApplicationsOverTime.mockResolvedValue({
+      interval: "month",
+      points: [],
+    });
+    mocked.fetchTimeToOffer.mockResolvedValue({
+      offers: 0,
+      averageDays: null,
+      medianDays: null,
+    });
     mocked.fetchCompanyFunnels.mockResolvedValue({ companies: [] });
 
     render(<AnalyticsInsights />);

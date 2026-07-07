@@ -6,8 +6,8 @@ like `v0.1.4` (or running the workflow manually) builds installers on macOS,
 Windows, and Linux with `electron-builder` and publishes them to the matching
 GitHub Release. The desktop app then auto-updates from those releases (FEAT-29).
 
-This document tracks the remaining **manual** steps to cut a first *branded,
-signed* release — the parts that need real assets/credentials and can't be done
+This document tracks the remaining **manual** steps to cut a first _branded,
+signed_ release — the parts that need real assets/credentials and can't be done
 in code.
 
 ## 1. App icon ✅
@@ -22,15 +22,15 @@ Builds succeed **unsigned** when these are absent, so CI works for testing
 without them. For a trusted, installable release, add these repository secrets
 (Settings → Secrets and variables → Actions):
 
-| Secret | Purpose |
-| --- | --- |
-| `WIN_CSC_LINK` | Base64 of the Windows code-signing `.pfx` |
-| `WIN_CSC_KEY_PASSWORD` | Password for the Windows cert |
-| `MAC_CSC_LINK` | Base64 of the macOS Developer ID `.p12` |
-| `MAC_CSC_KEY_PASSWORD` | Password for the macOS cert |
-| `APPLE_ID` | Apple ID for notarization |
-| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for that Apple ID |
-| `APPLE_TEAM_ID` | Apple Developer Team ID |
+| Secret                        | Purpose                                   |
+| ----------------------------- | ----------------------------------------- |
+| `WIN_CSC_LINK`                | Base64 of the Windows code-signing `.pfx` |
+| `WIN_CSC_KEY_PASSWORD`        | Password for the Windows cert             |
+| `MAC_CSC_LINK`                | Base64 of the macOS Developer ID `.p12`   |
+| `MAC_CSC_KEY_PASSWORD`        | Password for the macOS cert               |
+| `APPLE_ID`                    | Apple ID for notarization                 |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for that Apple ID   |
+| `APPLE_TEAM_ID`               | Apple Developer Team ID                   |
 
 `GH_TOKEN` uses the built-in `GITHUB_TOKEN`, so no extra secret is needed to
 publish to Releases.

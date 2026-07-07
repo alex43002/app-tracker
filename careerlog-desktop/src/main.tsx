@@ -21,5 +21,5 @@ createRoot(document.getElementById("root")!).render(
       <ConfirmDialogHost />
       <Toaster position="top-right" />
     </ErrorBoundary>
-  </StrictMode>
+  </StrictMode>,
 );

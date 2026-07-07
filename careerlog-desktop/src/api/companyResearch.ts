@@ -6,16 +6,18 @@ import { apiClient } from "./client";
    Responses are already unwrapped by apiClient.
 ============================================================ */
 
-export async function fetchResearchCompanies(q?: string): Promise<CompanyRef[]> {
+export async function fetchResearchCompanies(
+  q?: string,
+): Promise<CompanyRef[]> {
   const qs = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
   const res = await apiClient.get<{ companies: CompanyRef[] }>(
-    `/api/company-research/companies${qs}`
+    `/api/company-research/companies${qs}`,
   );
   return res.companies;
 }
 
 export function fetchCompanySnapshot(company: string) {
   return apiClient.get<CompanySnapshot>(
-    `/api/company-research/snapshot?company=${encodeURIComponent(company)}`
+    `/api/company-research/snapshot?company=${encodeURIComponent(company)}`,
   );
 }

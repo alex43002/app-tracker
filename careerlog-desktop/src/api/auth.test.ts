@@ -43,7 +43,10 @@ describe("password reset api", () => {
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("/api/auth/password-reset/confirm");
-    expect(bodyOf(fetchMock)).toEqual({ token: "tok", newPassword: "new-pass-123" });
+    expect(bodyOf(fetchMock)).toEqual({
+      token: "tok",
+      newPassword: "new-pass-123",
+    });
   });
 });
 

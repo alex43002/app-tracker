@@ -45,6 +45,8 @@ describe("preferences api", () => {
     const c = call(fetchMock);
     expect(c.method).toBe("PUT");
     expect(c.url).toContain("/api/preferences/");
-    expect(JSON.parse(c.body as string)).toEqual({ hiddenCompanies: ["BadCo"] });
+    expect(JSON.parse(c.body as string)).toEqual({
+      hiddenCompanies: ["BadCo"],
+    });
   });
 });

@@ -1,4 +1,9 @@
-import type { CoverageInfo, MatchScore, MatchStatus, TermMatch } from "../types/match";
+import type {
+  CoverageInfo,
+  MatchScore,
+  MatchStatus,
+  TermMatch,
+} from "../types/match";
 
 /* ============================================================
    Match report model (FEAT-21)
@@ -23,8 +28,10 @@ export const PARTIAL_MATCH_MIN = 50;
 
 /** Map a 0–100 score to its band + human label. */
 export function scoreVerdict(score: number): ScoreVerdict {
-  if (score >= STRONG_MATCH_MIN) return { band: "strong", label: "Strong match" };
-  if (score >= PARTIAL_MATCH_MIN) return { band: "partial", label: "Partial match" };
+  if (score >= STRONG_MATCH_MIN)
+    return { band: "strong", label: "Strong match" };
+  if (score >= PARTIAL_MATCH_MIN)
+    return { band: "partial", label: "Partial match" };
   return { band: "weak", label: "Weak match" };
 }
 
@@ -84,7 +91,8 @@ function joinTerms(terms: string[], limit: number): string {
 function coverageText(cov: CoverageInfo): string {
   const parts: string[] = [];
   if (cov.required !== null) parts.push(`required ${pct(cov.required)}%`);
-  if (cov.responsibility !== null) parts.push(`responsibilities ${pct(cov.responsibility)}%`);
+  if (cov.responsibility !== null)
+    parts.push(`responsibilities ${pct(cov.responsibility)}%`);
   if (cov.preferred !== null) parts.push(`preferred ${pct(cov.preferred)}%`);
   return parts.join(", ");
 }
@@ -138,8 +146,12 @@ export function buildMatchReport(input: MatchReportInput): MatchReport {
     required: m.bucket === "required",
   }));
 
-  const requiredGaps = result.gaps.filter((g) => g.bucket === "required").map((g) => g.term);
-  const otherGaps = result.gaps.filter((g) => g.bucket !== "required").map((g) => g.term);
+  const requiredGaps = result.gaps
+    .filter((g) => g.bucket === "required")
+    .map((g) => g.term);
+  const otherGaps = result.gaps
+    .filter((g) => g.bucket !== "required")
+    .map((g) => g.term);
   const partials = result.strengths
     .filter((s) => s.status === "partial" || s.status === "foundational")
     .map((s) => s.term);
@@ -150,28 +162,30 @@ export function buildMatchReport(input: MatchReportInput): MatchReport {
     recommendations.push(
       `Prioritize the required items the posting lists that your résumé doesn't ` +
         `evidence: ${joinTerms(requiredGaps, MAX_NAMED_TERMS)}. Add them only if you ` +
-        `genuinely have the experience.`
+        `genuinely have the experience.`,
     );
   }
   if (partials.length > 0) {
     recommendations.push(
       `You partially match ${joinTerms(partials, MAX_NAMED_TERMS)} — strengthen these ` +
-        `with concrete, quantified examples so they read as full experience.`
+        `with concrete, quantified examples so they read as full experience.`,
     );
   }
   if (otherGaps.length > 0) {
     recommendations.push(
       `Where accurate, mirror the posting's wording for: ` +
-        `${joinTerms(otherGaps, MAX_NAMED_TERMS)}.`
+        `${joinTerms(otherGaps, MAX_NAMED_TERMS)}.`,
     );
   }
   if (recommendations.length === 0) {
     recommendations.push(
       "Your résumé covers what the posting asks for. Mirror its exact phrasing to " +
-        "stay ahead of keyword screens."
+        "stay ahead of keyword screens.",
     );
   } else {
-    recommendations.push("Tailor, don't pad — only claim skills you can back up in an interview.");
+    recommendations.push(
+      "Tailor, don't pad — only claim skills you can back up in an interview.",
+    );
   }
 
   return {

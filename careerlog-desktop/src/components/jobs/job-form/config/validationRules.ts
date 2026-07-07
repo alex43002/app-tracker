@@ -15,8 +15,10 @@ export type ValidationRule<T = unknown> = (value: T) => string | null;
  * - No UI logic
  * - No side effects
  */
-const requiredText = (label: string): ValidationRule => (value) =>
-  typeof value === "string" && value.trim() ? null : `${label} is required`;
+const requiredText =
+  (label: string): ValidationRule =>
+  (value) =>
+    typeof value === "string" && value.trim() ? null : `${label} is required`;
 
 export const VALIDATION_RULES: Partial<
   Record<JobFormFieldKey, ValidationRule>

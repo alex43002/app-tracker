@@ -34,7 +34,7 @@ export function Sources() {
     .filter((s) => s.total >= 2)
     .reduce<SourceFunnel | null>(
       (acc, s) => (acc == null || s.offerRate > acc.offerRate ? s : acc),
-      null
+      null,
     );
 
   return (
@@ -49,11 +49,13 @@ export function Sources() {
         </div>
 
         {loading ? (
-          <div className="rounded border p-6 text-sm text-gray-500">Loading…</div>
+          <div className="rounded border p-6 text-sm text-gray-500">
+            Loading…
+          </div>
         ) : sources.length === 0 ? (
           <div className="rounded border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-            No tracked jobs yet. Add jobs with their posting URLs and this report
-            will show which channels work best.
+            No tracked jobs yet. Add jobs with their posting URLs and this
+            report will show which channels work best.
           </div>
         ) : (
           <>
@@ -61,7 +63,8 @@ export function Sources() {
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
                 Best converting channel:{" "}
                 <span className="font-semibold">{best.source}</span> —{" "}
-                {pct(best.offerRate)} offer rate across {best.total} applications.
+                {pct(best.offerRate)} offer rate across {best.total}{" "}
+                applications.
               </div>
             )}
 

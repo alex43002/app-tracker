@@ -65,7 +65,7 @@ export function SavedSearchesBar({
       toast.success("Search saved");
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to save search"
+        err instanceof ApiError ? err.displayMessage : "Failed to save search",
       );
     }
   }

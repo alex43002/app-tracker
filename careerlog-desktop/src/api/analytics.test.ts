@@ -48,12 +48,16 @@ describe("richer analytics api", () => {
     const res = await fetchApplicationsOverTime();
     expect(res.interval).toBe("month");
     expect(calledWith(fetchMock).url).toContain(
-      "/api/analytics/applications-over-time"
+      "/api/analytics/applications-over-time",
     );
   });
 
   it("fetchTimeToOffer GETs the time-to-offer endpoint", async () => {
-    const fetchMock = stubData({ offers: 0, averageDays: null, medianDays: null });
+    const fetchMock = stubData({
+      offers: 0,
+      averageDays: null,
+      medianDays: null,
+    });
     const res = await fetchTimeToOffer();
     expect(res.offers).toBe(0);
     expect(res.averageDays).toBeNull();

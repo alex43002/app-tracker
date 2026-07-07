@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  deleteJobResume,
-  fetchJobResumes,
-  uploadJobResume,
-} from "./jobs";
+import { deleteJobResume, fetchJobResumes, uploadJobResume } from "./jobs";
 
 afterEach(() => {
   vi.unstubAllGlobals();

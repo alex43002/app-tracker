@@ -25,21 +25,14 @@ export type JobFormFieldKey =
   | "notes";
 
 export type JobFormSectionKey =
-  | "jobInfo"
-  | "compensation"
-  | "applicationDetails";
+  "jobInfo" | "compensation" | "applicationDetails";
 
 export interface JobFormFieldConfig {
   key: JobFormFieldKey;
   label: string;
   required?: boolean;
   section: JobFormSectionKey;
-  component:
-    | "text"
-    | "number"
-    | "select"
-    | "salary"
-    | "resume";
+  component: "text" | "number" | "select" | "salary" | "resume";
   options?: { value: string; label: string }[];
 }
 

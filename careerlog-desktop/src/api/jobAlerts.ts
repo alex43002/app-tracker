@@ -21,14 +21,18 @@ export async function fetchJobAlerts(): Promise<JobAlert[]> {
 export function createJobAlert(
   name: string,
   criteria: AlertCriteria,
-  notify = true
+  notify = true,
 ) {
-  return apiClient.post<JobAlert>("/api/job-alerts/", { name, criteria, notify });
+  return apiClient.post<JobAlert>("/api/job-alerts/", {
+    name,
+    criteria,
+    notify,
+  });
 }
 
 export function updateJobAlert(
   id: string,
-  patch: Partial<Pick<JobAlert, "name" | "criteria" | "notify">>
+  patch: Partial<Pick<JobAlert, "name" | "criteria" | "notify">>,
 ) {
   return apiClient.put<JobAlert>(`/api/job-alerts/${id}`, patch);
 }

@@ -63,7 +63,7 @@ export interface CachedResult<T> {
  */
 export async function withOfflineCache<T>(
   key: string,
-  fetcher: () => Promise<T>
+  fetcher: () => Promise<T>,
 ): Promise<CachedResult<T>> {
   try {
     const data = await fetcher();

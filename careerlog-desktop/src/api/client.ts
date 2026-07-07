@@ -198,28 +198,26 @@ function attemptRefresh(): Promise<boolean> {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  isRetry = false
+  isRetry = false,
 ): Promise<T> {
-    const token = authToken ?? localStorage.getItem("careerlog_token");
+  const token = authToken ?? localStorage.getItem("careerlog_token");
 
-    const isFormData = options.body instanceof FormData;
+  const isFormData = options.body instanceof FormData;
 
-    const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {};
 
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-    if (!isFormData) {
-      headers["Content-Type"] = "application/json";
-    }
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
-
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers,
-    });
-
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
 
   let raw: unknown;
 
@@ -231,7 +229,7 @@ async function request<T>(
         code: "INVALID_RESPONSE",
         message: "Invalid server response",
       },
-      response.status
+      response.status,
     );
   }
 
@@ -241,9 +239,7 @@ async function request<T>(
     rest of the client can rely on the standard envelope.
   */
   const json: ApiResponse<T> =
-    typeof raw === "object" &&
-    raw !== null &&
-    "detail" in raw
+    typeof raw === "object" && raw !== null && "detail" in raw
       ? (raw as { detail: ApiResponse<T> }).detail
       : (raw as ApiResponse<T>);
 
@@ -275,7 +271,7 @@ async function request<T>(
         code: "UNKNOWN_ERROR",
         message: "Unknown API error",
       },
-      response.status
+      response.status,
     );
   }
 
@@ -308,8 +304,8 @@ export const apiClient = {
         body instanceof FormData
           ? body
           : body
-          ? JSON.stringify(body)
-          : undefined,
+            ? JSON.stringify(body)
+            : undefined,
     }),
 
   put: <T>(path: string, body?: unknown) =>
@@ -319,10 +315,9 @@ export const apiClient = {
         body instanceof FormData
           ? body
           : body
-          ? JSON.stringify(body)
-          : undefined,
+            ? JSON.stringify(body)
+            : undefined,
     }),
 
-  delete: <T>(path: string) =>
-    request<T>(path, { method: "DELETE" }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

@@ -135,7 +135,7 @@ export function Discovery() {
       // the newly-filtered postings instead of resetting the ranking state.
       setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
     },
-    []
+    [],
   );
 
   // Load the guided location options (FEAT-30). Re-run after an import so newly
@@ -188,14 +188,14 @@ export function Discovery() {
     setResolving(true);
     try {
       const { source, boardToken: token } = await resolveBoardToken(
-        careersUrl.trim()
+        careersUrl.trim(),
       );
       setIngestSource(source);
       setBoardToken(token);
       toast.success(`Found ${source} board "${token}"`);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Couldn't read that URL"
+        err instanceof Error ? err.message : "Couldn't read that URL",
       );
     } finally {
       setResolving(false);
@@ -216,7 +216,7 @@ export function Discovery() {
     try {
       const created = await createJobAlert(
         alertName.trim(),
-        criteriaFromFilters(filters)
+        criteriaFromFilters(filters),
       );
       setAlerts((prev) => [...prev, created]);
       setAlertName("");
@@ -231,8 +231,8 @@ export function Discovery() {
       const { newMatches, total } = await checkJobAlert(alert.id);
       setAlerts((prev) =>
         prev.map((a) =>
-          a.id === alert.id ? { ...a, lastMatchCount: newMatches } : a
-        )
+          a.id === alert.id ? { ...a, lastMatchCount: newMatches } : a,
+        ),
       );
       toast.success(`${newMatches} new · ${total} total match this search`);
     } catch {
@@ -320,10 +320,10 @@ export function Discovery() {
       const res = await ingestBoard(
         ingestSource,
         boardToken.trim(),
-        companyName.trim() || undefined
+        companyName.trim() || undefined,
       );
       toast.success(
-        `Imported ${res.company}: ${res.inserted} new, ${res.updated} updated`
+        `Imported ${res.company}: ${res.inserted} new, ${res.updated} updated`,
       );
       setBoardToken("");
       setCompanyName("");
@@ -359,7 +359,7 @@ export function Discovery() {
             } catch {
               return [job.id, 0] as const;
             }
-          })
+          }),
         );
         setFitById((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
       } catch {
@@ -368,7 +368,7 @@ export function Discovery() {
         setRanking(false);
       }
     },
-    [fitResumeId, fitById]
+    [fitResumeId, fitById],
   );
 
   function handleRankByFit() {
@@ -396,7 +396,7 @@ export function Discovery() {
   const displayedJobs = useMemo(() => {
     if (!sortByFit) return jobs;
     return [...jobs].sort(
-      (a, b) => (fitById[b.id] ?? -1) - (fitById[a.id] ?? -1)
+      (a, b) => (fitById[b.id] ?? -1) - (fitById[a.id] ?? -1),
     );
   }, [jobs, sortByFit, fitById]);
 
@@ -406,9 +406,9 @@ export function Discovery() {
         <div>
           <h1 className="text-2xl font-semibold">Discover</h1>
           <p className="text-sm text-gray-500">
-            Browse aggregated public postings from supported ATS systems. Filter,
-            spot low-quality or stale listings, and rank by how well they match
-            your résumé.
+            Browse aggregated public postings from supported ATS systems.
+            Filter, spot low-quality or stale listings, and rank by how well
+            they match your résumé.
           </p>
         </div>
 
@@ -460,7 +460,9 @@ export function Discovery() {
           {/* Resolved/manual fields. */}
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-gray-700">Source</span>
+              <span className="mb-1 block font-medium text-gray-700">
+                Source
+              </span>
               <select
                 value={ingestSource}
                 onChange={(e) => setIngestSource(e.target.value)}
@@ -526,7 +528,11 @@ export function Discovery() {
           <div className="flex flex-col gap-1">
             <input
               list="location-facets"
-              value={filters.location === NO_LOCATION_FILTER ? "" : filters.location ?? ""}
+              value={
+                filters.location === NO_LOCATION_FILTER
+                  ? ""
+                  : (filters.location ?? "")
+              }
               disabled={filters.location === NO_LOCATION_FILTER}
               onChange={(e) =>
                 setFilter("location", e.target.value || undefined)
@@ -551,7 +557,7 @@ export function Discovery() {
                   onChange={(e) =>
                     setFilter(
                       "location",
-                      e.target.checked ? NO_LOCATION_FILTER : undefined
+                      e.target.checked ? NO_LOCATION_FILTER : undefined,
                     )
                   }
                 />
@@ -603,18 +609,22 @@ export function Discovery() {
             onChange={(e) =>
               setFilter(
                 "salaryMin",
-                e.target.value ? Number(e.target.value) : undefined
+                e.target.value ? Number(e.target.value) : undefined,
               )
             }
             placeholder="Min salary"
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
           <select
-            value={filters.requiresDegree === undefined ? "" : String(filters.requiresDegree)}
+            value={
+              filters.requiresDegree === undefined
+                ? ""
+                : String(filters.requiresDegree)
+            }
             onChange={(e) =>
               setFilter(
                 "requiresDegree",
-                e.target.value === "" ? undefined : e.target.value === "true"
+                e.target.value === "" ? undefined : e.target.value === "true",
               )
             }
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
@@ -628,7 +638,7 @@ export function Discovery() {
             onChange={(e) =>
               setFilter(
                 "maxAgeDays",
-                e.target.value ? Number(e.target.value) : undefined
+                e.target.value ? Number(e.target.value) : undefined,
               )
             }
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
@@ -647,9 +657,7 @@ export function Discovery() {
             onChange={(e) =>
               setFilter(
                 "sponsorshipAvailable",
-                e.target.value === ""
-                  ? undefined
-                  : e.target.value === "true"
+                e.target.value === "" ? undefined : e.target.value === "true",
               )
             }
             className="rounded border border-gray-300 px-2 py-1.5 text-sm"
@@ -716,7 +724,7 @@ export function Discovery() {
               onRemove={(c) =>
                 savePrefs({
                   preferredCompanies: prefs.preferredCompanies.filter(
-                    (x) => x !== c
+                    (x) => x !== c,
                   ),
                 })
               }
@@ -833,7 +841,9 @@ export function Discovery() {
               className="rounded border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
             >
               <option value="">
-                {fitResumes.length === 0 ? "No résumés on job" : "Pick a résumé…"}
+                {fitResumes.length === 0
+                  ? "No résumés on job"
+                  : "Pick a résumé…"}
               </option>
               {fitResumes.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -890,7 +900,10 @@ export function Discovery() {
           <div className="flex justify-center gap-2 pb-4">
             <button
               onClick={() =>
-                setFilters((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))
+                setFilters((p) => ({
+                  ...p,
+                  page: Math.max(1, (p.page ?? 1) - 1),
+                }))
               }
               disabled={(filters.page ?? 1) <= 1}
               className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"

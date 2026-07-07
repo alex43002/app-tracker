@@ -40,8 +40,8 @@ export function JobStatsGrid({
   if (stats.total === 0) {
     return (
       <div className="rounded-md border border-dashed p-6 text-sm text-gray-500">
-        You haven’t added any jobs yet.
-        Start tracking applications to see your progress here.
+        You haven’t added any jobs yet. Start tracking applications to see your
+        progress here.
       </div>
     );
   }
@@ -51,31 +51,11 @@ export function JobStatsGrid({
   ============================================================ */
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      <Stat
-        label="Applied"
-        value={stats.applied}
-        emphasis="default"
-      />
-      <Stat
-        label="Interviewing"
-        value={stats.interviewing}
-        emphasis="info"
-      />
-      <Stat
-        label="Offers"
-        value={stats.offer}
-        emphasis="success"
-      />
-      <Stat
-        label="Rejected"
-        value={stats.rejected}
-        emphasis="muted"
-      />
-      <Stat
-        label="Total Jobs"
-        value={stats.total}
-        emphasis="muted"
-      />
+      <Stat label="Applied" value={stats.applied} emphasis="default" />
+      <Stat label="Interviewing" value={stats.interviewing} emphasis="info" />
+      <Stat label="Offers" value={stats.offer} emphasis="success" />
+      <Stat label="Rejected" value={stats.rejected} emphasis="muted" />
+      <Stat label="Total Jobs" value={stats.total} emphasis="muted" />
     </div>
   );
 }
@@ -106,12 +86,8 @@ function Stat({
     <div
       className={`rounded-md border p-5 shadow-sm ${emphasisStyles[emphasis]}`}
     >
-      <div className="text-sm text-gray-600">
-        {label}
-      </div>
-      <div className="mt-1 text-3xl font-semibold">
-        {value}
-      </div>
+      <div className="text-sm text-gray-600">{label}</div>
+      <div className="mt-1 text-3xl font-semibold">{value}</div>
     </div>
   );
 }

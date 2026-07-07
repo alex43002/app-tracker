@@ -16,8 +16,7 @@ export const HELP_TEXT = {
   jobTitle:
     "The exact job title listed on the posting. This helps keep applications consistent and searchable.",
 
-  url:
-    "A direct link to the job posting you applied to. Paste the full URL from the browser address bar.",
+  url: "A direct link to the job posting you applied to. Paste the full URL from the browser address bar.",
 
   jobId:
     "An optional internal or external job ID. This is sometimes provided by the employer or applicant tracking system.",

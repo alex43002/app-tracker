@@ -41,7 +41,13 @@ function pctText(value: number | null): string {
   return value === null ? "N/A" : `${Math.round(value * 100)}%`;
 }
 
-function CoverageBar({ label, value }: { label: string; value: number | null }) {
+function CoverageBar({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null;
+}) {
   const pct = value === null ? 0 : Math.round(value * 100);
   return (
     <div>
@@ -51,7 +57,10 @@ function CoverageBar({ label, value }: { label: string; value: number | null }) 
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
         {value !== null && (
-          <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+          <div
+            className="h-full rounded-full bg-blue-500"
+            style={{ width: `${pct}%` }}
+          />
         )}
       </div>
     </div>
@@ -93,7 +102,9 @@ export function ScoreResult({ result }: { result: MatchScore }) {
         <div
           className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-white ring-4 ${band.ring}`}
         >
-          <span className={`text-3xl font-bold ${band.text}`}>{result.score}</span>
+          <span className={`text-3xl font-bold ${band.text}`}>
+            {result.score}
+          </span>
         </div>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">

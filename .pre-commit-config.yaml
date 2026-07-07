@@ -43,6 +43,13 @@ repos:
   # on the whole desktop project when any TS/JS file is staged.
   - repo: local
     hooks:
+      - id: prettier-desktop
+        name: prettier (desktop)
+        entry: bash -c 'cd careerlog-desktop && node_modules/.bin/prettier --write .'
+        language: system
+        files: ^careerlog-desktop/.*\.(ts|tsx|js|jsx|json|css|md)$
+        exclude: ^careerlog-desktop/package-lock\.json$
+        pass_filenames: false
       - id: tsc-desktop
         name: tsc typecheck (desktop)
         entry: bash -c 'cd careerlog-desktop && node_modules/.bin/tsc --noEmit -p tsconfig.app.json'

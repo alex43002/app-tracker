@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Job } from "../../types/job";
-import type {
-  CreateJobPayload,
-  UpdateJobPayload,
-} from "../../api/jobs";
+import type { CreateJobPayload, UpdateJobPayload } from "../../api/jobs";
 
 import { JobForm, type JobFormHandle } from "./job-form/components/JobForm";
 
@@ -16,7 +13,7 @@ interface JobFormModalProps {
   job: Job | null;
   onClose: () => void;
   onSave: (
-    payload: CreateJobPayload | UpdateJobPayload
+    payload: CreateJobPayload | UpdateJobPayload,
   ) => void | Promise<void>;
 }
 
@@ -113,7 +110,7 @@ export function JobFormModal({
 
           <button
             onClick={() => {
-              formRef.current?.submit()
+              formRef.current?.submit();
             }}
             className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800"
           >

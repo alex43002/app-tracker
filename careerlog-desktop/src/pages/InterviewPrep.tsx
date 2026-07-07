@@ -49,7 +49,9 @@ export function InterviewPrep() {
       setResult(res);
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to generate prep"
+        err instanceof ApiError
+          ? err.displayMessage
+          : "Failed to generate prep",
       );
     } finally {
       setGenerating(false);
@@ -62,8 +64,8 @@ export function InterviewPrep() {
         <div>
           <h1 className="text-2xl font-semibold">Interview prep</h1>
           <p className="text-sm text-gray-500">
-            Turn a job description into role-specific topics, practice questions,
-            and prep notes.
+            Turn a job description into role-specific topics, practice
+            questions, and prep notes.
           </p>
         </div>
 
@@ -137,7 +139,9 @@ export function InterviewPrep() {
             </section>
 
             <section className="rounded-lg border border-gray-200 bg-white p-4">
-              <h2 className="mb-2 font-semibold text-gray-900">Likely topics</h2>
+              <h2 className="mb-2 font-semibold text-gray-900">
+                Likely topics
+              </h2>
               {result.topics.length === 0 ? (
                 <p className="text-sm text-gray-500">
                   No specific topics detected.

@@ -15,7 +15,7 @@ import { apiClient } from "./client";
 /** List the current user's saved searches (oldest first). */
 export async function fetchSavedSearches(): Promise<SavedSearch[]> {
   const res = await apiClient.get<{ items: SavedSearch[] }>(
-    "/api/saved-searches/"
+    "/api/saved-searches/",
   );
   return res.items;
 }
@@ -28,7 +28,7 @@ export function createSavedSearch(payload: CreateSavedSearchPayload) {
 /** Update an existing saved search. */
 export function updateSavedSearch(
   id: string,
-  payload: UpdateSavedSearchPayload
+  payload: UpdateSavedSearchPayload,
 ) {
   return apiClient.put<SavedSearch>(`/api/saved-searches/${id}`, payload);
 }

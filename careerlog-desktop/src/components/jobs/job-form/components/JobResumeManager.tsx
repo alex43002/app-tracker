@@ -48,7 +48,9 @@ export function JobResumeManager({ jobId }: { jobId: string }) {
       toast.success("Résumé added");
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to upload résumé"
+        err instanceof ApiError
+          ? err.displayMessage
+          : "Failed to upload résumé",
       );
     } finally {
       setUploading(false);

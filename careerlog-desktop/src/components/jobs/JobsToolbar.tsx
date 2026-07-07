@@ -132,7 +132,7 @@ export function JobsToolbar({
                   status,
                   employmentType,
                   company,
-                  location
+                  location,
                 ),
                 search: searchInput.trim(),
                 sortBy: e.target.value,
@@ -155,7 +155,7 @@ export function JobsToolbar({
                   status,
                   employmentType,
                   company,
-                  location
+                  location,
                 ),
                 search: searchInput.trim(),
                 sortBy,
@@ -176,7 +176,7 @@ function serverFiltersFrom(
   status?: string,
   employmentType?: string,
   company?: string,
-  location?: string
+  location?: string,
 ): Record<string, unknown> {
   const f: Record<string, unknown> = {};
   if (status) f.status = status;

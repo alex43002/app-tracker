@@ -18,7 +18,7 @@ import { apiClient } from "./client";
 /** The ATS sources discovery can ingest from. */
 export async function fetchDiscoverySources(): Promise<string[]> {
   const res = await apiClient.get<{ sources: string[] }>(
-    "/api/discovery/sources"
+    "/api/discovery/sources",
   );
   return res.sources;
 }
@@ -27,7 +27,7 @@ export async function fetchDiscoverySources(): Promise<string[]> {
 export function ingestBoard(
   source: string,
   boardToken: string,
-  companyName?: string
+  companyName?: string,
 ) {
   return apiClient.post<IngestResult>("/api/discovery/ingest", {
     source,
@@ -43,11 +43,11 @@ export function resolveBoardToken(url: string) {
 
 /** Search the curated directory of popular public boards (FEAT-23). */
 export async function fetchCompanyDirectory(
-  q?: string
+  q?: string,
 ): Promise<CompanyDirectoryEntry[]> {
   const qs = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
   const res = await apiClient.get<{ companies: CompanyDirectoryEntry[] }>(
-    `/api/discovery/companies${qs}`
+    `/api/discovery/companies${qs}`,
   );
   return res.companies;
 }
@@ -55,12 +55,12 @@ export async function fetchCompanyDirectory(
 /** Distinct locations present in postings, for the guided filter (FEAT-30). */
 export async function fetchLocationFacets(
   q?: string,
-  limit = 50
+  limit = 50,
 ): Promise<LocationFacets> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (q && q.trim()) params.append("q", q.trim());
   return apiClient.get<LocationFacets>(
-    `/api/discovery/locations?${params.toString()}`
+    `/api/discovery/locations?${params.toString()}`,
   );
 }
 
@@ -73,6 +73,6 @@ export function fetchDiscoveredJobs(filters: DiscoveryFilters = {}) {
   }
   const qs = params.toString();
   return apiClient.get<DiscoveredJobPage>(
-    `/api/discovery/jobs${qs ? `?${qs}` : ""}`
+    `/api/discovery/jobs${qs ? `?${qs}` : ""}`,
   );
 }

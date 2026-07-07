@@ -66,7 +66,7 @@ export function saveSession(session: SessionTokens) {
   localStorage.setItem(REFRESH_KEY, session.refreshToken);
   localStorage.setItem(
     REFRESH_EXPIRY_KEY,
-    String(new Date(session.refreshExpiresAt).getTime())
+    String(new Date(session.refreshExpiresAt).getTime()),
   );
 }
 

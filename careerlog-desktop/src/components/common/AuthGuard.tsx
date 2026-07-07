@@ -11,7 +11,7 @@ export function AuthGuard({ children }: Props) {
   const ready = useSyncExternalStore(
     subscribeAuthReady,
     isAuthReady,
-    () => false
+    () => false,
   );
 
   if (!ready) return null;

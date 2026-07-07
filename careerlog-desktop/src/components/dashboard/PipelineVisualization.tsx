@@ -111,9 +111,7 @@ export function PipelineVisualization({
         {segments.map((s) => (
           <span key={s.label}>
             {s.label}:{" "}
-            <span className="font-medium text-gray-800">
-              {s.count}
-            </span>
+            <span className="font-medium text-gray-800">{s.count}</span>
           </span>
         ))}
       </div>

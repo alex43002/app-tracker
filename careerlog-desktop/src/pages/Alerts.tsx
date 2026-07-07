@@ -10,10 +10,7 @@ import {
   createAlert,
   updateAlert,
 } from "../api/alerts";
-import {
-  isAlertScheduledFuture,
-  partitionAlerts,
-} from "../lib/alertStatus";
+import { isAlertScheduledFuture, partitionAlerts } from "../lib/alertStatus";
 import type {
   Alert,
   CreateAlertPayload,
@@ -67,12 +64,12 @@ export function Alerts() {
       if (editing) {
         const { updatedAt } = await updateAlert(
           editing.id,
-          payload as UpdateAlertPayload
+          payload as UpdateAlertPayload,
         );
         setAlerts((prev) =>
           prev.map((a) =>
-            a.id === editing.id ? { ...a, ...payload, updatedAt } : a
-          )
+            a.id === editing.id ? { ...a, ...payload, updatedAt } : a,
+          ),
         );
         toast.success("Alert updated");
       } else {

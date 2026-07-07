@@ -11,9 +11,7 @@ import type { JobFormValues } from "../types";
  *
  * This function should be used for CREATE only.
  */
-export function normalizeJobPayload(
-  values: JobFormValues
-): CreateJobPayload {
+export function normalizeJobPayload(values: JobFormValues): CreateJobPayload {
   return {
     jobId: values.jobId ?? null,
     url: values.url.trim(),

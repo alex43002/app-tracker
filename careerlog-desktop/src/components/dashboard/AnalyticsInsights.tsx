@@ -51,7 +51,9 @@ export function AnalyticsInsights() {
   if (failed) {
     return (
       <Card title="Insights">
-        <p className="text-sm text-gray-500">Couldn’t load analytics right now.</p>
+        <p className="text-sm text-gray-500">
+          Couldn’t load analytics right now.
+        </p>
       </Card>
     );
   }
@@ -144,11 +146,15 @@ function TimeToOfferCard({ tto }: { tto: TimeToOffer }) {
           </div>
           <div>
             <dt className="text-xs text-gray-500">Avg days</dt>
-            <dd className="mt-1 text-2xl font-semibold">{tto.averageDays ?? "—"}</dd>
+            <dd className="mt-1 text-2xl font-semibold">
+              {tto.averageDays ?? "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-gray-500">Median days</dt>
-            <dd className="mt-1 text-2xl font-semibold">{tto.medianDays ?? "—"}</dd>
+            <dd className="mt-1 text-2xl font-semibold">
+              {tto.medianDays ?? "—"}
+            </dd>
           </div>
         </dl>
       )}
@@ -190,7 +196,9 @@ function ApplicationsOverTimeChart({ data }: { data: ApplicationsOverTime }) {
               </span>
               <div
                 className="w-full rounded-t bg-blue-400"
-                style={{ height: `${Math.max((p.count / max) * 100, p.count > 0 ? 4 : 0)}%` }}
+                style={{
+                  height: `${Math.max((p.count / max) * 100, p.count > 0 ? 4 : 0)}%`,
+                }}
                 data-testid="bar"
               />
               <span className="text-[10px] text-gray-500">

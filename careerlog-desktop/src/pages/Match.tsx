@@ -35,9 +35,8 @@ export function Match() {
   // Résumé source: an existing attachment or an ad-hoc file the user uploads
   // here (extracted to text and scored without being saved to the job).
   const [resumeSource, setResumeSource] = useState<ResumeSource>("saved");
-  const [uploadedResume, setUploadedResume] = useState<ResumeExtractResult | null>(
-    null
-  );
+  const [uploadedResume, setUploadedResume] =
+    useState<ResumeExtractResult | null>(null);
   const [extracting, setExtracting] = useState(false);
 
   const [jobSource, setJobSource] = useState<JobSource>("url");
@@ -47,11 +46,13 @@ export function Match() {
   const [scoring, setScoring] = useState(false);
   const [result, setResult] = useState<MatchScore | null>(null);
   // Snapshot of the inputs behind `result`, used to label the exported report.
-  const [reportContext, setReportContext] = useState<ReportContext | null>(null);
+  const [reportContext, setReportContext] = useState<ReportContext | null>(
+    null,
+  );
 
   const selectedJob = useMemo(
     () => jobs.find((j) => j.id === selectedJobId) ?? null,
-    [jobs, selectedJobId]
+    [jobs, selectedJobId],
   );
 
   // Load the user's jobs once to populate the picker.
@@ -126,7 +127,7 @@ export function Match() {
       company: selectedJob?.company,
       resumeLabel:
         resumeSource === "saved"
-          ? savedName ?? "Saved résumé"
+          ? (savedName ?? "Saved résumé")
           : uploadedResume?.filename || "Uploaded résumé",
       jobSourceLabel:
         jobSource === "url"
@@ -172,7 +173,7 @@ export function Match() {
           jobTitle: reportContext.jobTitle,
           company: reportContext.company,
           generatedAt: report.generatedAt,
-        })
+        }),
       );
     } catch {
       toast.error("Could not generate the PDF report");
@@ -284,8 +285,8 @@ export function Match() {
                       className="w-full rounded border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1 file:text-sm"
                     />
                     <span className="mt-1 block text-xs text-gray-500">
-                      PDF, DOCX, or TXT up to 5&nbsp;MB. The file is only used for
-                      this score — it isn't saved to the job.
+                      PDF, DOCX, or TXT up to 5&nbsp;MB. The file is only used
+                      for this score — it isn't saved to the job.
                     </span>
                     {extracting && (
                       <span className="mt-1 block text-xs text-gray-500">

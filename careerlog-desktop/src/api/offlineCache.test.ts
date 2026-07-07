@@ -33,7 +33,7 @@ describe("offline cache (FEAT-9)", () => {
 
   it("rethrows when the fetch fails and nothing is cached", async () => {
     await expect(
-      withOfflineCache("missing", () => Promise.reject(new Error("offline")))
+      withOfflineCache("missing", () => Promise.reject(new Error("offline"))),
     ).rejects.toThrow("offline");
   });
 
@@ -41,10 +41,10 @@ describe("offline cache (FEAT-9)", () => {
     writeCache("jobs", { items: [42] });
     const authError = new ApiError(
       { code: "AUTH_TOKEN_INVALID", message: "expired" },
-      401
+      401,
     );
     await expect(
-      withOfflineCache("jobs", () => Promise.reject(authError))
+      withOfflineCache("jobs", () => Promise.reject(authError)),
     ).rejects.toBe(authError);
   });
 

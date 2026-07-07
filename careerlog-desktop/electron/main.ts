@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
-const { autoUpdater } = pkg
+const { autoUpdater } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -32,9 +32,7 @@ function createWindow() {
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
   } else {
-    mainWindow.loadFile(
-      path.join(__dirname, "../dist/index.html")
-    );
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
 
   if (isDev) {
@@ -64,11 +62,11 @@ function createWindow() {
             // render; without an explicit img-src they fall back to default-src.
             isDev
               ? "default-src 'self' http://localhost:5173 'unsafe-eval' 'unsafe-inline'; img-src 'self' http://localhost:5173 data: blob:; connect-src *;"
-              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https:;"
+              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https:;",
           ],
         },
       });
-    }
+    },
   );
 
   /* ============================================================
@@ -80,34 +78,28 @@ function createWindow() {
     return { action: "deny" };
   });
 
-  mainWindow.webContents.on(
-    "will-navigate",
-    (event, url) => {
-      if (isDev) {
-        if (!url.startsWith("http://localhost:5173")) {
-          event.preventDefault();
-          shell.openExternal(url);
-        }
-      } else {
-        if (!url.startsWith("file://")) {
-          event.preventDefault();
-          shell.openExternal(url);
-        }
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (isDev) {
+      if (!url.startsWith("http://localhost:5173")) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    } else {
+      if (!url.startsWith("file://")) {
+        event.preventDefault();
+        shell.openExternal(url);
       }
     }
-  );
+  });
 
   /* ============================================================
      DevTools Lockdown (Production)
   ============================================================ */
 
   if (!isDev) {
-    mainWindow.webContents.on(
-      "devtools-opened",
-      () => {
-        mainWindow?.webContents.closeDevTools();
-      }
-    );
+    mainWindow.webContents.on("devtools-opened", () => {
+      mainWindow?.webContents.closeDevTools();
+    });
   }
 
   /* ============================================================
@@ -172,33 +164,33 @@ function setupAutoUpdates() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("checking-for-update", () =>
-    broadcastUpdateStatus({ state: "checking" })
+    broadcastUpdateStatus({ state: "checking" }),
   );
   autoUpdater.on("update-available", (info) =>
-    broadcastUpdateStatus({ state: "available", version: info?.version })
+    broadcastUpdateStatus({ state: "available", version: info?.version }),
   );
   autoUpdater.on("update-not-available", () =>
-    broadcastUpdateStatus({ state: "not-available" })
+    broadcastUpdateStatus({ state: "not-available" }),
   );
   autoUpdater.on("download-progress", (progress) =>
     broadcastUpdateStatus({
       state: "downloading",
       percent: Math.round(progress?.percent ?? 0),
-    })
+    }),
   );
   autoUpdater.on("update-downloaded", (info) =>
-    broadcastUpdateStatus({ state: "downloaded", version: info?.version })
+    broadcastUpdateStatus({ state: "downloaded", version: info?.version }),
   );
   autoUpdater.on("error", (err) =>
     broadcastUpdateStatus({
       state: "error",
       message: err?.message ?? "Update failed",
-    })
+    }),
   );
 
   // Renderer-driven controls: re-check on demand, and apply a downloaded update.
   ipcMain.handle("update:check", () =>
-    autoUpdater.checkForUpdates().catch(() => undefined)
+    autoUpdater.checkForUpdates().catch(() => undefined),
   );
   ipcMain.handle("update:install", () => {
     autoUpdater.quitAndInstall();
@@ -221,7 +213,7 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler(
     (_webContents, _permission, callback) => {
       callback(false);
-    }
+    },
   );
 
   createWindow();

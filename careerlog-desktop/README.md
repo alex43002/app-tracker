@@ -143,11 +143,11 @@ careerlog-desktop/
 
 ### Targets
 
-| Platform | Targets | Notes |
-| --- | --- | --- |
-| Windows | `nsis` | Installer (`.exe`) |
-| macOS | `dmg`, `zip` | `zip` is required for auto-update |
-| Linux | `AppImage`, `deb` | |
+| Platform | Targets           | Notes                             |
+| -------- | ----------------- | --------------------------------- |
+| Windows  | `nsis`            | Installer (`.exe`)                |
+| macOS    | `dmg`, `zip`      | `zip` is required for auto-update |
+| Linux    | `AppImage`, `deb` |                                   |
 
 App icons live in [`assets/`](assets/README.md) — add a 1024×1024 `icon.png`
 before cutting a branded release (otherwise the default Electron icon is used).
@@ -171,11 +171,11 @@ Signing happens automatically when the relevant secrets are configured; if
 they're absent the build still succeeds but produces **unsigned** artifacts.
 Configure these repository secrets:
 
-| Secret | Platform | Purpose |
-| --- | --- | --- |
-| `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD` | Windows | base64 `.pfx` cert + password |
-| `MAC_CSC_LINK` / `MAC_CSC_KEY_PASSWORD` | macOS | base64 `.p12` cert + password |
-| `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` | macOS | notarization (Apple notary service) |
+| Secret                                                       | Platform | Purpose                             |
+| ------------------------------------------------------------ | -------- | ----------------------------------- |
+| `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`                      | Windows  | base64 `.pfx` cert + password       |
+| `MAC_CSC_LINK` / `MAC_CSC_KEY_PASSWORD`                      | macOS    | base64 `.p12` cert + password       |
+| `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` | macOS    | notarization (Apple notary service) |
 
 `GITHUB_TOKEN` (provided automatically by Actions) is used to publish the
 release. The macOS hardened-runtime entitlements live in

@@ -65,7 +65,9 @@ export function EmailTracking() {
       setResult(res);
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.displayMessage : "Failed to analyze email"
+        err instanceof ApiError
+          ? err.displayMessage
+          : "Failed to analyze email",
       );
     } finally {
       setLoading(false);
@@ -78,7 +80,7 @@ export function EmailTracking() {
       await updateJob(job.id, { status });
       setAppliedTo((prev) => ({ ...prev, [job.id]: status }));
       toast.success(
-        `Marked ${job.company} as ${STATUS_LABELS[status] ?? status}`
+        `Marked ${job.company} as ${STATUS_LABELS[status] ?? status}`,
       );
     } catch {
       toast.error("Failed to update job");
@@ -96,8 +98,8 @@ export function EmailTracking() {
           <h1 className="text-2xl font-semibold">Email tracking</h1>
           <p className="text-sm text-gray-500">
             Paste a recruiting email to detect confirmations, interviews,
-            rejections, offers, and recruiter messages — then update the matching
-            job in one click.
+            rejections, offers, and recruiter messages — then update the
+            matching job in one click.
           </p>
         </div>
 
@@ -142,7 +144,8 @@ export function EmailTracking() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${
-                    CATEGORY_STYLES[result.category] ?? "bg-gray-100 text-gray-700"
+                    CATEGORY_STYLES[result.category] ??
+                    "bg-gray-100 text-gray-700"
                   }`}
                 >
                   {CATEGORY_LABELS[result.category] ?? result.category}
@@ -169,11 +172,13 @@ export function EmailTracking() {
             </section>
 
             <section className="rounded-lg border border-gray-200 bg-white p-4">
-              <h2 className="mb-2 font-semibold text-gray-900">Matching jobs</h2>
+              <h2 className="mb-2 font-semibold text-gray-900">
+                Matching jobs
+              </h2>
               {result.matchedJobs.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No tracked job matched this email's company. Add the job first,
-                  or update it manually on the Jobs page.
+                  No tracked job matched this email's company. Add the job
+                  first, or update it manually on the Jobs page.
                 </p>
               ) : (
                 <ul className="divide-y divide-gray-100">
