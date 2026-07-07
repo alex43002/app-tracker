@@ -92,7 +92,7 @@ def decode_jwt(token: str, expected_type: str | None = None) -> Dict:
             issuer="job-tracker-api",
         )
     except JWTError:
-        raise _auth_error("Invalid or expired token")
+        raise _auth_error("Invalid or expired token") from None
 
     if expected_type is not None and payload.get("type") != expected_type:
         raise _auth_error(f"Expected a {expected_type} token")
@@ -121,7 +121,7 @@ def get_current_user(
     try:
         object_id = ObjectId(user_id)
     except (InvalidId, TypeError):
-        raise _auth_error("Invalid token subject")
+        raise _auth_error("Invalid token subject") from None
 
     if not get_db().users.find_one({"_id": object_id}, {"_id": 1}):
         raise _auth_error("User no longer exists")

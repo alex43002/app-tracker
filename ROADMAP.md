@@ -133,18 +133,22 @@ backend 293 + desktop 82 tests green)._
 
 ### Low-risk hygiene
 
-- [ ] **AUD-12 — Add exception chaining in
-      [`app/common/auth.py`](backend-app-tracker/app/common/auth.py).** Three
-      `raise HTTPException` sites inside `except` clauses omit `from err` /
-      `from None` (ruff B904), muddying tracebacks.
-- [ ] **AUD-13 — Pass `strict=` to the two `zip()` calls** in
+_AUD-12…14 shipped 2026-07-07 on `chore/lint-hygiene` (ruff clean incl. B904/B905;
+backend 293 tests green). AUD-15/16 remain open._
+
+- [x] **AUD-12 — Add exception chaining in
+      [`app/common/auth.py`](backend-app-tracker/app/common/auth.py).** The two
+      `raise _auth_error(...)` sites inside `except` clauses omitted `from err` /
+      `from None` (ruff B904); added `from None` (expected exceptions → clean 401).
+- [x] **AUD-13 — Pass `strict=` to the two `zip()` calls** in
       [`app/matching/keywords.py`](backend-app-tracker/app/matching/keywords.py)
-      (ruff B905, ~lines 380 and 454).
-- [ ] **AUD-14 — Make best-effort GridFS cleanup observable.** Orphan/old-file
+      (ruff B905, ~lines 380 and 454) — `strict=False` (a list paired with its own
+      tail is intentionally uneven).
+- [x] **AUD-14 — Make best-effort GridFS cleanup observable.** Orphan/old-file
       deletes in [`jobs/service.py`](backend-app-tracker/app/jobs/service.py) and
-      [`users/service.py`](backend-app-tracker/app/users/service.py) swallow all
-      errors with bare `except: pass`; log at debug so a real failure isn't
-      silent (behavior can stay best-effort).
+      [`users/service.py`](backend-app-tracker/app/users/service.py) swallowed all
+      errors with bare `except: pass`; now log at debug (behavior stays
+      best-effort).
 - [ ] **AUD-15 — Formatting consistency.** `request()` in
       [`api/client.ts`](careerlog-desktop/src/api/client.ts) mixes 2- and 4-space
       indentation (~lines 203–221); adopting Prettier would prevent this class of

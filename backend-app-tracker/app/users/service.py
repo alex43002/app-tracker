@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -9,6 +10,8 @@ from pymongo.database import Database
 
 from app.common.errors import raise_error
 from app.users.schemas import User
+
+logger = logging.getLogger("careerlog.users")
 
 # Profile-picture upload constraints.
 ALLOWED_PFP_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
@@ -165,7 +168,8 @@ def set_profile_picture(db: Database, user_id: str, upload) -> dict:
         try:
             fs.delete(ObjectId(old))
         except (InvalidId, TypeError):
-            pass
+            # A malformed stored id shouldn't block replacing the picture.
+            logger.debug("Skipped deleting old profile picture %s", old, exc_info=True)
 
     file_id = str(
         fs.put(
@@ -211,7 +215,8 @@ def delete_profile_picture(db: Database, user_id: str) -> None:
         try:
             GridFS(db).delete(ObjectId(pfp_id))
         except (InvalidId, TypeError):
-            pass
+            # A malformed stored id shouldn't block clearing the picture.
+            logger.debug("Skipped deleting profile picture %s", pfp_id, exc_info=True)
 
     db.users.update_one(
         {"_id": _to_object_id(user_id)},
