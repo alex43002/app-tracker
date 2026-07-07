@@ -57,8 +57,11 @@ def test_score_with_raw_text(client, auth_payload):
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["score"] >= 80
-    assert "python" in data["breakdown"]["matchedSkills"]
-    assert isinstance(data["gaps"], list)
+    strong = {s["term"] for s in data["strengths"] if s["status"] == "strong"}
+    assert "python" in strong
+    assert data["skillSignalAvailable"] is True
+    assert data["coverage"]["concept"] is not None
+    assert data["confidence"] in {"high", "medium", "low"}
 
 
 def test_score_reports_gaps(client, auth_payload):
@@ -72,8 +75,9 @@ def test_score_reports_gaps(client, auth_payload):
         },
     )
     data = res.json()["data"]
-    assert "kubernetes" in data["breakdown"]["missingSkills"]
-    assert "aws" in data["gaps"]
+    gap_terms = {g["term"] for g in data["gaps"]}
+    assert "kubernetes" in gap_terms
+    assert "aws" in gap_terms
 
 
 def test_score_requires_a_resume_and_a_job_source(client, auth_payload):
@@ -171,3 +175,62 @@ def test_scrape_maps_fetch_error(client, auth_payload, monkeypatch):
     )
     assert res.status_code == 400
     assert res.json()["error"]["code"] == "JOB_FETCH_FAILED"
+
+
+# --------------------------- /extract-resume --------------------------------
+
+def test_extract_resume_returns_text_and_profile(client, auth_payload):
+    jwt, _ = _register(client, auth_payload, "match-extract@example.com")
+    res = client.post(
+        "/api/match/extract-resume",
+        headers=_headers(jwt),
+        files={"resume": ("cv.txt", b"Python developer with Django and AWS", "text/plain")},
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["filename"] == "cv.txt"
+    assert data["textLength"] > 0
+    assert "python" in data["skills"]
+    assert "Django" in data["text"]
+
+
+def test_extract_resume_then_score_flow(client, auth_payload):
+    """The extracted text can be replayed as resumeText to score an ad-hoc file."""
+    jwt, _ = _register(client, auth_payload, "match-extractscore@example.com")
+    headers = _headers(jwt)
+    extract = client.post(
+        "/api/match/extract-resume",
+        headers=headers,
+        files={"resume": ("cv.txt", b"Python developer using Django and PostgreSQL", "text/plain")},
+    )
+    resume_text = extract.json()["data"]["text"]
+
+    res = client.post(
+        "/api/match/score",
+        headers=headers,
+        json={
+            "resumeText": resume_text,
+            "jobDescription": "We need Python, Django, and PostgreSQL skills.",
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["data"]["score"] >= 80
+
+
+def test_extract_resume_rejects_unsupported_type(client, auth_payload):
+    jwt, _ = _register(client, auth_payload, "match-extractbadtype@example.com")
+    res = client.post(
+        "/api/match/extract-resume",
+        headers=_headers(jwt),
+        files={"resume": ("cv.png", b"\x89PNG not a resume", "image/png")},
+    )
+    assert res.status_code == 400
+    assert res.json()["success"] is False
+
+
+def test_extract_resume_requires_auth(client):
+    res = client.post(
+        "/api/match/extract-resume",
+        files={"resume": ("cv.txt", b"Python", "text/plain")},
+    )
+    assert res.status_code == 401

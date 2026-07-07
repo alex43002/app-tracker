@@ -130,24 +130,96 @@ def test_html_to_text_strips_tags_and_scripts():
     assert ".x{}" not in text  # style stripped
 
 
+def test_html_prefers_main_and_drops_chrome():
+    """FEAT-31: with a <main> region, only its content is returned; nav/footer/
+    aside/cookie chrome around it is stripped, not scored."""
+    html = (
+        "<html><head><title>Network Ops</title></head><body>"
+        "<header role='banner'><nav>Careers About Login</nav></header>"
+        "<div class='cookie-banner'>We use cookies. Accept</div>"
+        "<main><h1>Network Ops</h1>"
+        "<p>Experience with LAN switching and BGP.</p></main>"
+        "<aside class='related-jobs'>Similar jobs: Android Developer</aside>"
+        "<footer>Alphabet Inc. Melbourne VIC. All rights reserved.</footer>"
+        "</body></html>"
+    )
+    text, title = html_to_text(html)
+    assert title == "Network Ops"
+    assert "LAN switching" in text and "BGP" in text
+    for junk in ("Careers", "cookies", "Android", "Alphabet", "Melbourne", "reserved"):
+        assert junk not in text, f"chrome leaked: {junk}"
+
+
+def test_html_drops_chrome_without_main():
+    """No <main>: chrome *tags* (nav/footer/aside) and chrome-*class* containers
+    are still dropped, keeping only the real body content."""
+    html = (
+        "<body><nav>Home Careers Login</nav>"
+        "<div class='job-content'><h1>Backend Role</h1>"
+        "<p>We use Python and Postgres.</p></div>"
+        "<div class='cookie'>Accept cookies</div>"
+        "<footer>Alphabet Inc</footer></body>"
+    )
+    text, _ = html_to_text(html)
+    assert "Python and Postgres" in text
+    for junk in ("Careers", "Accept cookies", "Alphabet"):
+        assert junk not in text, f"chrome leaked: {junk}"
+
+
+# --------------------------- noise-phrase filter (FEAT-31) ------------------
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "person_outline",          # Material-icon ligature
+        "arrow_forward",
+        "alphabet inc",            # company/legal token
+        "criminal histories",      # EEO legal boilerplate
+        "melbourne vic",           # location chip (trailing region code)
+        "san jose ca",
+        "careers careers skip",    # repeated token
+    ],
+)
+def test_is_noise_phrase_rejects_scraped_chrome(phrase):
+    assert keywords.is_noise_phrase(phrase) is True
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "machine learning",
+        "specimen collection",
+        "patient assessment",
+        "lan switching",
+        "financial reporting",
+    ],
+)
+def test_is_noise_phrase_keeps_real_terms(phrase):
+    assert keywords.is_noise_phrase(phrase) is False
+
+
 # --------------------------- scoring ----------------------------------------
 
 def test_perfect_coverage_scores_high():
     jd = "We need Python, Django, and PostgreSQL experience."
     resume = "Python developer using Django and PostgreSQL daily."
     result = scoring.score_match(resume, jd)
-    assert result.score >= 90
-    assert not result.breakdown.missing_skills
+    assert result.score >= 85
+    strong = {m.term for m in result.strengths if m.status == "strong"}
+    assert {"python", "django", "postgresql"} <= strong
+    assert not result.gaps  # nothing the posting asked for is missing
 
 
 def test_missing_skills_become_gaps():
     jd = "Required: Python, Kubernetes, and AWS."
     resume = "I write Python scripts."
     result = scoring.score_match(resume, jd)
-    assert "kubernetes" in result.breakdown.missing_skills
-    assert "aws" in result.breakdown.missing_skills
-    assert "kubernetes" in result.gaps
+    gaps = {m.term for m in result.gaps}
+    assert "kubernetes" in gaps
+    assert "aws" in gaps
     assert result.score < 100
+    # Concept signal is available (Python/K8s/AWS are curated), so not N/A.
+    assert result.coverage.concept is not None
 
 
 def test_resume_padding_does_not_inflate_score():

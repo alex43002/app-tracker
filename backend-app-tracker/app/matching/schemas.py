@@ -48,18 +48,49 @@ class ScrapeJobResponse(BaseModel):
     keywords: list[str]
 
 
-class ScoreBreakdownModel(BaseModel):
-    skillCoverage: float
-    keywordCoverage: float
-    matchedSkills: list[str]
-    missingSkills: list[str]
-    matchedKeywords: list[str]
-    missingKeywords: list[str]
+class ExtractResumeResponse(BaseModel):
+    """Result of extracting an ad-hoc résumé upload.
+
+    ``text`` is the extracted plain text, echoed back so the client can score
+    it via ``resumeText`` without the file being stored server-side.
+    """
+
+    filename: str
+    textLength: int
+    skills: list[str]
+    keywords: list[str]
+    text: str
+
+
+class CoverageModel(BaseModel):
+    """Per-bucket coverage. ``None`` means the posting had no such section (not
+    zero, and never a fake 100%)."""
+
+    required: float | None
+    responsibility: float | None
+    preferred: float | None
+    concept: float | None  # curated-skill signal; None when no concepts detected
+    keyword: float
+
+
+class TermMatchModel(BaseModel):
+    term: str
+    status: str  # strong | partial | foundational | missing
+    bucket: str  # required | responsibility | preferred
+    isConcept: bool
+    evidence: list[str]  # résumé phrases that earned the match
+    category: str | None = None
 
 
 class ScoreResponse(BaseModel):
     score: int
-    breakdown: ScoreBreakdownModel
-    gaps: list[str]
+    confidence: str  # high | medium | low
+    confidenceReason: str
+    skillSignalAvailable: bool
+    contamination: str  # low | medium | high — scraped page-chrome leakage
+    roleFamilies: list[str]
+    coverage: CoverageModel
+    strengths: list[TermMatchModel]
+    gaps: list[TermMatchModel]
     resume: ExtractedTerms
     job: ExtractedTerms

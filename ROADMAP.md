@@ -1,6 +1,6 @@
 # CareerLog — Product Roadmap (Remaining Work)
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-06_
 
 All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, and **feature
 (FEAT-\*)** roadmap items are complete, including the batch of product issues
@@ -57,6 +57,16 @@ constraint as below: no generative AI — classic NLP/ML is fine._
       current resume fit). Applying a filter must use the full set of active
       filters together with the selected resume fit, rather than resetting or
       ignoring the existing ranking/filter state.
+- [ ] **BUG-26 — Bare "Required:" header not recognized by the section splitter.**
+      [`sections.py`](backend-app-tracker/app/matching/sections.py) recognizes
+      "Requirements:" (via the `(qualification|requirement)s?` rule) but a bare
+      "Required:" line matches no `KIND_REQUIRED` rule (the "required" pattern
+      needs a following noun like "required qualifications"). A posting whose
+      header is just "Required:" therefore lands its must-have terms in the
+      lower-weighted `context`/`responsibility` buckets instead of `required`,
+      skewing the score. Add a whole-line rule for bare
+      "Required:" / "Requirements" (and symmetrically confirm "Preferred:" /
+      "Responsibilities:" bare forms). Surfaced while building FEAT-31.
 
 ### Discover tab
 
@@ -83,6 +93,74 @@ constraint as below: no generative AI — classic NLP/ML is fine._
 - [x] **FEAT-26 — Improve keyword coverage.** Keyword coverage in the Match tab
       needs significant improvement (still no AI — expand the
       taxonomy/extraction with classic NLP/ML).
+- [x] **FEAT-31 — De-contaminate the match score (scrape cleaning, taxonomy
+      breadth, contamination signals).** _(Done — structural HTML cleaning +
+      content-boundary truncation + a residual noise-phrase filter keep scraped
+      page-chrome out of the requirement list; a `contamination` signal caps
+      confidence and calibrates the score; the taxonomy gained security/data/
+      product/sales/finance jargon; the API/UI/PDF surface an "approximate score"
+      warning. The Network Ops case now yields clean gaps and a sane band.)_
+      The domain-agnostic parser now detects
+      role family and extracts required/responsibility/preferred terms, but the
+      score is **not reliable** because scraped page chrome leaks into the
+      requirement list. A Network Operations posting produced gaps like `android`,
+      `machine learning`, `careers careers careers skip`, `melbourne vic`,
+      `person_outlineyour career`, `enterprise ai san jose`, `alphabet inc` — nav,
+      footer, legal, and related-job artifacts, not requirements. Because they
+      enter `gaps` as "missing", they drag every bucket's coverage down and a real
+      ~48% required fit collapses to 26/100. The root cause is a
+      cleaning/filtering gap, traced through
+      [`extract.py`](backend-app-tracker/app/matching/extract.py) →
+      [`sections.py`](backend-app-tracker/app/matching/sections.py) →
+      [`keywords.py`](backend-app-tracker/app/matching/keywords.py). Fix
+      deterministically (still no generative AI):
+  - [x] **Structural HTML cleaning** (`extract.py`): prefer `<main>`/`<article>`
+        content; skip `nav`/`footer`/`aside`/`form`/`button`/`select`; skip
+        elements by `role` (navigation/banner/contentinfo/search) and chrome
+        class/id hints (nav, menu, footer, cookie, banner, breadcrumb, sidebar,
+        related, recommend, subscribe). Biggest single win.
+  - [x] **Content-boundary truncation** (`sections.py`): classify "Similar/Related/
+        Recommended/Featured jobs", "Careers home", "Life/Working at", "Our
+        locations" as boilerplate headers so everything after them is dropped from
+        scoring (`analyze_job` already skips `KIND_BOILERPLATE`).
+  - [x] **Residual noise-phrase filter** (`keywords.py` `is_noise_phrase` +
+        expanded `STOPWORDS`): reject repeated-token phrases, Material-icon
+        ligatures (`person_outline`), geo/location chips (`melbourne vic` via a
+        region-abbrev set), and company/legal tokens (alphabet, inc, careers,
+        agency, criminal, histories…). Applied in `analyze_job` keyphrase
+        selection and in `extract_keywords`/`profile`. Concepts are untouched.
+  - [x] **Contamination-aware confidence + score calibration** (`analyze.py`,
+        `scoring.py`): compute a `noise_rate`, cap confidence at `medium` when it
+        is high, map it to a `contamination` level (low/medium/high), and lower
+        preferred's bucket weight (0.20 → 0.15) so an all-miss nice-to-have list
+        no longer tanks the score.
+  - [x] **Taxonomy expansion** (`taxonomy.py` + `analyze.py` `_CATEGORY_FAMILY`):
+        add curated concept sets (acronym/jargon normalizers only) for
+        cybersecurity (SIEM/SOAR/EDR/IAM/incident response…), data
+        (Spark/dbt/Airflow/ETL/warehouse…), product/project (roadmap/backlog/OKRs/
+        discovery…), sales (CRM/pipeline/quota/forecasting…), and finance
+        (GAAP/FP&A/reconciliation/audit…), with matching role-family labels.
+        Reuse existing concepts to avoid alias collisions.
+  - [x] **API + UI signals**: add `contamination` (+ optional `noiseFiltered`) to
+        `ScoreResponse`/`MatchScore`
+        ([`schemas.py`](backend-app-tracker/app/matching/schemas.py),
+        [`service.py`](backend-app-tracker/app/matching/service.py),
+        [`types/match.ts`](careerlog-desktop/src/types/match.ts)); render a
+        "score is approximate" warning banner and a "no direct mention in your
+        résumé" note on required gaps in
+        [`ScoreResult.tsx`](careerlog-desktop/src/components/match/ScoreResult.tsx),
+        and fold the contamination note into
+        [`matchReport.ts`](careerlog-desktop/src/lib/matchReport.ts)/`matchReportPdf.ts`.
+        Junk recommendations disappear automatically once gaps are clean.
+  - [x] **Tests**: a realistic scraped-page HTML fixture (nav/footer/main +
+        "Similar jobs" block) asserting junk stays out of `gaps`/`job.keywords`
+        while `<main>` content survives; `is_noise_phrase` unit tests; section-
+        boundary and contamination-confidence tests; new-taxonomy detection +
+        role-family tests; and a regression on the Network Ops case (clean gaps,
+        sane score band) — extending
+        [`test_matching_engine.py`](backend-app-tracker/tests/test_matching_engine.py),
+        [`test_matching_v2.py`](backend-app-tracker/tests/test_matching_v2.py), and
+        the desktop `matchReport.test.ts`.
 
 ### Alerts tab
 

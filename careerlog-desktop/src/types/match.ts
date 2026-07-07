@@ -6,22 +6,45 @@ export interface ExtractedTerms {
   keywords: string[];
 }
 
-/** Per-signal coverage and the matched/missing term lists behind a score. */
-export interface ScoreBreakdown {
-  skillCoverage: number; // 0..1
-  keywordCoverage: number; // 0..1
-  matchedSkills: string[];
-  missingSkills: string[];
-  matchedKeywords: string[];
-  missingKeywords: string[];
+/** How well the résumé covers each part of the posting. `null` = the posting
+ * had no such section (or no recognized concepts) — never a fake 100%. */
+export interface CoverageInfo {
+  required: number | null;
+  responsibility: number | null;
+  preferred: number | null;
+  concept: number | null; // curated-skill signal; null = N/A
+  keyword: number;
+}
+
+export type MatchStatus = "strong" | "partial" | "foundational" | "missing";
+export type MatchBucket = "required" | "responsibility" | "preferred";
+
+/** How much scraped page-chrome leaked into the scored terms (FEAT-31).
+ * `high` means some gaps may be page navigation/footer artifacts, so the
+ * score is only approximate. */
+export type Contamination = "low" | "medium" | "high";
+
+/** One evaluated job term with the résumé evidence that earned its status. */
+export interface TermMatch {
+  term: string;
+  status: MatchStatus;
+  bucket: MatchBucket;
+  isConcept: boolean;
+  evidence: string[];
+  category?: string | null;
 }
 
 /** Result of scoring a résumé against a job description. */
 export interface MatchScore {
   score: number; // 0..100
-  breakdown: ScoreBreakdown;
-  // Ordered gap list (missing skills first) for gap analysis.
-  gaps: string[];
+  confidence: "high" | "medium" | "low";
+  confidenceReason: string;
+  skillSignalAvailable: boolean;
+  contamination: Contamination;
+  roleFamilies: string[];
+  coverage: CoverageInfo;
+  strengths: TermMatch[]; // strong / partial / foundational, best first
+  gaps: TermMatch[]; // missing, most important first
   resume: ExtractedTerms;
   job: ExtractedTerms;
 }
@@ -32,6 +55,18 @@ export interface ScrapeResult {
   textLength: number;
   skills: string[];
   keywords: string[];
+}
+
+/**
+ * Result of extracting an ad-hoc résumé upload. `text` is the extracted plain
+ * text, replayed as `resumeText` when scoring — the file itself isn't stored.
+ */
+export interface ResumeExtractResult {
+  filename: string;
+  textLength: number;
+  skills: string[];
+  keywords: string[];
+  text: string;
 }
 
 /** Request payload for scoring — one résumé source and one job source. */

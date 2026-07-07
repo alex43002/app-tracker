@@ -13,6 +13,7 @@ from app.common.errors import raise_error
 from app.matching import keywords, scoring
 from app.matching.extract import extract_resume_text, html_to_text
 from app.matching.fetch import FetchError, fetch_url
+from app.jobs.service import read_validated_resume
 from app.resumes.service import get_resume_file
 
 
@@ -63,6 +64,33 @@ def scrape_job(url: str) -> dict:
     }
 
 
+def extract_resume_upload(upload) -> dict:
+    """Extract text (and a skill/keyword profile) from an ad-hoc résumé upload.
+
+    Used by Match to score a file the user hasn't saved to a job. The returned
+    ``text`` is handed back to the client, which replays it as ``resumeText``
+    when scoring — nothing is persisted.
+    """
+    data = read_validated_resume(upload)
+    text = extract_resume_text(
+        data, content_type=upload.content_type, filename=upload.filename
+    )
+    if not text:
+        raise_error(
+            code="RESUME_UNREADABLE",
+            message="Could not extract text from this résumé file",
+            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    prof = keywords.profile(text)
+    return {
+        "filename": upload.filename or "",
+        "textLength": len(text),
+        "skills": prof.skills,
+        "keywords": prof.keywords,
+        "text": text,
+    }
+
+
 def score(db, payload, user_id: str) -> dict:
     """Resolve résumé + job text from the request and compute a match score."""
     if payload.resumeText:
@@ -76,18 +104,34 @@ def score(db, payload, user_id: str) -> dict:
         job_text, _ = _job_text_from_url(str(payload.jobUrl))
 
     result = scoring.score_match(resume_text, job_text)
-    b = result.breakdown
+
+    def _term(m) -> dict:
+        return {
+            "term": m.term,
+            "status": m.status,
+            "bucket": m.bucket,
+            "isConcept": m.is_concept,
+            "evidence": m.evidence,
+            "category": m.category,
+        }
+
+    c = result.coverage
     return {
         "score": result.score,
-        "breakdown": {
-            "skillCoverage": b.skill_coverage,
-            "keywordCoverage": b.keyword_coverage,
-            "matchedSkills": b.matched_skills,
-            "missingSkills": b.missing_skills,
-            "matchedKeywords": b.matched_keywords,
-            "missingKeywords": b.missing_keywords,
+        "confidence": result.confidence,
+        "confidenceReason": result.confidence_reason,
+        "skillSignalAvailable": result.skill_signal_available,
+        "contamination": result.contamination,
+        "roleFamilies": result.role_families,
+        "coverage": {
+            "required": c.required,
+            "responsibility": c.responsibility,
+            "preferred": c.preferred,
+            "concept": c.concept,
+            "keyword": c.keyword,
         },
-        "gaps": result.gaps,
+        "strengths": [_term(m) for m in result.strengths],
+        "gaps": [_term(m) for m in result.gaps],
         "resume": {
             "skills": result.resume_profile.skills,
             "keywords": result.resume_profile.keywords,

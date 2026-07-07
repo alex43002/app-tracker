@@ -207,7 +207,10 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "product management": ("product management",),
     # Healthcare / compliance
     "hipaa": ("hipaa",),
-    "emr": ("emr", "electronic medical records"),
+    "emr": (
+        "emr", "ehr", "electronic medical record", "electronic medical records",
+        "electronic health record", "electronic health records",
+    ),
     # Soft skills
     "communication": ("communication",),
     "leadership": ("leadership",),
@@ -228,7 +231,10 @@ _ALIASES_BY_LENGTH = sorted(_ALIAS_TO_CANONICAL, key=len, reverse=True)
 
 
 # Common English + résumé/JD boilerplate stopwords. Kept compact on purpose —
-# the goal is to drop noise, not to be a linguistics-grade list.
+# the goal is to drop noise, not to be a linguistics-grade list. The second
+# block is domain-agnostic job-post scaffolding and company/legal/benefits
+# boilerplate: words like "benefits", "qualifications" or "equal opportunity"
+# say nothing about role fit in *any* field, so they must never move a score.
 STOPWORDS: frozenset[str] = frozenset(
     """
     a an the and or but if then else for to of in on at by with from as is are
@@ -245,8 +251,79 @@ STOPWORDS: frozenset[str] = frozenset(
     looking ideal ability across within while also new well help build building
     need needs want wants seeking seek join apply please ideally must
     proficiency proficient familiarity familiar expertise expert hands
+
+    qualification qualifications basic minimum essential desired nice
+    bonus preferred equivalent related field fields following example examples
+    various multiple several proven demonstrated bachelor master masters
+    degree diploma education educational gpa
+    benefit benefits perk perks compensation salary bonus insurance
+    equal opportunity employer employment diversity inclusion inclusive
+    accommodation accommodations applicant applicants veteran veterans
+    disability disabilities gender race religion age sexual orientation
+    eeo verify authorized authorization sponsorship
+    mission vision culture values people world global globally worldwide
+    business businesses environment environments area areas current future
+    day days daily weekly google amazon meta microsoft
+    users user customers customer clients client stakeholders stakeholder
+    following e.g eg i.e ie per etc provide provides providing ensure ensures
+    ensuring maintain maintains maintaining support supports supporting
+    partner partners partnering deliver delivers delivering drive drives
+
+    careers career cookie cookies privacy copyright sitemap newsletter
+    trademark reserved skip login signin signup subscribe home menu
+    navigation footer header share follow connect related recommended
+    featured similar suggested apply overview posted req id location locations
     """.split()
 )
+
+# Web-chrome / legal / geo tokens that survive section filtering and leak into
+# keyphrases from scraped pages (FEAT-31). Unlike STOPWORDS (dropped wholesale),
+# these gate whole *phrases* via ``is_noise_phrase`` so a legitimate compound is
+# only rejected when a noise token is actually present.
+_NOISE_TOKENS: frozenset[str] = frozenset(
+    """
+    inc llc ltd corp incorporated holdings alphabet
+    criminal histories felony conviction convictions arrest
+    recaptcha captcha
+    """.split()
+)
+
+# Unambiguous state/region abbreviations for location chips ("melbourne vic").
+# Only forms that aren't also common English words are listed so real terms
+# aren't nuked; matched only as the trailing token of a multi-word phrase.
+_REGION_ABBREV: frozenset[str] = frozenset(
+    """
+    nsw vic qld tas
+    tx fl ny nj nc sc ga oh mi mn tn az nv nm ut ca il
+    uk usa apac emea
+    """.split()
+)
+
+# person_outline, arrow_forward, location_on … Material-icon ligatures come
+# through the tokenizer as one snake_case token; no real skill looks like this.
+_LIGATURE_RE = re.compile(r"[a-z]+_[a-z]+")
+
+
+def is_noise_phrase(phrase: str) -> bool:
+    """True if a keyphrase is scraped page-chrome, not role signal (FEAT-31).
+
+    Rejects icon ligatures ("person_outline"), company/legal tokens
+    ("alphabet inc"), repeated-token strings ("careers careers skip") and
+    location chips ("melbourne vic"). Genuine skills and compounds pass.
+    """
+    tokens = phrase.split(" ")
+    if not tokens or not phrase:
+        return True
+    if any(_LIGATURE_RE.fullmatch(t) for t in tokens):
+        return True
+    if any(t in _NOISE_TOKENS for t in tokens):
+        return True
+    if len(tokens) >= 2:
+        if len(set(tokens)) < len(tokens):  # a token repeats
+            return True
+        if tokens[-1] in _REGION_ABBREV:  # trailing state/region code
+            return True
+    return False
 
 # A token: words (incl. internal . + # / -) so c++, ci/cd, node.js survive.
 _WORD_RE = re.compile(r"[a-z0-9][a-z0-9.+#/_-]*[a-z0-9]|[a-z0-9]")
@@ -304,7 +381,10 @@ def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
         if len(a) > 1 and len(b) > 1:
             counts[f"{a} {b}"] += 1
 
-    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ranked = sorted(
+        ((term, cnt) for term, cnt in counts.items() if not is_noise_phrase(term)),
+        key=lambda kv: (-kv[1], kv[0]),
+    )
     return ranked[:limit]
 
 
@@ -379,6 +459,98 @@ def vocabulary(text: str) -> set[str]:
         vocab.add(canonical)
         vocab.add(stem_term(canonical))
     return vocab
+
+
+def content_tokens(text: str) -> list[str]:
+    """Content word-tokens: stopwords, digits, and single chars removed."""
+    return [
+        t
+        for t in _tokens(normalize(text))
+        if t not in STOPWORDS and not t.isdigit() and len(t) > 1
+    ]
+
+
+# Clause/list separators that bound a keyphrase. Slashes and hyphens are kept
+# so skill tokens (tcp/ip, ci/cd, ticket-based) survive.
+_PHRASE_SPLIT_RE = re.compile(r"[,.;:()\[\]{}!?\"'|\n]+")
+
+
+def candidate_phrases(
+    text: str, *, max_words: int = 4, drop_noise: bool = True
+) -> Counter[str]:
+    """Domain-agnostic keyphrase candidates (RAKE-style), with frequencies.
+
+    The text is split on punctuation *and* stopwords; each remaining contiguous
+    run of content tokens is one candidate keyphrase (capped at ``max_words``),
+    and its constituent unigrams are also counted. This preserves multi-word
+    terms like ``specimen collection`` or ``local area network`` in *any* field
+    without a per-domain list, while punctuation splitting keeps comma-separated
+    list items ("assessment, medication administration") from fusing into one
+    bogus phrase.
+
+    ``drop_noise`` filters scraped page-chrome (see ``is_noise_phrase``); pass
+    ``False`` to measure how much noise was present (``noise_rate``).
+    """
+    counts: Counter[str] = Counter()
+
+    def flush(run: list[str]) -> None:
+        if not run:
+            return
+        phrase = " ".join(run[:max_words])
+        if not (drop_noise and is_noise_phrase(phrase)):
+            counts[phrase] += 1
+        for word in run:
+            if len(word) > 1 and not (drop_noise and is_noise_phrase(word)):
+                counts[word] += 1
+
+    for fragment in _PHRASE_SPLIT_RE.split(normalize(text)):
+        run: list[str] = []
+        for tok in _tokens(fragment):
+            if tok in STOPWORDS or tok.isdigit() or len(tok) <= 1:
+                flush(run)
+                run = []
+            else:
+                run.append(tok)
+        flush(run)
+    return counts
+
+
+def noise_rate(text: str) -> float:
+    """Share of a posting's salient phrases that look like scraped chrome.
+
+    A high rate means navigation/footer/related-job text leaked past the
+    structural and boundary filters, so the extracted terms — and the resulting
+    score — are less trustworthy (FEAT-31). Measured over the *raw* RAKE
+    candidates (before the noise filter drops them) so it reflects how much junk
+    was present, not how much survived.
+    """
+    raw = candidate_phrases(text, drop_noise=False)
+    total = sum(raw.values())
+    if not total:
+        return 0.0
+    noisy = sum(count for phrase, count in raw.items() if is_noise_phrase(phrase))
+    return round(noisy / total, 4)
+
+
+def stemmed_ngrams(text: str, *, max_words: int = 3) -> set[str]:
+    """Stemmed contiguous n-grams over the content-token stream.
+
+    Used as the *present* set when matching a job phrase against a résumé so
+    ``specimen collection`` matches ``specimen collections`` (stemming) and
+    survives intervening stopwords being removed on both sides.
+    """
+    stems = [stem(t) for t in content_tokens(text)]
+    out: set[str] = set()
+    n = len(stems)
+    for size in range(1, max_words + 1):
+        for i in range(0, n - size + 1):
+            out.add(" ".join(stems[i : i + size]))
+    return out
+
+
+def stemmed_unigrams(text: str) -> set[str]:
+    """Set of stemmed content unigrams — for unordered 'all words present' checks."""
+    return {stem(t) for t in content_tokens(text)}
 
 
 @dataclass(frozen=True)
