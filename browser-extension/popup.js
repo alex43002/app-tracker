@@ -5,7 +5,7 @@
  * title / company / location (JSON-LD JobPosting first, then Open Graph /
  * heading fallbacks). No build step — plain MV3. */
 
-const DEFAULT_API = "http://localhost:8000";
+const DEFAULT_API = "http://127.0.0.1:8000";
 
 const els = {
   loginView: document.getElementById("login-view"),

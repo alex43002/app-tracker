@@ -164,10 +164,9 @@ backend 293 tests green). AUD-16 remains open._
       `chore/prettier`: added Prettier + `eslint-config-prettier`, a
       `.prettierrc.json`/`.prettierignore`, `npm run format`, and a
       `prettier (desktop)` pre-commit hook, then reformatted the desktop codebase
-      once. tsc/eslint/prettier --check clean; 82 desktop tests green.)_ **Leftover
-      (trivial):** the browser extension still defaults to `http://localhost:8000`
-      vs the desktop/docs `http://127.0.0.1:8000` — unify (deferred to keep this a
-      single-concern formatting PR).
+      once. tsc/eslint/prettier --check clean; 82 desktop tests green.)_ _(The
+      browser-extension `localhost` → `127.0.0.1` default-URL unification followed
+      on `docs/naming-consistency` with AUD-18.)_
 - [ ] **AUD-16 — Avoid redundant tokenization in scoring** (efficiency only, not
       a hot path). [`scoring.py`](backend-app-tracker/app/matching/scoring.py)
       `score_match` tokenizes the same job text via `keywords.profile` in both
@@ -192,8 +191,13 @@ _AUD-17 shipped 2026-07-07 on `docs/refresh-architecture`. AUD-18 remains open._
       mode" non-goal that
       [`api/offlineCache.ts`](careerlog-desktop/src/api/offlineCache.ts) (used by
       `Jobs` + the auth store) contradicts.
-- [ ] **AUD-18 — Reconcile doc naming.** Backend contract docs use uppercase
+- [x] **AUD-18 — Reconcile doc naming.** Backend contract docs used uppercase
       `.MD` (`README.MD`, `MONGO_SCHEMA.MD`, `API_CONTRACT_V2.MD`) while the rest
-      of the repo uses `.md`, and the file is `API_CONTRACT_V2` while
-      README/architecture refer to "API v1". Pick one version label and one
-      extension casing. _(Minor.)_
+      of the repo uses `.md`, and the file was `API_CONTRACT_V2` while the code +
+      the doc's own title say **v1**. _(Shipped 2026-07-07 on
+      `docs/naming-consistency`: renamed the three to lowercase `.md` and dropped
+      the misleading `_V2` → `API_CONTRACT.md` (the API is v1 — `main.py`
+      `version="v1"`), and updated every reference across README/architecture/
+      backend-README/desktop-README/`database.py`. Also folded in the AUD-15
+      leftover: the browser extension now defaults to `http://127.0.0.1:8000`
+      (matching the desktop/docs) instead of `http://localhost:8000`.)_

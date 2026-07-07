@@ -158,7 +158,7 @@ List endpoints (`jobs`, `alerts`, `discovery`) return paginated `data`:
   per-user data isolation.
 
 ### Data model (MongoDB)
-Collections (see [MONGO_SCHEMA.MD](backend-app-tracker/MONGO_SCHEMA.MD)). Every
+Collections (see [MONGO_SCHEMA.md](backend-app-tracker/MONGO_SCHEMA.md)). Every
 user-owned document carries a `userId` and is queried scoped to it.
 
 _Core tracking (per-user):_
@@ -333,7 +333,7 @@ Test: `pytest`. CI runs the suite against a `mongo:7` service on every push/PR t
 ## 7. Versioning & Contracts
 
 The frontend targets **CareerLog API v1**. The request/response shapes are pinned in
-the backend's [API_CONTRACT_V2.MD](backend-app-tracker/API_CONTRACT_V2.MD) and
-[MONGO_SCHEMA.MD](backend-app-tracker/MONGO_SCHEMA.MD). Breaking frontend changes
+the backend's [API_CONTRACT.md](backend-app-tracker/API_CONTRACT.md) and
+[MONGO_SCHEMA.md](backend-app-tracker/MONGO_SCHEMA.md). Breaking frontend changes
 must align with backend versioning; the uniform response envelope and pagination
 contract are the stable seam between the two repositories.
