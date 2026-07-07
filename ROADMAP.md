@@ -1,6 +1,6 @@
 # CareerLog — Product Roadmap (Remaining Work)
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-07_
 
 All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, **feature (FEAT-\*)**,
 and **bug (BUG-\*)** roadmap items are complete — including the résumé ↔ job
@@ -40,44 +40,47 @@ real tag push, so they can't be automated here:
 ## ⬜ Codebase audit (2026-07-06)
 
 Findings from a multi-pass audit of the whole monorepo (backend, desktop
-renderer, Electron shell, browser extension, docs/config). **No functional code
-was changed** — this section only records the work. Tooling baseline at audit
-time: `ruff` (F, E9) **clean**, `tsc --noEmit` **clean**, `eslint` **clean**; the
-items below came from deeper reads plus `ruff` extended rules and a `ts-prune`
-unused-export scan.
+renderer, Electron shell, browser extension, docs/config). The safe-removal
+batch (AUD-01…06) has since been implemented; the remaining items are still
+open. Tooling baseline at audit time: `ruff` (F, E9) **clean**, `tsc --noEmit`
+**clean**, `eslint` **clean**; the items below came from deeper reads plus `ruff`
+extended rules and a `ts-prune` unused-export scan.
 
 ### Dead code & unused files (safe removals)
 
-- [ ] **AUD-01 — Delete unused desktop components.**
+_AUD-01…05 shipped 2026-07-07 on `chore/dead-code-cleanup` (tsc/eslint/ruff clean;
+backend 293 + desktop 82 tests green)._
+
+- [x] **AUD-01 — Delete unused desktop components.**
       [`components/common/Button.tsx`](careerlog-desktop/src/components/common/Button.tsx)
       and
       [`components/common/Loader.tsx`](careerlog-desktop/src/components/common/Loader.tsx)
       are imported nowhere (confirmed via `ts-prune` + repo-wide grep for both
       the import path and JSX usage).
-- [ ] **AUD-02 — Remove leftover Vite template files.**
+- [x] **AUD-02 — Remove leftover Vite template files.**
       [`src/App.css`](careerlog-desktop/src/App.css) is never imported (only
       `index.css` is, in `main.tsx`), and
       [`src/assets/react.svg`](careerlog-desktop/src/assets/react.svg) is
       unreferenced. The default `public/vite.svg` is still wired as the renderer
       favicon in `index.html` — replace with real branding (tracked with the
       Release-prep branding item above).
-- [ ] **AUD-03 — Drop the unused `react-confirm` dependency.** It's declared in
+- [x] **AUD-03 — Drop the unused `react-confirm` dependency.** It's declared in
       [`careerlog-desktop/package.json`](careerlog-desktop/package.json) but
       imported nowhere — confirmation dialogs are hand-rolled in
       [`confirmController.ts`](careerlog-desktop/src/components/common/dialogs/confirmController.ts).
       Remove the dep (and its mention in the architecture doc — see AUD-17).
-- [ ] **AUD-04 — Remove dead code in the matching engine.** In
+- [x] **AUD-04 — Remove dead code in the matching engine.** In
       [`app/matching/analyze.py`](backend-app-tracker/app/matching/analyze.py)
       the module-level `_KIND_RANK` constant is referenced nowhere, and the local
       `add()` closure inside `analyze_job` takes a `kind` parameter that every
       call passes (`section.kind`) but the body never reads. Drop both.
-- [ ] **AUD-05 — Remove the unused `HelpTextKey` type export** in
+- [x] **AUD-05 — Remove the unused `HelpTextKey` type export** in
       [`job-form/config/helpText.ts`](careerlog-desktop/src/components/jobs/job-form/config/helpText.ts)
       (exported, used nowhere).
 
 ### Build hygiene / gitignore
 
-- [ ] **AUD-06 — Stop tracking compiled Electron output.**
+- [x] **AUD-06 — Stop tracking compiled Electron output.**
       `careerlog-desktop/electron-dist/main.js` and `preload.js` are build
       artifacts of `electron/main.ts` / `electron/preload.ts` (produced by
       `npm run build:electron:ts`) yet are committed. Add `electron-dist/` to
