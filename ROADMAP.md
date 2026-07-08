@@ -1,6 +1,6 @@
 # CareerLog — Product Roadmap (Remaining Work)
 
-_Last updated: 2026-07-07_
+_Last updated: 2026-07-08_
 
 All tracked **security (SEC-\*)**, **cleanup (CLN-\*)**, **feature (FEAT-\*)**,
 and **bug (BUG-\*)** items are complete, as is the **first codebase-audit batch**
@@ -13,11 +13,11 @@ Also **live now**: a branch-protection gate on `main` (repo ruleset) requiring a
 GitHub Code Quality coverage gate was removed — it's org-only, unavailable on a
 personal repo; see **AUD-21** for a free-tier replacement.)
 
-What remains: the **manual release steps** (signing secrets, the first tagged
-release, and branding), plus two small **audit follow-ups** (AUD-22 / AUD-23)
-logged 2026-07-08. The structured audit is otherwise closed — **AUD-20** shipped
-on `refactor/aud-20-drop-exports`, after **AUD-09 / AUD-16 / AUD-21** (PRs #55 /
-#56 / #57) and the release-workflow move (PR #59).
+What remains: only the **manual release steps** (signing secrets, the first
+tagged release, and branding). The structured audit is now **fully closed** — the
+two follow-ups **AUD-22 / AUD-23** shipped 2026-07-08 (PRs #61 / #62), after
+**AUD-20** (`refactor/aud-20-drop-exports`), **AUD-09 / AUD-16 / AUD-21** (PRs #55
+/ #56 / #57), and the release-workflow move (PR #59).
 
 ---
 
@@ -143,10 +143,11 @@ future pass; neither is CI-breaking.
 
 ---
 
-## ⬜ Codebase audit — follow-ups (surfaced 2026-07-08 during AUD-20)
+## ✅ Codebase audit — follow-ups (surfaced 2026-07-08 during AUD-20)
 
-Two pre-existing issues noticed while shipping AUD-20 — both outside that PR's
-scope, recorded here so they aren't lost. Neither is CI-breaking.
+Two pre-existing issues noticed while shipping AUD-20 — both were outside that
+PR's scope, so they were logged here and have since shipped (PRs #61 / #62).
+Neither was CI-breaking.
 
 - [x] **AUD-22 — De-duplicate the `SessionTokens` interface.** The identical
       4-field token shape (`jwt` / `expiresAt` / `refreshToken` /
