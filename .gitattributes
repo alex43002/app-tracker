@@ -1,0 +1,23 @@
+# Normalize line endings across platforms (ROADMAP AUD-23).
+# Store text as LF in the repo and check it out as LF everywhere — including
+# Windows, where core.autocrlf would otherwise rewrite the working tree to CRLF.
+# This keeps local `git`, Prettier, and ESLint seeing the same endings the
+# Linux CI (the pre-commit gate) enforces.
+* text=auto eol=lf
+
+# Binary assets — never normalize line endings or diff as text.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.icns binary
+*.woff  binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# Note: *.svg is intentionally left as text — it is XML and benefits from LF
+# normalization and readable diffs.
