@@ -1,3 +1,4 @@
+import type { SessionTokens } from "../api/auth";
 import { setAuthToken } from "../api/client";
 import { clearOfflineCache } from "../api/offlineCache";
 
@@ -5,14 +6,6 @@ const TOKEN_KEY = "careerlog_token";
 const EXPIRY_KEY = "careerlog_token_expiry";
 const REFRESH_KEY = "careerlog_refresh_token";
 const REFRESH_EXPIRY_KEY = "careerlog_refresh_expiry";
-
-/** Token bundle returned by login/register/refresh. */
-interface SessionTokens {
-  jwt: string;
-  expiresAt: string;
-  refreshToken: string;
-  refreshExpiresAt: string;
-}
 
 let authReady = false;
 const listeners = new Set<() => void>();
