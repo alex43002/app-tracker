@@ -25,11 +25,17 @@ The cross-platform build + tag-driven release workflow is wired and an on-theme
 placeholder app icon is in place. The remaining steps need your credentials and a
 real tag push, so they can't be automated here:
 
-- [ ] **Move the release workflow to the repo root so it triggers.**
-      `careerlog-desktop/.github/workflows/release.yml` is **nested** — GitHub
+- [x] **Move the release workflow to the repo root so it triggers.**
+      `careerlog-desktop/.github/workflows/release.yml` was **nested** — GitHub
       only runs workflows in the repo-root `.github/workflows/`, so it (like the
-      old nested `ci.yml`s) never fires. Move it to `.github/workflows/` before
-      relying on tag-driven releases.
+      old nested `ci.yml`s) never fired. _(Shipped 2026-07-08 on
+      `ci/release-workflow-to-root`: `git mv`'d it to
+      [`.github/workflows/release.yml`](.github/workflows/release.yml) with no
+      content changes — its `working-directory: careerlog-desktop` and
+      `cache-dependency-path: careerlog-desktop/package-lock.json` were already
+      repo-root-relative, so it needs no edits to run from the root. Triggers
+      only on `v*` tag push / manual dispatch, so it stays dormant until the
+      first tagged release below.)_
 - [ ] **Configure signing / notarization secrets in GitHub Actions** (per-OS:
       Windows code-signing cert, macOS Developer ID + notarization credentials).
       Builds succeed unsigned when these are absent. _(Manual — needs your
