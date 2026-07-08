@@ -83,6 +83,36 @@ def test_vocabulary_includes_stemmed_unigrams_and_bigrams():
     assert "distribut logistic" in vocab
 
 
+# --------------------------- shared tokenization (AUD-16) -------------------
+# The scoring path now tokenizes each text once and slices/derives the profiles
+# from that shared work. These pin the invariants that make that safe.
+
+def test_extract_keywords_is_a_slice_of_ranked_keywords():
+    text = "logistics logistics warehouse warehouse inventory supply chain the and a"
+    ranked = keywords.ranked_keywords(text)
+    assert keywords.extract_keywords(text, limit=3) == ranked[:3]
+    assert keywords.extract_keywords(text, limit=1000) == ranked
+
+
+def test_build_profile_matches_profile_at_every_limit():
+    text = (
+        "Senior Python developer. Django, PostgreSQL, REST APIs, data pipelines, "
+        "AWS, and strong communication in agile teams."
+    )
+    skills = keywords.extract_skills(text)
+    ranked = keywords.ranked_keywords(text)
+    for limit in (1, 5, 25, 50):
+        assert keywords.build_profile(
+            skills, ranked, keyword_limit=limit
+        ) == keywords.profile(text, keyword_limit=limit)
+
+
+def test_vocabulary_with_precomputed_skills_matches_default():
+    text = "Managing distributed logistics with Python and Kafka pipelines"
+    skills = keywords.extract_skills(text)
+    assert keywords.vocabulary(text, skills=skills) == keywords.vocabulary(text)
+
+
 # --------------------------- text extraction --------------------------------
 
 def test_extract_plain_text():

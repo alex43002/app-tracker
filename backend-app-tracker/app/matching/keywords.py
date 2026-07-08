@@ -365,11 +365,13 @@ def extract_skills(text: str) -> list[str]:
     return [c for c, _ in sorted(found.items(), key=lambda kv: kv[1])]
 
 
-def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
-    """Generic ranked keywords (unigrams + bigrams) with their frequency.
+def ranked_keywords(text: str) -> list[tuple[str, int]]:
+    """The full frequency-ranked keyword list (unigrams + bigrams), unlimited.
 
-    Stopwords and pure numbers are dropped. Bigrams are only kept when both
-    halves are content words. Returned highest-frequency first; ties broken
+    This is the tokenize → count → rank work that ``extract_keywords`` and
+    ``profile`` both consume; splitting it out lets a caller that needs the same
+    text at more than one ``limit`` (see ``matching.scoring``) tokenize it once
+    and slice the shared result. Highest-frequency first; ties broken
     alphabetically for determinism.
     """
     toks = [t for t in _tokens(normalize(text)) if t not in STOPWORDS and not t.isdigit()]
@@ -381,11 +383,20 @@ def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
         if len(a) > 1 and len(b) > 1:
             counts[f"{a} {b}"] += 1
 
-    ranked = sorted(
+    return sorted(
         ((term, cnt) for term, cnt in counts.items() if not is_noise_phrase(term)),
         key=lambda kv: (-kv[1], kv[0]),
     )
-    return ranked[:limit]
+
+
+def extract_keywords(text: str, *, limit: int = 30) -> list[tuple[str, int]]:
+    """Generic ranked keywords (unigrams + bigrams) with their frequency.
+
+    Stopwords and pure numbers are dropped. Bigrams are only kept when both
+    halves are content words. Returned highest-frequency first; ties broken
+    alphabetically for determinism.
+    """
+    return ranked_keywords(text)[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -437,12 +448,16 @@ def stem_term(term: str) -> str:
     return " ".join(stem(part) for part in term.split(" "))
 
 
-def vocabulary(text: str) -> set[str]:
+def vocabulary(text: str, *, skills: list[str] | None = None) -> set[str]:
     """All stemmed content terms (unigrams + bigrams) present in ``text``.
 
     Used as the *present* set when scoring keyword coverage so a job keyword is
     credited whenever it appears anywhere in the résumé — not just in the
     résumé's top-ranked keywords — and across inflectional variants.
+
+    ``skills`` may be supplied pre-computed to skip re-running ``extract_skills``
+    when the caller already has them; since skill extraction is deterministic in
+    ``text``, passing ``extract_skills(text)`` is equivalent to the default.
     """
     toks = [
         t
@@ -455,7 +470,7 @@ def vocabulary(text: str) -> set[str]:
         vocab.add(f"{a} {b}")
     # Fold in canonical skills so a job keyword that is really a skill still
     # matches even though skills are stored unstemmed.
-    for canonical in extract_skills(text):
+    for canonical in extract_skills(text) if skills is None else skills:
         vocab.add(canonical)
         vocab.add(stem_term(canonical))
     return vocab
@@ -579,9 +594,18 @@ def _skill_token_set(skills: list[str]) -> set[str]:
     return tokens
 
 
-def profile(text: str, *, keyword_limit: int = 30) -> TermProfile:
-    """Full term profile for a block of text: skills + ranked keywords."""
-    skills = extract_skills(text)
+def build_profile(
+    skills: list[str], ranked: list[tuple[str, int]], *, keyword_limit: int = 30
+) -> TermProfile:
+    """Assemble a ``TermProfile`` from already-extracted signals.
+
+    ``skills`` is the output of ``extract_skills`` and ``ranked`` the full list
+    from ``ranked_keywords`` for the *same* text. Split out from ``profile`` so a
+    caller needing several profiles of one text (or the skills/ranked list for
+    other work too) extracts each underlying signal only once. Behaviour matches
+    ``profile`` exactly: the ranked list is sliced to ``keyword_limit`` first,
+    then skill-echo keywords are dropped.
+    """
     skill_set = set(skills)
     skill_tokens = _skill_token_set(skills)
 
@@ -595,7 +619,13 @@ def profile(text: str, *, keyword_limit: int = 30) -> TermProfile:
         return all(p in skill_tokens for p in parts)
 
     keywords = [
-        term for term, _ in extract_keywords(text, limit=keyword_limit)
-        if not _is_skill_echo(term)
+        term for term, _ in ranked[:keyword_limit] if not _is_skill_echo(term)
     ]
     return TermProfile(skills=skills, keywords=keywords)
+
+
+def profile(text: str, *, keyword_limit: int = 30) -> TermProfile:
+    """Full term profile for a block of text: skills + ranked keywords."""
+    return build_profile(
+        extract_skills(text), ranked_keywords(text), keyword_limit=keyword_limit
+    )
