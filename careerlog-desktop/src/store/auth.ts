@@ -7,7 +7,7 @@ const REFRESH_KEY = "careerlog_refresh_token";
 const REFRESH_EXPIRY_KEY = "careerlog_refresh_expiry";
 
 /** Token bundle returned by login/register/refresh. */
-export interface SessionTokens {
+interface SessionTokens {
   jwt: string;
   expiresAt: string;
   refreshToken: string;

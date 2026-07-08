@@ -44,7 +44,7 @@ export function clearOfflineCache(): void {
   }
 }
 
-export interface CachedResult<T> {
+interface CachedResult<T> {
   data: T;
   /** True when `data` came from the cache because the live fetch failed. */
   stale: boolean;

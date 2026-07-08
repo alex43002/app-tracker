@@ -49,7 +49,7 @@ export function setAuthToken(token: string | null) {
 /**
  * A single field-level validation problem (present on VALIDATION_ERROR).
  */
-export interface ApiErrorDetail {
+interface ApiErrorDetail {
   field: string;
   message: string;
 }
@@ -57,7 +57,7 @@ export interface ApiErrorDetail {
 /**
  * Structured error payload returned by the backend.
  */
-export interface ApiErrorPayload {
+interface ApiErrorPayload {
   code: string;
   message: string;
   details?: ApiErrorDetail[];
@@ -66,7 +66,7 @@ export interface ApiErrorPayload {
 /**
  * Standard API response envelope.
  */
-export interface ApiResponse<T> {
+interface ApiResponse<T> {
   success: boolean;
   data: T | null;
   error: ApiErrorPayload | null;

@@ -13,9 +13,10 @@ Also **live now**: a branch-protection gate on `main` (repo ruleset) requiring a
 GitHub Code Quality coverage gate was removed — it's org-only, unavailable on a
 personal repo; see **AUD-21** for a free-tier replacement.)
 
-What remains: a few **manual release steps** and the cosmetic **AUD-20**. The
-rest of the audit — **AUD-09, AUD-16, and AUD-21** — shipped 2026-07-08 in PRs
-#55 / #56 / #57.
+What remains: only the **manual release steps** (signing secrets, the first
+tagged release, and branding). The codebase audit is fully closed — **AUD-20**
+shipped 2026-07-08 on `refactor/aud-20-drop-exports`, after **AUD-09 / AUD-16 /
+AUD-21** (PRs #55 / #56 / #57) and the release-workflow move (PR #59).
 
 ---
 
@@ -51,7 +52,7 @@ real tag push, so they can't be automated here:
 
 ---
 
-## ⬜ Codebase audit — still open (from the 2026-07-06 pass)
+## ✅ Codebase audit — complete (from the 2026-07-06 pass)
 
 ### Duplication / reuse
 
@@ -99,7 +100,7 @@ real tag push, so they can't be automated here:
 
 ---
 
-## ⬜ Codebase audit — second pass (2026-07-07)
+## ✅ Codebase audit — second pass (2026-07-07)
 
 Re-audited the whole monorepo after the first batch merged. The mechanical
 baseline is now **clean and enforced** in the pre-commit CI gate: `ruff`
@@ -112,27 +113,35 @@ desktop leftovers turned up:
 - [x] **AUD-19 — Delete the empty dead hook file.**
       `components/jobs/job-form/hooks/useJobFormValidation.ts` was a **0-line
       file** imported nowhere. _(Removed in this PR.)_
-- [ ] **AUD-20 — Drop unnecessary `export`s (used in-module only).** `knip` flags
+- [x] **AUD-20 — Drop unnecessary `export`s (used in-module only).** `knip` flagged
       `STRONG_MATCH_MIN` / `PARTIAL_MATCH_MIN`
       ([`lib/matchReport.ts`](careerlog-desktop/src/lib/matchReport.ts)) and
       `JOB_COLUMNS`
       ([`components/jobs/jobColumns.tsx`](careerlog-desktop/src/components/jobs/jobColumns.tsx))
-      as exported constants used only within their own module, plus ~11 exported
+      as exported constants used only within their own module, plus exported
       types (`ApiResponse`/`ApiErrorPayload`/`ApiErrorDetail` in
       [`api/client.ts`](careerlog-desktop/src/api/client.ts), `SessionTokens`,
       `UserContextValue`, `MatchReportInput`, `CachedResult`, the job-form config
-      types) with no cross-module importer. Drop `export` where the symbol isn't
-      part of an intended public surface. _(Cosmetic; verify each — some types may
-      be kept deliberately as the module's typed contract.)_
+      types) with no cross-module importer. _(Shipped 2026-07-08 on
+      `refactor/aud-20-drop-exports`: dropped `export` from 14 in-module-only
+      symbols across 9 files — the two `matchReport` consts + `JOB_COLUMNS`;
+      `ApiResponse` / `ApiErrorPayload` / `ApiErrorDetail`; both `SessionTokens`
+      (`api/auth.ts` + `store/auth.ts`); `UserContextValue`; `MatchReportInput`;
+      `CachedResult`; and the job-form `JobFormSectionKey` / `JobFormFieldConfig`
+      / `ValidationRule`. Verified each had zero cross-module importers first, and
+      deliberately **kept** the JobForm contract types (`JobFormValues`,
+      `JobFormErrors`, `UseJobFormResult`, `JobFormSavePayload`,
+      `JobFormInitOptions`, `JobFormFieldKey`) exported — sibling modules import
+      them. `tsc` + `eslint` (0 errors) + Prettier clean; 90 desktop tests green.)_
 
-**Bottom line:** the codebase is in good shape. With AUD-09 (CRUD-page
-duplication) now shipped, only the cosmetic **AUD-20** remains — there is no
-meaningful dead code or complexity left to remove; the first audit + the C901
-gate did their job.
+**Bottom line:** the codebase is in good shape. With **AUD-20** now shipped, the
+entire codebase audit (both passes) is closed — there is no meaningful dead code,
+complexity, or stray export left to remove; the first audit + the C901 gate did
+their job.
 
 ---
 
-## ⬜ CI / tooling
+## ✅ CI / tooling
 
 - [x] **AUD-21 — Free-tier code-coverage CI (replace the removed Code Quality
       gate).** The GitHub Code Quality coverage workflow was removed — it needs an

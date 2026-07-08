@@ -19,7 +19,7 @@ export interface SignupRequest {
 }
 
 /** Access + refresh token bundle. `expiresAt` fields are ISO-8601 timestamps. */
-export interface SessionTokens {
+interface SessionTokens {
   jwt: string;
   expiresAt: string;
   refreshToken: string;

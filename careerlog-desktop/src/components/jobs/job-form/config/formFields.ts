@@ -24,10 +24,9 @@ export type JobFormFieldKey =
   | "status"
   | "notes";
 
-export type JobFormSectionKey =
-  "jobInfo" | "compensation" | "applicationDetails";
+type JobFormSectionKey = "jobInfo" | "compensation" | "applicationDetails";
 
-export interface JobFormFieldConfig {
+interface JobFormFieldConfig {
   key: JobFormFieldKey;
   label: string;
   required?: boolean;

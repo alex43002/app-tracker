@@ -23,7 +23,7 @@ export interface JobColumn {
 export const ACTIONS_COLUMN_KEY = "actions";
 
 /** Data columns (everything except the special Actions column). */
-export const JOB_COLUMNS: JobColumn[] = [
+const JOB_COLUMNS: JobColumn[] = [
   {
     key: "company",
     label: "Company",
