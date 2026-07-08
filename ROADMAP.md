@@ -13,10 +13,11 @@ Also **live now**: a branch-protection gate on `main` (repo ruleset) requiring a
 GitHub Code Quality coverage gate was removed — it's org-only, unavailable on a
 personal repo; see **AUD-21** for a free-tier replacement.)
 
-What remains: only the **manual release steps** (signing secrets, the first
-tagged release, and branding). The codebase audit is fully closed — **AUD-20**
-shipped 2026-07-08 on `refactor/aud-20-drop-exports`, after **AUD-09 / AUD-16 /
-AUD-21** (PRs #55 / #56 / #57) and the release-workflow move (PR #59).
+What remains: the **manual release steps** (signing secrets, the first tagged
+release, and branding), plus two small **audit follow-ups** (AUD-22 / AUD-23)
+logged 2026-07-08. The structured audit is otherwise closed — **AUD-20** shipped
+on `refactor/aud-20-drop-exports`, after **AUD-09 / AUD-16 / AUD-21** (PRs #55 /
+#56 / #57) and the release-workflow move (PR #59).
 
 ---
 
@@ -134,10 +135,35 @@ desktop leftovers turned up:
       `JobFormInitOptions`, `JobFormFieldKey`) exported — sibling modules import
       them. `tsc` + `eslint` (0 errors) + Prettier clean; 90 desktop tests green.)_
 
-**Bottom line:** the codebase is in good shape. With **AUD-20** now shipped, the
-entire codebase audit (both passes) is closed — there is no meaningful dead code,
-complexity, or stray export left to remove; the first audit + the C901 gate did
-their job.
+**Bottom line:** the codebase is in good shape. With **AUD-20** now shipped, both
+structured audit passes are done — no meaningful dead code, complexity, or stray
+export left; the first audit + the C901 gate did their job. Two small pre-existing
+items surfaced while shipping it (**AUD-22 / AUD-23** below) are logged for a
+future pass; neither is CI-breaking.
+
+---
+
+## ⬜ Codebase audit — follow-ups (surfaced 2026-07-08 during AUD-20)
+
+Two pre-existing issues noticed while shipping AUD-20 — both outside that PR's
+scope, recorded here so they aren't lost. Neither is CI-breaking.
+
+- [ ] **AUD-22 — De-duplicate the `SessionTokens` interface.** The identical
+      4-field token shape (`jwt` / `expiresAt` / `refreshToken` /
+      `refreshExpiresAt`) is declared twice —
+      [`api/auth.ts`](careerlog-desktop/src/api/auth.ts) and
+      [`store/auth.ts`](careerlog-desktop/src/store/auth.ts). Pick one canonical
+      definition and import it in the other (or hoist to `types/`).
+      Behaviour-preserving. _(Both were de-`export`ed in AUD-20; consolidating
+      re-adds a single `export` on the canonical module.)_
+- [ ] **AUD-23 — Add a `.gitattributes` to normalize line endings to LF.** The
+      repo has no `.gitattributes`, so with `core.autocrlf=true` on Windows every
+      checkout rewrites source to CRLF in the working tree (`git ls-files --eol`
+      shows `i/lf w/crlf`). Repo blobs are all LF and CI (Linux) is green, but
+      locally this makes `prettier --check` / `eslint` report false failures and
+      `git add` warn on every file. Add `* text=auto eol=lf` (plus binary markers
+      for images/icons/fonts) so Windows checkouts match the LF the repo and the
+      pre-commit Prettier gate expect.
 
 ---
 
