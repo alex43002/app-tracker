@@ -158,14 +158,20 @@ scope, recorded here so they aren't lost. Neither is CI-breaking.
       extends and `/refresh` returns) and replaced the copy in `store/auth.ts` with
       a type-only `import type`. Behaviour-preserving type-only change; `tsc` +
       `eslint` clean, 12 auth unit tests green.)_
-- [ ] **AUD-23 — Add a `.gitattributes` to normalize line endings to LF.** The
-      repo has no `.gitattributes`, so with `core.autocrlf=true` on Windows every
-      checkout rewrites source to CRLF in the working tree (`git ls-files --eol`
-      shows `i/lf w/crlf`). Repo blobs are all LF and CI (Linux) is green, but
-      locally this makes `prettier --check` / `eslint` report false failures and
-      `git add` warn on every file. Add `* text=auto eol=lf` (plus binary markers
-      for images/icons/fonts) so Windows checkouts match the LF the repo and the
-      pre-commit Prettier gate expect.
+- [x] **AUD-23 — Add a `.gitattributes` to normalize line endings to LF.** The
+      repo had no `.gitattributes`, so with `core.autocrlf=true` on Windows every
+      checkout rewrote source to CRLF in the working tree (`git ls-files --eol`
+      showed `i/lf w/crlf`). Repo blobs are all LF and CI (Linux) is green, but
+      locally this made `prettier --check` / `eslint` report false failures and
+      `git add` warn on every file. _(Shipped 2026-07-08 on
+      `chore/aud-23-gitattributes`: added a repo-root
+      [`.gitattributes`](.gitattributes) with `* text=auto eol=lf` plus `binary`
+      markers for image/icon/font types (png/jpg/jpeg/gif/webp/ico/icns +
+      woff/woff2/ttf/eot/otf); `*.svg` deliberately kept as text. Verified
+      `git check-attr` resolves source→`eol=lf`, png→`binary`, and
+      `git add --renormalize .` stages nothing new — every tracked blob was
+      already LF, so the only content change is the new file. Future Windows
+      checkouts now land as LF, matching CI.)_
 
 ---
 
