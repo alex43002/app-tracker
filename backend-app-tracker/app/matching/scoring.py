@@ -157,18 +157,29 @@ def _coverage(matches: list[TermMatch], bucket: str) -> float | None:
     return round(earned / total, 4)
 
 
-def _keyword_coverage(resume_text: str, job_text: str) -> float:
-    """Legacy general keyword overlap (stemmed), kept as a stable fallback."""
-    job = keywords.profile(job_text)
-    if not job.keywords:
+def _keyword_coverage(
+    job_skills: list[str],
+    job_ranked: list[tuple[str, int]],
+    resume_text: str,
+    resume_skills: list[str],
+) -> float:
+    """Legacy general keyword overlap (stemmed), kept as a stable fallback.
+
+    Takes the job's already-extracted skills + ranked keywords (so the job text
+    isn't tokenized again here) and the résumé's skills (so its vocabulary skips
+    a second skill extraction). Behaviour is identical to profiling the job at
+    the default limit and folding the résumé vocabulary as before.
+    """
+    job_keywords = keywords.build_profile(job_skills, job_ranked).keywords
+    if not job_keywords:
         return 0.0
-    resume_vocab = keywords.vocabulary(resume_text)
+    resume_vocab = keywords.vocabulary(resume_text, skills=resume_skills)
     matched = sum(
         1
-        for kw in job.keywords
+        for kw in job_keywords
         if kw in resume_vocab or keywords.stem_term(kw) in resume_vocab
     )
-    return round(matched / len(job.keywords), 4)
+    return round(matched / len(job_keywords), 4)
 
 
 def _confidence(
@@ -205,10 +216,25 @@ def score_match(resume_text: str, job_text: str, *, keyword_limit: int = 25) -> 
     """Compare a résumé to a job description and return an explainable result."""
     job = analyze.analyze_job(job_text)
     resume = analyze.analyze_resume(resume_text)
-    keyword_cov = _keyword_coverage(resume_text, job_text)
 
-    resume_profile = keywords.profile(resume_text, keyword_limit=keyword_limit * 2)
-    job_profile = keywords.profile(job_text, keyword_limit=keyword_limit)
+    # Tokenize each text once for the keyword signals (AUD-16): the skills list
+    # and the full ranked-keyword list are extracted a single time per text and
+    # reused for keyword coverage and both term profiles below, rather than being
+    # recomputed inside every `profile()` call (the résumé and job were each
+    # tokenized for keywords twice before, at different limits).
+    job_skills = keywords.extract_skills(job_text)
+    job_ranked = keywords.ranked_keywords(job_text)
+    resume_skills = keywords.extract_skills(resume_text)
+    resume_ranked = keywords.ranked_keywords(resume_text)
+
+    keyword_cov = _keyword_coverage(job_skills, job_ranked, resume_text, resume_skills)
+
+    resume_profile = keywords.build_profile(
+        resume_skills, resume_ranked, keyword_limit=keyword_limit * 2
+    )
+    job_profile = keywords.build_profile(
+        job_skills, job_ranked, keyword_limit=keyword_limit
+    )
 
     matches: list[TermMatch] = []
     for term in job.terms:
