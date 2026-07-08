@@ -148,14 +148,16 @@ future pass; neither is CI-breaking.
 Two pre-existing issues noticed while shipping AUD-20 — both outside that PR's
 scope, recorded here so they aren't lost. Neither is CI-breaking.
 
-- [ ] **AUD-22 — De-duplicate the `SessionTokens` interface.** The identical
+- [x] **AUD-22 — De-duplicate the `SessionTokens` interface.** The identical
       4-field token shape (`jwt` / `expiresAt` / `refreshToken` /
-      `refreshExpiresAt`) is declared twice —
+      `refreshExpiresAt`) was declared twice —
       [`api/auth.ts`](careerlog-desktop/src/api/auth.ts) and
-      [`store/auth.ts`](careerlog-desktop/src/store/auth.ts). Pick one canonical
-      definition and import it in the other (or hoist to `types/`).
-      Behaviour-preserving. _(Both were de-`export`ed in AUD-20; consolidating
-      re-adds a single `export` on the canonical module.)_
+      [`store/auth.ts`](careerlog-desktop/src/store/auth.ts). _(Shipped 2026-07-08
+      on `refactor/aud-22-session-tokens`: made `api/auth.ts` canonical — re-added
+      the single `export` on its `SessionTokens` (the API contract `AuthSession`
+      extends and `/refresh` returns) and replaced the copy in `store/auth.ts` with
+      a type-only `import type`. Behaviour-preserving type-only change; `tsc` +
+      `eslint` clean, 12 auth unit tests green.)_
 - [ ] **AUD-23 — Add a `.gitattributes` to normalize line endings to LF.** The
       repo has no `.gitattributes`, so with `core.autocrlf=true` on Windows every
       checkout rewrites source to CRLF in the working tree (`git ls-files --eol`
