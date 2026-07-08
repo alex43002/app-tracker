@@ -9,12 +9,12 @@ file — it lives in git and in the PR record (#41–#48).
 
 Also **live now**: a branch-protection gate on `main` (repo ruleset) requiring a
 **pre-commit** check — `ruff` (incl. **C901** complexity), **Prettier**, **tsc**,
-**eslint**, plus generic hygiene — and **CodeQL** code scanning. Coverage runs on
-every PR (best-effort; GitHub Code Quality is org-only so it isn't gated here).
-See [`.github/CODE_QUALITY_SETUP.md`](.github/CODE_QUALITY_SETUP.md).
+**eslint**, plus generic hygiene — and **CodeQL** code scanning. (An earlier
+GitHub Code Quality coverage gate was removed — it's org-only, unavailable on a
+personal repo; see **AUD-21** for a free-tier replacement.)
 
-What remains: a few **manual release steps**, three **open audit items**
-(AUD-09/10/16), and a **second audit pass** (2026-07-07).
+What remains: a few **manual release steps**, the **open audit items**
+(AUD-09/16, plus AUD-21), and a **second audit pass** (2026-07-07).
 
 ---
 
@@ -56,13 +56,15 @@ real tag push, so they can't be automated here:
 
 ### Complexity / oversized modules
 
-- [ ] **AUD-10 — Decompose `pages/Discovery.tsx`.** Now **988 lines with 29
-      `useState` hooks** in one component
-      ([`Discovery.tsx`](careerlog-desktop/src/pages/Discovery.tsx)) — the largest
-      and most stateful file in the renderer. Split into filters-panel, results,
-      alerts-panel, and preferences child components, and lift the query/filter
-      state into a `useDiscovery` hook. _(Frontend, no direct tests — verify by
-      running the app.)_
+- [x] **AUD-10 — Decompose `pages/Discovery.tsx`.** Was **988 lines with 29
+      `useState` hooks** in one component. _(Shipped 2026-07-08 on
+      `refactor/discovery-decompose` (PR #53): lifted all state/effects/handlers
+      into a `useDiscovery` hook and split the JSX into 6 presentational panels
+      (`ImportBoardPanel`, `DiscoveryFilters`, `PreferencesPanel`,
+      `SavedSearchesPanel`, `ResumeFitPanel`, `DiscoveryResults`); `Discovery.tsx`
+      is now ~110 lines. Behaviour-preserving — verified by running the app
+      (Playwright): login → Discover renders all panels, title/type filters and
+      pagination work, zero console errors.)_
 
 ### Efficiency
 
@@ -103,7 +105,30 @@ desktop leftovers turned up:
       part of an intended public surface. _(Cosmetic; verify each — some types may
       be kept deliberately as the module's typed contract.)_
 
-**Bottom line:** the codebase is in good shape. Beyond AUD-09/10 (the two
-frontend God-components / CRUD-page duplication) and the minor items above, there
-is no meaningful dead code or complexity left to remove — the first audit +
-the C901 gate did their job.
+**Bottom line:** the codebase is in good shape. Beyond AUD-09 (the CRUD-page
+duplication) and the minor items above, there is no meaningful dead code or
+complexity left to remove — the first audit + the C901 gate did their job.
+
+---
+
+## ⬜ CI / tooling
+
+- [ ] **AUD-21 — Free-tier code-coverage CI (replace the removed Code Quality
+      gate).** The GitHub Code Quality coverage workflow was removed — it needs an
+      org on Team/Enterprise and only 404'd on this personal repo. Replace it with
+      a self-contained workflow that works on any free/personal repo:
+      **generate** coverage, **fail** CI when it drops below a threshold, **show** a
+      summary in the Actions run, and **upload** the HTML/XML report as an
+      artifact. No external service or GitHub Enterprise needed. For the backend:
+      ```
+      pytest --cov=app --cov-report=term-missing \
+             --cov-report=xml:coverage.xml \
+             --cov-report=html:htmlcov \
+             --cov-fail-under=70
+      ```
+      (re-add `pytest-cov` to `requirements.txt`), plus `actions/upload-artifact`
+      for `htmlcov/` + `coverage.xml` and `>> $GITHUB_STEP_SUMMARY` for the summary.
+      Mirror for the desktop with `vitest run --coverage` (re-add
+      `@vitest/coverage-v8`, set `coverage.thresholds`, upload the report).
+      Pick realistic `--cov-fail-under` per suite (backend already ~90%; desktop
+      ~24% — set its floor low initially and raise as tests grow).

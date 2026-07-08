@@ -41,8 +41,9 @@ class Settings(BaseSettings):
         return value
 
     # CORS — comma-separated list of allowed origins for the desktop client.
-    # Defaults to the Vite dev server; tighten/extend per environment.
-    cors_allow_origins: str = "http://localhost:5173"
+    # Defaults to the Vite dev server on both loopback spellings (localhost and
+    # 127.0.0.1); tighten/extend per environment.
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Rate limit applied to authentication endpoints (login/register).
     auth_rate_limit: str = "5/minute"
