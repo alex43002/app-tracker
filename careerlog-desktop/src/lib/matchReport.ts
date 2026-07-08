@@ -23,8 +23,8 @@ export interface ScoreVerdict {
   label: string;
 }
 
-export const STRONG_MATCH_MIN = 75;
-export const PARTIAL_MATCH_MIN = 50;
+const STRONG_MATCH_MIN = 75;
+const PARTIAL_MATCH_MIN = 50;
 
 /** Map a 0–100 score to its band + human label. */
 export function scoreVerdict(score: number): ScoreVerdict {
@@ -52,7 +52,7 @@ export interface ReportGap {
   required: boolean;
 }
 
-export interface MatchReportInput {
+interface MatchReportInput {
   result: MatchScore;
   jobTitle?: string;
   company?: string;

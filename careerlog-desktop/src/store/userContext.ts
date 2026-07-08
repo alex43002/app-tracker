@@ -11,7 +11,7 @@ import type { User } from "../types/user";
  * The context + hook live here (no JSX) and the provider component lives in
  * `UserProvider.tsx`, so each file stays fast-refresh friendly.
  */
-export interface UserContextValue {
+interface UserContextValue {
   user: User | null;
   loading: boolean;
   refreshUser: () => Promise<void>;

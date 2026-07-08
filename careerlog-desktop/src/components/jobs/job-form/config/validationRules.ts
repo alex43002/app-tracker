@@ -4,7 +4,7 @@ import type { JobFormFieldKey } from "./formFields";
  * Validation rule definition for a single field.
  * Return a string to indicate an error, or null if valid.
  */
-export type ValidationRule<T = unknown> = (value: T) => string | null;
+type ValidationRule<T = unknown> = (value: T) => string | null;
 
 /**
  * Centralized validation rules for the Job form.
