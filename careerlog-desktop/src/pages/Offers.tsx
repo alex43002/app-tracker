@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { AppLayout } from "../layouts/AppLayout";
@@ -9,6 +9,7 @@ import {
   updateOffer,
 } from "../api/offers";
 import { confirm } from "../components/common/dialogs/confirmController";
+import { useCrudResource } from "../hooks/useCrudResource";
 import { OFFER_STATUSES, type Offer, type OfferInput } from "../types/offer";
 
 /* ============================================================
@@ -58,18 +59,24 @@ function overallScore(offer: Offer, maxComp: number): number {
 }
 
 export function Offers() {
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const crud = useCrudResource<Offer, OfferInput>(
+    {
+      list: fetchOffers,
+      create: createOffer,
+      update: updateOffer,
+      remove: deleteOffer,
+    },
+    {
+      loadError: "Failed to load offers",
+      created: "Offer added",
+      updated: "Offer updated",
+      deleted: "Offer deleted",
+      saveError: "Failed to save offer",
+      deleteError: "Failed to delete offer",
+    },
+  );
+  const { items: offers, loading, saving, editingId } = crud;
   const [form, setForm] = useState<OfferInput>(EMPTY);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    fetchOffers()
-      .then(setOffers)
-      .catch(() => toast.error("Failed to load offers"))
-      .finally(() => setLoading(false));
-  }, []);
 
   const maxComp = useMemo(
     () => offers.reduce((m, o) => Math.max(m, o.totalComp), 0),
@@ -82,12 +89,12 @@ export function Offers() {
   }, [offers, maxComp]);
 
   function resetForm() {
-    setEditingId(null);
+    crud.cancelEdit();
     setForm(EMPTY);
   }
 
   function startEdit(o: Offer) {
-    setEditingId(o.id);
+    crud.beginEdit(o.id);
     setForm({
       company: o.company,
       role: o.role,
@@ -111,25 +118,7 @@ export function Offers() {
       toast.error("Company and role are required");
       return;
     }
-    setSaving(true);
-    try {
-      if (editingId) {
-        const updated = await updateOffer(editingId, form);
-        setOffers((prev) =>
-          prev.map((o) => (o.id === editingId ? updated : o)),
-        );
-        toast.success("Offer updated");
-      } else {
-        const created = await createOffer(form);
-        setOffers((prev) => [created, ...prev]);
-        toast.success("Offer added");
-      }
-      resetForm();
-    } catch {
-      toast.error("Failed to save offer");
-    } finally {
-      setSaving(false);
-    }
+    if (await crud.save(form)) resetForm();
   }
 
   async function handleDelete(o: Offer) {
@@ -141,14 +130,8 @@ export function Offers() {
       destructive: true,
     });
     if (!ok) return;
-    try {
-      await deleteOffer(o.id);
-      setOffers((prev) => prev.filter((x) => x.id !== o.id));
-      if (editingId === o.id) resetForm();
-      toast.success("Offer deleted");
-    } catch {
-      toast.error("Failed to delete offer");
-    }
+    const wasEditing = editingId === o.id;
+    if ((await crud.remove(o.id)) && wasEditing) setForm(EMPTY);
   }
 
   const bestScore = Math.max(0, ...Object.values(scores));

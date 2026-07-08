@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { AppLayout } from "../layouts/AppLayout";
@@ -9,6 +9,7 @@ import {
   updateStarStory,
 } from "../api/starStories";
 import { confirm } from "../components/common/dialogs/confirmController";
+import { useCrudResource } from "../hooks/useCrudResource";
 import type { StarStory, StarStoryInput } from "../types/starStory";
 
 /* ============================================================
@@ -39,20 +40,26 @@ const STAR_FIELDS: {
 ];
 
 export function Stories() {
-  const [stories, setStories] = useState<StarStory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const crud = useCrudResource<StarStory, StarStoryInput>(
+    {
+      list: fetchStarStories,
+      create: createStarStory,
+      update: updateStarStory,
+      remove: deleteStarStory,
+    },
+    {
+      loadError: "Failed to load stories",
+      created: "Story added",
+      updated: "Story updated",
+      deleted: "Story deleted",
+      saveError: "Failed to save story",
+      deleteError: "Failed to delete story",
+    },
+  );
+  const { items: stories, loading, saving, editingId } = crud;
   const [form, setForm] = useState<StarStoryInput>(EMPTY);
   const [tagText, setTagText] = useState("");
-  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    fetchStarStories()
-      .then(setStories)
-      .catch(() => toast.error("Failed to load stories"))
-      .finally(() => setLoading(false));
-  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -65,13 +72,13 @@ export function Stories() {
   }, [stories, search]);
 
   function resetForm() {
-    setEditingId(null);
+    crud.cancelEdit();
     setForm(EMPTY);
     setTagText("");
   }
 
   function startEdit(story: StarStory) {
-    setEditingId(story.id);
+    crud.beginEdit(story.id);
     setForm({
       title: story.title,
       situation: story.situation,
@@ -98,25 +105,7 @@ export function Stories() {
         .filter(Boolean),
     };
 
-    setSaving(true);
-    try {
-      if (editingId) {
-        const updated = await updateStarStory(editingId, payload);
-        setStories((prev) =>
-          prev.map((s) => (s.id === editingId ? updated : s)),
-        );
-        toast.success("Story updated");
-      } else {
-        const created = await createStarStory(payload);
-        setStories((prev) => [created, ...prev]);
-        toast.success("Story added");
-      }
-      resetForm();
-    } catch {
-      toast.error("Failed to save story");
-    } finally {
-      setSaving(false);
-    }
+    if (await crud.save(payload)) resetForm();
   }
 
   async function handleDelete(story: StarStory) {
@@ -128,14 +117,8 @@ export function Stories() {
       destructive: true,
     });
     if (!ok) return;
-    try {
-      await deleteStarStory(story.id);
-      setStories((prev) => prev.filter((s) => s.id !== story.id));
-      if (editingId === story.id) resetForm();
-      toast.success("Story deleted");
-    } catch {
-      toast.error("Failed to delete story");
-    }
+    const wasEditing = editingId === story.id;
+    if ((await crud.remove(story.id)) && wasEditing) resetForm();
   }
 
   return (
