@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { useMemo, useState } from "react";
 
 import { AppLayout } from "../layouts/AppLayout";
 import { confirm } from "../components/common/dialogs/confirmController";
@@ -10,35 +9,40 @@ import {
   createAlert,
   updateAlert,
 } from "../api/alerts";
+import { useCrudResource } from "../hooks/useCrudResource";
 import { isAlertScheduledFuture, partitionAlerts } from "../lib/alertStatus";
-import type {
-  Alert,
-  CreateAlertPayload,
-  UpdateAlertPayload,
-} from "../types/alert";
+import type { Alert, CreateAlertPayload } from "../types/alert";
 
 export function Alerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+  // The alerts list, its create/update/delete, and the "which row is being
+  // edited" tracking are the shared CRUD machine (AUD-09). The list endpoint is
+  // paginated and the create/update endpoints return only the changed fields,
+  // so those are adapted here to yield full rows the hook can splice in.
+  const crud = useCrudResource<Alert, CreateAlertPayload>(
+    {
+      list: () =>
+        fetchAlerts(1, 100, "scheduledAlert", "asc").then((res) => res.items),
+      create: async (payload) => {
+        const { id } = await createAlert(payload);
+        return { id, ...payload, lastAlertAt: null };
+      },
+      update: async (id, payload) => {
+        const { updatedAt } = await updateAlert(id, payload);
+        return { ...payload, updatedAt };
+      },
+      remove: deleteAlert,
+    },
+    {
+      loadError: "Failed to load alerts",
+      created: "Alert created",
+      updated: "Alert updated",
+      deleted: "Alert deleted",
+      saveError: "Failed to save alert",
+      deleteError: "Failed to delete alert",
+    },
+  );
+  const { items: alerts, loading, editingItem: editing } = crud;
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Alert | null>(null);
-
-  // Initial load. setState happens only in async callbacks (never synchronously
-  // in the effect body) so it doesn't trigger cascading renders.
-  useEffect(() => {
-    let active = true;
-    fetchAlerts(1, 100, "scheduledAlert", "asc")
-      .then((res) => {
-        if (active) setAlerts(res.items);
-      })
-      .catch(() => toast.error("Failed to load alerts"))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function handleDelete(alert: Alert) {
     const ok = await confirm({
@@ -49,48 +53,17 @@ export function Alerts() {
       destructive: true,
     });
     if (!ok) return;
-
-    try {
-      await deleteAlert(alert.id);
-      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
-      toast.success("Alert deleted");
-    } catch {
-      toast.error("Failed to delete alert");
-    }
+    await crud.remove(alert.id);
   }
 
   async function handleSave(payload: CreateAlertPayload) {
-    try {
-      if (editing) {
-        const { updatedAt } = await updateAlert(
-          editing.id,
-          payload as UpdateAlertPayload,
-        );
-        setAlerts((prev) =>
-          prev.map((a) =>
-            a.id === editing.id ? { ...a, ...payload, updatedAt } : a,
-          ),
-        );
-        toast.success("Alert updated");
-      } else {
-        const created = await createAlert(payload);
-        setAlerts((prev) => [
-          ...prev,
-          { id: created.id, ...payload, lastAlertAt: null },
-        ]);
-        toast.success("Alert created");
-      }
-      setModalOpen(false);
-      setEditing(null);
-    } catch {
-      toast.error("Failed to save alert");
-    }
+    if (await crud.save(payload)) setModalOpen(false);
   }
 
   const { pending, sent } = useMemo(() => partitionAlerts(alerts), [alerts]);
 
   function openEdit(alert: Alert) {
-    setEditing(alert);
+    crud.beginEdit(alert.id);
     setModalOpen(true);
   }
 
@@ -102,7 +75,7 @@ export function Alerts() {
           <h1 className="text-2xl font-semibold">Alerts</h1>
           <button
             onClick={() => {
-              setEditing(null);
+              crud.cancelEdit();
               setModalOpen(true);
             }}
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -156,7 +129,7 @@ export function Alerts() {
           alert={editing}
           onClose={() => {
             setModalOpen(false);
-            setEditing(null);
+            crud.cancelEdit();
           }}
           onSave={handleSave}
         />
